@@ -1,92 +1,471 @@
-# Backend Project Setup
+# Backend - Express.js API Server
 
-This document outlines the steps to set up and run the backend service.
+A RESTful API server built with Express.js for the online voucher discount e-commerce platform. Provides endpoints for managing partners, vouchers, customers, orders, and transactions with role-based access control.
 
-## Introduction
+## Setup Instructions
 
-This backend service is built using Node.js and Express.js, designed with a modular architecture to handle API requests. It utilizes ES module syntax.
+### Prerequisites
 
-## Prerequisites
+- Node.js (v16 or higher)
+- npm (v8 or higher)
+- Environment configuration (.env file)
 
-Before you begin, ensure you have the following installed:
+### Installation
 
-- **Node.js**: [Download & Install Node.js](https://nodejs.org/en/download/) (which includes npm)
-- **npm** (Node Package Manager) or **Yarn**
+1. Navigate to the backend directory:
 
-## Setup
+```bash
+cd backend
+```
 
-1.  **Navigate to the Backend Directory:**
+2. Install all dependencies:
 
-    ```bash
-    cd backend
-    ```
+```bash
+npm install
+```
 
-2.  **Install Dependencies:**
-    Using npm:
+This will install:
 
-    ```bash
-    npm install
-    ```
+- **Express 5.2.1** - Web framework
+- **Dotenv 17.4.2** - Environment variable management
+- **Nodemon 3.1.14** - Development auto-reload tool
 
-    Or using yarn:
+3. Create a `.env` file in the backend root directory:
 
-    ```bash
-    yarn install
-    ```
+```bash
+PORT=5000
+NODE_ENV=development
+DATABASE_URL=your_database_connection_string
+JWT_SECRET=your_secret_key
+# Add other environment variables as needed
+```
 
-3.  **Environment Variables:**
-    Create a `.env` file in the `backend` directory. This file will contain sensitive information and configuration specific to your environment.
-    A common `.env` file might look like this (adjust as per project needs):
-    ```
-    PORT=3000
-    DATABASE_URL="your_database_connection_string"
-    # Other environment variables like API keys, secrets, etc.
-    ```
-    _Note: Do not commit your `.env` file to version control._
+## How to Run
 
-## Running the Application
+### Development Server
 
-### Development Mode
-
-To run the application in development mode with `nodemon` (which automatically restarts the server on file changes):
+Start the development server with auto-reload on file changes:
 
 ```bash
 npm run dev
 ```
 
-The server will typically run on the port specified in your `.env` file (e.g., `http://localhost:8080`).
+The server will run at `http://localhost:5000` (or the PORT specified in .env)
 
-### Production Mode
+### Production Server
 
-To run the application in production mode:
+Start the production server:
 
 ```bash
 npm start
 ```
 
-## Backend Architecture Overview
+## Architecture
 
-The backend adheres to a clean, modular, and layered architecture to ensure maintainability, scalability, and separation of concerns. This structure helps manage complexity and promotes independent development and testing of different parts of the system.
+### Project Structure
 
-- **`index.js`**: This is the core entry point of the application. It initializes the Express server, loads configurations (including environment variables), applies global middleware, and sets up the routing system to direct incoming requests.
+```
+backend/
+├── index.js                 # Application entry point
+├── package.json            # Project dependencies & scripts
+├── .env                    # Environment variables (not committed)
+├── .gitignore             # Git ignore rules
+│
+├── routes/                 # API route handlers
+│   └── testRoute.js       # Test/example route
+│
+├── controllers/            # Request handlers & business logic routing
+│   └── testController.js  # Test/example controller
+│
+├── services/              # Business logic layer
+│   └── testService.js    # Service for data processing & business rules
+│
+├── repositories/          # Data access layer (Database)
+│   └── testRepo.js       # Repository for database queries
+│
+├── models/                # Database models/schemas
+│   └── testModel.js      # Data model definition
+│
+├── middlewares/           # Express middleware
+│   └── testMiddleware.js # Custom middleware (auth, validation, etc.)
+│
+├── dto/                   # Data Transfer Objects
+│   └── responses/         # Response format definitions
+│       └── responseFormat.js # Standard API response format
+│
+└── constants/             # Application constants
+    └── responseStatus.js  # HTTP status codes & messages
+```
 
-- **`routes/`**: This directory defines all the API endpoints and their respective HTTP methods (GET, POST, PUT, DELETE, etc.). Each route maps to a specific controller function responsible for handling the request. This layer acts as the interface for client applications.
+### Architecture Overview - Layered Architecture Pattern
 
-- **`middlewares/`**: Contains custom middleware functions that process incoming requests before they reach the route handlers or after they are processed. Common uses include authentication, logging, error handling, data validation, and request parsing.
+The backend follows a **clean, layered architecture** to ensure maintainability, scalability, and separation of concerns:
 
-- **`controllers/`**: Responsible for handling incoming HTTP requests, validating input (often using DTOs), and orchestrating the business logic by calling appropriate service methods. Controllers are kept lean, focusing solely on request/response handling and delegating complex operations to the service layer.
+#### 1. **Routes** (`routes/`)
 
-- **`services/`**: Encapsulates the application's business logic. Service methods perform complex operations, interact with repositories to retrieve or persist data, and apply business rules. They act as an abstraction layer between controllers and data access.
+- Define API endpoints and HTTP methods
+- Map incoming requests to controllers
+- Express route handlers and path specifications
+- Example: `GET /api/test`, `POST /api/test`
 
-- **`repositories/`**: This layer is responsible for data access operations. It abstracts the underlying database (e.g., MongoDB, PostgreSQL) and provides methods for creating, reading, updating, and deleting (CRUD) data. Repositories communicate with the `models/` layer.
+#### 2. **Controllers** (`controllers/`)
 
-- **`models/`**: Defines the data structures and schemas used in the application. These typically represent entities in the database (e.g., User, Product). If an ORM (Object-Relational Mapper) or ODM (Object-Document Mapper) is used (e.g., Mongoose), this directory would contain the schema definitions.
+- Handle HTTP requests and responses
+- Parse request parameters and body data
+- Call services to process business logic
+- Return formatted responses
+- Handle error responses and status codes
+- Act as a bridge between routes and services
 
-- **`dto/`**: (Data Transfer Objects) Contains classes or interfaces that define the structure of data being transferred between processes, particularly for requests and responses.
-  - **`dto/requests/`**: Defines the expected structure for incoming request bodies (e.g., user creation data, login credentials).
-  - **`dto/responses/`**: Defines the structure for data returned in API responses, ensuring consistency and clarity for clients.
+#### 3. **Services** (`services/`)
 
-- **`constants/`**: Stores application-wide constant values such as API response statuses, error codes, role definitions, configuration keys, and other reusable static values. Centralizing constants helps avoid hard-coded strings and numbers throughout the codebase, improving consistency and maintainability.
-  - **`responseStatus.js`**: Defines standardized API response statuses and HTTP status codes (e.g., SUCCESS, NOT_FOUND, INTERNAL_SERVER_ERROR) to ensure consistent responses across the application.
+- Core business logic implementation
+- Data validation and transformation
+- Orchestrate repository calls
+- Implement voucher workflow rules
+- Handle cross-cutting business concerns
+- Manage transaction processing logic
 
-This layered approach promotes a clean separation of concerns, making the codebase more organized, testable, and easier to maintain as the project grows.
+#### 4. **Repositories** (`repositories/`)
+
+- Data access abstraction layer
+- Database CRUD operations (Create, Read, Update, Delete)
+- Abstract database implementation details
+- Enable easy database switching (MySQL → PostgreSQL)
+- Query optimization and database-specific operations
+
+#### 5. **Models** (`models/`)
+
+- Define data structures and schemas
+- Database table definitions and relationships
+- Data validation rules
+- Field types, constraints, and indexes
+
+#### 6. **Middlewares** (`middlewares/`)
+
+- Authentication & Authorization validation
+- Request validation and sanitization
+- Error handling and exception catching
+- Logging and request tracking
+- CORS and security headers
+- Request/Response transformation
+
+#### 7. **DTOs** (`dto/`)
+
+- Define standardized request/response formats
+- Data validation schemas for API contracts
+- Response envelope structure consistency
+- Type definitions for client communication
+- `responseFormat.js` - Wraps all API responses
+
+#### 8. **Constants** (`constants/`)
+
+- Application-wide constants and enums
+- HTTP status codes and response messages
+- Business domain constants (user roles, voucher statuses)
+- Configuration constants
+
+### Data Flow Diagram
+
+```
+HTTP Request
+   ↓
+Routes ──→ Controllers ──→ Services ──→ Repositories ──→ Database
+   ↑                                                          ↓
+   └──────────────────────── ←─ DTOs ← Response Formatting ←
+   ↓
+HTTP Response (JSON)
+```
+
+**Detailed Request Journey:**
+
+1. **Route** receives the HTTP request on a specific endpoint
+2. **Controller** parses request data, validates input
+3. **Service** implements business logic and workflows
+4. **Repository** queries/updates the database
+5. **Database** returns raw data
+6. **Service** processes and transforms data
+7. **DTO** formats response according to standard envelope
+8. **Controller** returns formatted response with proper HTTP status
+9. **Client** receives consistent JSON response
+
+### API Response Format
+
+All API responses follow a standard format defined in `dto/responses/responseFormat.js`:
+
+```json
+{
+  "status": {
+    "code": 200,
+    "message": "Success"
+  },
+  "data": {
+    "total": 10,
+    "data": [
+      { "id": 1, "name": "Voucher A" },
+      { "id": 2, "name": "Voucher B" }
+    ]
+  },
+  "message": "Get vouchers successfully"
+}
+```
+
+### Authentication & Authorization
+
+- JWT (JSON Web Tokens) for stateless authentication
+- Role-based access control (RBAC) with 3 user roles:
+  - **Admin** - Full platform access, approves partners and vouchers
+  - **Partner** - Manage own vouchers, view sales reports
+  - **Customer** - Browse, purchase, redeem vouchers
+- Middleware to verify tokens and enforce role permissions
+- Secure password hashing and storage
+
+### Key Business Workflows
+
+#### Partner Approval Workflow
+
+```
+Partner Registration
+  ↓
+Validation & Verification
+  ↓
+Admin Review
+  ↓
+Approval/Rejection
+  ↓
+Partner Account Activation
+```
+
+#### Voucher Lifecycle
+
+```
+Create Voucher (Partner)
+  ↓
+Admin Review & Approval
+  ↓
+Publish on Platform
+  ↓
+Customer Browse & Search
+  ↓
+Customer Purchase Order
+  ↓
+Payment Processing
+  ↓
+Generate Unique Codes
+  ↓
+Customer Redemption at Partner
+  ↓
+Verification & Confirmation
+  ↓
+Usage Tracking & Report
+```
+
+#### Transaction Processing
+
+```
+Customer Initiates Order
+  ↓
+Check Voucher Availability
+  ↓
+Reserve Inventory
+  ↓
+Process Payment (Mock)
+  ↓
+Generate Voucher Codes
+  ↓
+Send Codes to Customer
+  ↓
+Log Transaction
+  ↓
+Update Reports & Analytics
+```
+
+### Database Schema (Conceptual Entities)
+
+Key business entities:
+
+- **Users** - System users (customer, partner, admin)
+- **Partners** - Merchants/vendors selling vouchers
+- **Vouchers** - Discount or promotional voucher templates
+- **Voucher_Codes** - Individual redemption codes (unique per purchase)
+- **Orders** - Customer purchase transactions
+- **Order_Items** - Individual items within an order
+- **Transactions** - Payment and redemption history
+- **Approvals** - Admin review workflow records
+- **Reports** - Aggregated sales and usage analytics
+
+### Environment Variables Configuration
+
+```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Database Configuration
+DATABASE_URL=mysql://username:password@localhost:3306/voucher_db
+DATABASE_HOST=localhost
+DATABASE_PORT=3306
+DATABASE_USER=root
+DATABASE_PASSWORD=yourpassword
+DATABASE_NAME=voucher_db
+
+# Authentication & Security
+JWT_SECRET=your_super_secret_key_min_32_chars
+JWT_EXPIRE=7d
+BCRYPT_ROUNDS=10
+
+# Business Rules
+PARTNER_APPROVAL_REQUIRED=true
+ADMIN_VERIFICATION_REQUIRED=true
+MAX_VOUCHER_QUANTITY_PER_ORDER=10
+VOUCHER_CODE_LENGTH=16
+
+# Email Configuration (if needed)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_password
+
+# API Configuration
+CORS_ORIGIN=http://localhost:3000
+API_VERSION=v1
+```
+
+### Error Handling Strategy
+
+- Centralized error handling middleware
+- Consistent error response format with HTTP status codes
+- Request validation errors with field-level details
+- Database error logging and monitoring
+- Security exception handling (SQL injection, XSS prevention)
+- Transaction rollback on critical errors
+
+### Key Features & Endpoints
+
+#### Partner Management
+
+- `POST /api/partners` - Register new partner
+- `POST /api/partners/:id/approve` - Admin approve partner
+- `GET /api/partners` - List all partners
+- `PUT /api/partners/:id` - Update partner profile
+
+#### Voucher Management
+
+- `POST /api/vouchers` - Create voucher
+- `PUT /api/vouchers/:id/approve` - Admin approve voucher
+- `GET /api/vouchers` - List vouchers with filtering
+- `GET /api/vouchers/:id` - Get voucher details
+- `PUT /api/vouchers/:id` - Update voucher
+- `DELETE /api/vouchers/:id` - Deactivate voucher
+
+#### Order Management
+
+- `POST /api/orders` - Create purchase order
+- `GET /api/orders/:customerId` - Get customer orders
+- `PUT /api/orders/:id/confirm` - Confirm payment
+
+#### Voucher Code Management
+
+- `GET /api/vouchers/:id/codes` - List codes for voucher
+- `POST /api/codes/redeem` - Redeem voucher code
+- `GET /api/codes/:code/verify` - Verify code validity
+
+#### Reporting
+
+- `GET /api/reports/sales` - Sales report
+- `GET /api/reports/usage` - Voucher usage report
+- `GET /api/reports/revenue` - Revenue analytics
+
+### Development Workflow
+
+1. Create new route in `routes/` (define endpoint)
+2. Implement controller in `controllers/` (handle request)
+3. Implement service in `services/` (business logic)
+4. Add repository methods in `repositories/` (data access)
+5. Define or update model in `models/` (schema)
+6. Create middleware if needed for cross-cutting concerns
+7. Define DTOs in `dto/` for request/response validation
+8. Test with Postman or API client
+
+## Testing the API
+
+Use Postman or VS Code REST Client extension:
+
+```
+### Get all users
+GET http://localhost:5000/api/test
+
+### Create a new user
+POST http://localhost:5000/api/test
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+## Production Deployment
+
+1. Set environment variables in production environment
+2. Build and optimize code
+3. Use process manager (PM2):
+   ```bash
+   npm install -g pm2
+   pm2 start index.js --name "voucher-api"
+   pm2 save
+   pm2 startup
+   ```
+4. Configure reverse proxy (Nginx)
+5. Enable HTTPS/SSL
+6. Set up monitoring and logging
+
+## Technologies Used
+
+- **Node.js** - JavaScript runtime environment
+- **Express.js** - Web application framework
+- **Dotenv** - Environment variable management
+- **Nodemon** - Development auto-reload
+- **Database** - MySQL/PostgreSQL (configurable)
+- **Authentication** - JWT (to be implemented)
+- **Password Hashing** - bcrypt (to be integrated)
+
+## Performance & Security Best Practices
+
+### Performance
+
+- Connection pooling for database
+- Query optimization with proper indexing
+- Pagination for large datasets
+- Caching layer for frequently accessed data
+- Rate limiting to prevent abuse
+- Request timeout configuration
+
+### Security
+
+- Environment variables for sensitive data (.env)
+- Input validation and sanitization
+- SQL injection prevention (parameterized queries)
+- CORS configuration
+- Rate limiting and DDoS protection
+- JWT token expiration
+- Password hashing with bcrypt
+- HTTPS in production
+- Security headers (helmet.js)
+
+## Contributing Guidelines
+
+1. Create feature branch: `git checkout -b feature/feature-name`
+2. Write code following existing patterns
+3. Test with Postman before commit
+4. Commit with clear messages: `git commit -am 'Add feature description'`
+5. Push to branch: `git push origin feature/feature-name`
+6. Create Pull Request with description
+
+## Notes
+
+- This is an academic project for an e-commerce course
+- Database initialization scripts needed
+- Payment processing is currently mocked (not production-ready)
+- Full authentication system needs implementation
+- Role-based access control needs middleware setup
