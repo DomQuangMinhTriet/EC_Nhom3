@@ -1,5 +1,4 @@
 // src/pages/HomePage.jsx
-import React from "react";
 import useData from "../hooks/useData";
 
 const HomePage = () => {

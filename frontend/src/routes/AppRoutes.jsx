@@ -1,5 +1,4 @@
 // src/routes/AppRoutes.jsx
-import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import AboutPage from '../pages/AboutPage';
