@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EC Voucher System — UI Preview</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#0c0f1a;scroll-behavior:smooth}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#111827;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:999px}
+:focus-visible{outline:2px solid #4F46E5;outline-offset:2px}
+.nav-panel{position:fixed;top:0;left:0;width:208px;height:100vh;background:#0c0f1a;overflow-y:auto;z-index:200;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.07)}
+.nav-panel-brand{display:flex;align-items:center;gap:10px;padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.nav-panel-brand-icon{width:28px;height:28px;background:#4f46e5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;letter-spacing:-.5px;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 0 0 1px rgba(99,102,241,.5) inset}
+.nav-panel-brand-name{font-size:13px;font-weight:700;color:#f1f5f9;letter-spacing:-.2px;font-family:'Plus Jakarta Sans',sans-serif}
+.nav-group-label{font-size:9.5px;font-weight:700;color:#3d4f6e;letter-spacing:.1em;text-transform:uppercase;padding:16px 16px 6px;font-family:'Plus Jakarta Sans',sans-serif}
+.nav-link{display:flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:500;padding:7px 10px;border-radius:6px;margin:1px 6px;cursor:pointer;transition:all .15s;text-decoration:none;line-height:1.4;font-family:'Plus Jakarta Sans',sans-serif}
+.nav-link:hover{background:#141928;color:#cbd5e1}
+.nav-link.active{background:rgba(79,70,229,.18);color:#a5b4fc;font-weight:600;border-left:2px solid #6366f1;border-radius:0 6px 6px 0;margin-left:6px;padding-left:8px}
+.nav-link-dot{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.5}
+.main-view{margin-left:208px;height:100vh;overflow:auto;background:#0c0f1a}
+.screen-viewport{transform-origin:top left;background:#f8fafc}
+.screen-frame{width:1440px;min-height:900px;background:#f8fafc;overflow:hidden;position:relative}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes skelShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* Phase 3 — hover & interaction polish */
+button:active,a[style*="cursor:pointer"]:active{transform:scale(.97);transition:transform .1s}
+.data-row-hover:hover{background:#f8fafc !important;cursor:pointer}
+.card-hover:hover{box-shadow:0 8px 24px rgba(79,70,229,.12),0 2px 8px rgba(0,0,0,.06) !important;transform:translateY(-1px);transition:box-shadow .2s,transform .2s}
+.notif-item{transition:filter .15s,transform .15s}.notif-item:hover{filter:brightness(.97);transform:translateX(2px);cursor:pointer}
+.cat-card{transition:box-shadow .2s,transform .2s}.cat-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.1) !important;transform:translateY(-2px);cursor:pointer}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback,useContext,createContext}=React;
+const NavCtx=createContext(()=>{});
+const ToastCtx=createContext(()=>{});
+
+// ── DESIGN TOKENS ─────────────────────────────────────────────────────────
+const T={
+  // Brand
+  primary:'#4F46E5', primaryHover:'#4338CA', primaryLight:'#EEF2FF', primaryDark:'#3730A3',
+  primaryMuted:'rgba(79,70,229,.08)',
+  accent:'#F97316', accentHover:'#EA6C0A', accentLight:'#FFF7ED', accentMuted:'rgba(249,115,22,.1)',
+  // Neutrals
+  gray900:'#0F172A', gray800:'#1E293B', gray700:'#334155', gray600:'#475569',
+  gray500:'#64748B', gray400:'#94A3B8', gray300:'#CBD5E1', gray200:'#E2E8F0',
+  gray150:'#EEF2F6', gray100:'#F1F5F9', gray50:'#F8FAFC', white:'#FFFFFF',
+  // Semantic
+  success:'#059669', successLight:'#ECFDF5', successMuted:'rgba(5,150,105,.1)',
+  warning:'#D97706', warningLight:'#FFFBEB', warningMuted:'rgba(217,119,6,.1)',
+  error:'#DC2626',   errorLight:'#FEF2F2',   errorMuted:'rgba(220,38,38,.1)',
+  info:'#2563EB',    infoLight:'#EFF6FF',    infoMuted:'rgba(37,99,235,.1)',
+  // Shadows — tinted with brand hue
+  shadowSm:'0 1px 3px rgba(79,70,229,.05),0 1px 2px rgba(15,23,42,.06)',
+  shadowMd:'0 4px 16px rgba(79,70,229,.07),0 2px 4px rgba(15,23,42,.05)',
+  shadowLg:'0 12px 32px rgba(79,70,229,.1),0 4px 8px rgba(15,23,42,.06)',
+  shadowXl:'0 24px 48px rgba(79,70,229,.13),0 8px 16px rgba(15,23,42,.08)',
+  shadowColor:'0 8px 24px rgba(79,70,229,.25)',
+  // Spacing
+  sp:{2:2,4:4,6:6,8:8,10:10,12:12,14:14,16:16,20:20,24:24,28:28,32:32,40:40,48:48,56:56,64:64,80:80},
+  // Radius
+  r:{2:2,4:4,6:6,8:8,10:10,12:12,16:16,20:20,24:24,full:9999},
+  // Typography
+  text:{xs:11,sm:12,base:14,md:15,lg:16,xl:18,h4:20,h3:22,h2:24,h1:28,display:36,hero:48},
+  // Font families
+  font:"'Plus Jakarta Sans',system-ui,sans-serif",
+  fontMono:"'JetBrains Mono',ui-monospace,monospace",
+};
+
+// ── ICON SYSTEM ───────────────────────────────────────────────────────────
+const _P={
+  bell:'M10 5a2 2 0 114 0 7 7 0 017 7v3l2 2H3l2-2V12A7 7 0 0110 5zm2 14a3 3 0 01-3-3h6a3 3 0 01-3 3z',
+  cart:'M2 3h1.5L6 13h10l2-7H8M7 17a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm9 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z',
+  user:'M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 1116 0H4z',
+  ticket:'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z',
+  grid:'M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z',
+  chart:'M9 19V13a2 2 0 00-2-2H5a2 2 0 00-2 2v6m4 0H5m4 0h2m2-9V19m0 0h-2m2 0h2m2-13v13m0 0h-2m2 0h2',
+  trending:'M23 6l-9.5 9.5-5-5L1 18M17 6h6v6',
+  settings:'M12 15a3 3 0 100-6 3 3 0 000 6zm7.07-1.07A7 7 0 1012 5a7 7 0 007.07 8.93z',
+  plus:'M12 5v14M5 12h14',
+  edit:'M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z',
+  download:'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3',
+  upload:'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  check:'M20 6L9 17l-5-5',
+  search:'M21 21l-5.2-5.2m0 0A7 7 0 115.8 5.8a7 7 0 0010 10z',
+  lock:'M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2zM12 17v-2m-5-6V7a5 5 0 0110 0v4',
+  building:'M3 21V7l9-4 9 4v14H3zm6 0V15h6v6',
+  users:'M17 20H3v-2a5 5 0 015-5h6a5 5 0 015 5v2zm-7-8a4 4 0 100-8 4 4 0 000 8zm9-4a3 3 0 110 6m1-6a3 3 0 016 0m-6 6h6a4 4 0 014 4v1',
+  file:'M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9l-7-7zm0 0v7h7',
+  log:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+  qr:'M3 3h7v7H3zm0 11h7v7H3zm11-11h7v7h-7zm0 11h3v3h-3zm4 0h3v3h-3zm-4 4h3v3h-3zm4 0h3v3h-3z',
+  history:'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  star:'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+  shield:'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+  bank:'M3 21h18M3 7h18M5 7V5a1 1 0 011-1h12a1 1 0 011 1v2M6 21v-7m4 7v-7m4 7v-7m4 7v-7',
+  money:'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6',
+  package:'M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12',
+  warning:'M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01',
+  ban:'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
+  pause:'M10 9v6m4-6v6',
+  repeat:'M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3',
+  home:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+  copy:'M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3',
+  camera:'M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11zM12 17a4 4 0 100-8 4 4 0 000 8z',
+  trash:'M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6m4-6v6',
+  logOut:'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9',
+  play:'M5 3l14 9-14 9V3z',
+  heart:'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
+};
+const Ico=({n,size=16,color='currentColor',style:sx={}})=>(
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:'block',flexShrink:0,...sx}}>
+    <path d={_P[n]||_P.check}/>
+  </svg>
+);
+
+// ── BASE COMPONENTS ────────────────────────────────────────────────────────
+
+// Button with proper states
+const Btn=({children,variant='primary',size='md',full,onClick,disabled,icon,style:sx={}})=>{
+  const [hov,setHov]=useState(false);
+  const [pressed,setPressed]=useState(false);
+  const sizes={
+    xs:{px:10,py:5,fs:T.text.xs,gap:4,r:T.r[6]},
+    sm:{px:14,py:7,fs:T.text.sm,gap:5,r:T.r[8]},
+    md:{px:18,py:9,fs:T.text.base,gap:6,r:T.r[10]},
+    lg:{px:24,py:11,fs:T.text.md,gap:7,r:T.r[10]},
+    xl:{px:32,py:14,fs:T.text.lg,gap:8,r:T.r[12]},
+  }[size]||{px:18,py:9,fs:T.text.base,gap:6,r:T.r[10]};
+  const variants={
+    primary:{background:hov?T.primaryHover:T.primary,color:T.white,border:'none',boxShadow:hov?T.shadowColor:T.shadowSm},
+    accent:{background:hov?T.accentHover:T.accent,color:T.white,border:'none',boxShadow:T.shadowSm},
+    ghost:{background:hov?T.gray100:T.white,color:T.gray700,border:`1.5px solid ${T.gray200}`,boxShadow:'none'},
+    outlined:{background:hov?T.primaryMuted:T.white,color:T.primary,border:`1.5px solid ${T.primary}`,boxShadow:'none'},
+    danger:{background:hov?'#B91C1C':T.error,color:T.white,border:'none',boxShadow:T.shadowSm},
+    success:{background:hov?'#047857':T.success,color:T.white,border:'none',boxShadow:T.shadowSm},
+    subtle:{background:hov?T.gray100:T.primaryMuted,color:T.primary,border:'none',boxShadow:'none'},
+    link:{background:'transparent',color:hov?T.primaryHover:T.primary,border:'none',boxShadow:'none'},
+  }[variant]||{};
+  return(
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      onMouseEnter={()=>setHov(true)}
+      onMouseLeave={()=>{setHov(false);setPressed(false);}}
+      onMouseDown={()=>setPressed(true)}
+      onMouseUp={()=>setPressed(false)}
+      style={{
+        display:'inline-flex',alignItems:'center',justifyContent:'center',
+        gap:sizes.gap,
+        paddingLeft:sizes.px,paddingRight:sizes.px,paddingTop:sizes.py,paddingBottom:sizes.py,
+        fontSize:sizes.fs,fontWeight:600,borderRadius:sizes.r,
+        cursor:disabled?'not-allowed':'pointer',
+        width:full?'100%':undefined,
+        fontFamily:T.font,letterSpacing:'-.02em',
+        transition:'all .18s cubic-bezier(.4,0,.2,1)',
+        transform:pressed?'scale(0.97)':'scale(1)',
+        opacity:disabled?.5:1,
+        ...variants,
+        ...sx
+      }}>
+      {icon&&<span style={{fontSize:sizes.fs*1.1,lineHeight:1,display:'inline-flex',alignItems:'center'}}>{icon}</span>}
+      {children}
+    </button>
+  );
+};
+
+// Refined Badge
+const Badge=({children,variant='default',size='sm'})=>{
+  const p=size==='sm'?{px:8,py:3,fs:T.text.xs}:{px:10,py:4,fs:T.text.sm};
+  const v={
+    default:{background:T.gray100,color:T.gray600,dot:T.gray400},
+    success:{background:T.successLight,color:T.success,dot:T.success},
+    warning:{background:T.warningLight,color:T.warning,dot:T.warning},
+    error:{background:T.errorLight,color:T.error,dot:T.error},
+    primary:{background:T.primaryLight,color:T.primary,dot:T.primary},
+    accent:{background:T.accentLight,color:T.accent,dot:T.accent},
+    info:{background:T.infoLight,color:T.info,dot:T.info},
+    dark:{background:T.gray800,color:T.gray300,dot:T.gray400},
+  }[variant]||{background:T.gray100,color:T.gray600};
+  return(
+    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:`${p.py}px ${p.px}px`,borderRadius:T.r.full,fontSize:p.fs,fontWeight:600,letterSpacing:'.01em',...v}}>
+      <span style={{width:5,height:5,borderRadius:'50%',background:v.dot,flexShrink:0}}/>
+      {children}
+    </span>
+  );
+};
+
+// Input with proper states
+const Input=({label,placeholder,type='text',helper,error,defaultValue,required=true,hint,width,prefix})=>(
+  <div style={{display:'flex',flexDirection:'column',gap:5,width:width||'100%'}}>
+    {label&&(
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <label style={{fontSize:T.text.sm,fontWeight:600,color:T.gray700,letterSpacing:'-.01em'}}>
+          {label}{required&&<span style={{color:T.error,marginLeft:3}}>*</span>}
+        </label>
+        {hint&&<span style={{fontSize:T.text.xs,color:T.gray400}}>{hint}</span>}
+      </div>
+    )}
+    <div style={{position:'relative',display:'flex',alignItems:'center'}}>
+      {prefix&&<span style={{position:'absolute',left:12,color:T.gray400,fontSize:T.text.base,pointerEvents:'none'}}>{prefix}</span>}
+      <input
+        type={type}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+        style={{
+          width:'100%',
+          padding:`10px ${prefix?'14px 10px 36px':'14px'}`,
+          fontSize:T.text.base,
+          border:`1.5px solid ${error?T.error:T.gray200}`,
+          borderRadius:T.r[8],
+          outline:'none',fontFamily:T.font,
+          background:error?T.errorLight:T.white,
+          color:T.gray900,letterSpacing:'-.01em',
+          boxShadow:T.shadowSm,
+          transition:'border .15s,box-shadow .15s',
+        }}
+        onFocus={e=>{e.target.style.borderColor=error?T.error:T.primary;e.target.style.boxShadow=`0 0 0 3px ${error?'rgba(220,38,38,.12)':'rgba(79,70,229,.12)'}`}}
+        onBlur={e=>{e.target.style.borderColor=error?T.error:T.gray200;e.target.style.boxShadow=T.shadowSm}}
+      />
+    </div>
+    {(helper||error)&&<span style={{fontSize:T.text.xs,color:error?T.error:T.gray400,display:'flex',gap:4,alignItems:'center'}}>{error&&<Ico n="warning" size={11} color={T.error} style={{flexShrink:0}}/>}{helper||error}</span>}
+  </div>
+);
+
+const Textarea=({label,placeholder,rows=3,required=true,defaultValue})=>(
+  <div style={{display:'flex',flexDirection:'column',gap:5}}>
+    {label&&<label style={{fontSize:T.text.sm,fontWeight:600,color:T.gray700}}>{label}{required&&<span style={{color:T.error,marginLeft:3}}>*</span>}</label>}
+    <textarea placeholder={placeholder} rows={rows} defaultValue={defaultValue} style={{width:'100%',padding:'10px 14px',fontSize:T.text.base,border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontFamily:T.font,color:T.gray900,resize:'vertical',boxShadow:T.shadowSm,outline:'none',lineHeight:1.6}}
+      onFocus={e=>{e.target.style.borderColor=T.primary;e.target.style.boxShadow=`0 0 0 3px rgba(79,70,229,.12)`}}
+      onBlur={e=>{e.target.style.borderColor=T.gray200;e.target.style.boxShadow=T.shadowSm}}/>
+  </div>
+);
+
+const Select=({label,options=[],width,required=false})=>(
+  <div style={{display:'flex',flexDirection:'column',gap:5,width:width||'100%'}}>
+    {label&&<label style={{fontSize:T.text.sm,fontWeight:600,color:T.gray700}}>{label}{required&&<span style={{color:T.error,marginLeft:3}}>*</span>}</label>}
+    <select style={{width:'100%',padding:'10px 14px',fontSize:T.text.base,border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],background:T.white,fontFamily:T.font,color:T.gray700,cursor:'pointer',boxShadow:T.shadowSm,outline:'none'}}>
+      {options.map(o=><option key={o}>{o}</option>)}
+    </select>
+  </div>
+);
+
+// Card with elevation variants
+const Card=({children,p=24,elevation='md',style:sx={},onClick})=>{
+  const [hov,setHov]=useState(false);
+  const shadows={flat:'none',sm:T.shadowSm,md:T.shadowMd,lg:T.shadowLg};
+  return(
+    <div
+      onClick={onClick}
+      onMouseEnter={()=>onClick&&setHov(true)}
+      onMouseLeave={()=>setHov(false)}
+      style={{
+        background:T.white,borderRadius:T.r[12],
+        border:`1px solid ${T.gray200}`,
+        padding:p,
+        boxShadow:hov&&onClick?T.shadowLg:shadows[elevation]||T.shadowMd,
+        cursor:onClick?'pointer':'default',
+        transition:'all .2s',
+        ...sx
+      }}>
+      {children}
+    </div>
+  );
+};
+
+const Divider=({my=16,label})=>label?(
+  <div style={{display:'flex',alignItems:'center',gap:12,margin:`${my}px 0`}}>
+    <div style={{flex:1,height:1,background:T.gray200}}/>
+    <span style={{fontSize:T.text.xs,color:T.gray400,fontWeight:500,whiteSpace:'nowrap'}}>{label}</span>
+    <div style={{flex:1,height:1,background:T.gray200}}/>
+  </div>
+):<div style={{height:1,background:T.gray200,margin:`${my}px 0`}}/>;
+
+// Avatar
+const Avatar=({size=36,color=T.primary,initials='EC',img,status})=>(
+  <div style={{position:'relative',flexShrink:0}}>
+    <div style={{width:size,height:size,borderRadius:T.r.full,background:img?undefined:`linear-gradient(135deg,${color},${color}dd)`,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',boxShadow:`0 0 0 2px ${T.white},0 0 0 3px ${color}33`}}>
+      {img?<img src={img} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:<span style={{color:T.white,fontSize:size*.32,fontWeight:700,letterSpacing:'-.5px'}}>{initials}</span>}
+    </div>
+    {status&&<div style={{position:'absolute',bottom:0,right:0,width:size*.28,height:size*.28,borderRadius:'50%',background:status==='online'?T.success:T.gray300,border:`2px solid ${T.white}`}}/>}
+  </div>
+);
+
+// Logo Mark
+const LogoMark=({size=32,variant='default'})=>(
+  <div style={{width:size,height:size,background:variant==='white'?'rgba(255,255,255,.15)':'linear-gradient(135deg,#6366f1,#4f46e5)',borderRadius:Math.round(size*.25),display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:variant==='default'?T.shadowColor:undefined}}>
+    <span style={{color:T.white,fontWeight:800,fontSize:size*.38,letterSpacing:'-1px'}}>EC</span>
+  </div>
+);
+
+// TopNav for public pages
+const TopNav=({loggedIn=false,transparent=false})=>{
+  const nav=useContext(NavCtx);
+  const NAV_LINKS=[
+    {l:'Khám phá',to:'s05'},
+    {l:'Danh mục',to:'s05'},
+    {l:'Flash Sale',to:'s05'},
+    {l:'Thương hiệu',to:'s05'},
+  ];
+  return(
+  <nav style={{background:transparent?'transparent':T.white,borderBottom:transparent?'none':`1px solid ${T.gray200}`,height:68,display:'flex',alignItems:'center',padding:`0 ${T.sp[80]}px`,gap:T.sp[32],position:'sticky',top:0,zIndex:100,backdropFilter:transparent?'blur(12px) saturate(1.5)':undefined,boxShadow:transparent?undefined:T.shadowSm}}>
+    <div style={{display:'flex',alignItems:'center',gap:T.sp[10],marginRight:'auto',cursor:'pointer'}} onClick={()=>nav('s01')}>
+      <LogoMark size={32}/>
+      <span style={{fontSize:T.text.lg,fontWeight:800,color:T.primary,letterSpacing:'-0.5px'}}>EC<span style={{color:T.accent}}>Voucher</span></span>
+    </div>
+    {NAV_LINKS.map(({l,to})=>(
+      <a key={l} onClick={()=>nav(to)} style={{fontSize:T.text.base,fontWeight:500,color:T.gray600,cursor:'pointer',textDecoration:'none',letterSpacing:'-.01em',transition:'color .15s'}} onMouseEnter={e=>e.currentTarget.style.color=T.primary} onMouseLeave={e=>e.currentTarget.style.color=T.gray600}>{l}</a>
+    ))}
+    <div style={{display:'flex',gap:T.sp[12],alignItems:'center',marginLeft:T.sp[16]}}>
+      {loggedIn?(
+        <>
+          <div style={{position:'relative',cursor:'pointer',width:40,height:40,background:T.gray100,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',transition:'background .15s'}} onClick={()=>nav('s13')} onMouseEnter={e=>e.currentTarget.style.background=T.gray200} onMouseLeave={e=>e.currentTarget.style.background=T.gray100}>
+            <Ico n="bell" size={18} color={T.gray600}/>
+            <div style={{position:'absolute',top:7,right:7,width:8,height:8,background:T.error,borderRadius:'50%',border:`2px solid ${T.white}`}}/>
+          </div>
+          <div style={{width:40,height:40,background:T.gray100,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background .15s'}} onClick={()=>nav('s11')} onMouseEnter={e=>e.currentTarget.style.background=T.gray200} onMouseLeave={e=>e.currentTarget.style.background=T.gray100}>
+            <Ico n="cart" size={18} color={T.gray600}/>
+          </div>
+          <div style={{cursor:'pointer'}} onClick={()=>nav('s08')}><Avatar size={38} initials="NV" status="online"/></div>
+        </>
+      ):(
+        <>
+          <Btn variant="ghost" size="sm" onClick={()=>nav('s02')}>Đăng nhập</Btn>
+          <Btn variant="primary" size="sm" onClick={()=>nav('s03')}>Đăng ký miễn phí</Btn>
+        </>
+      )}
+    </div>
+  </nav>
+  );
+};
+
+// Sidebar for dashboard layouts
+const DashSidebar=({items=[],activeIdx=0,type='partner',brand='Partner'})=>{
+  const nav=useContext(NavCtx);
+  const bg=type==='admin'?'#0B1120':'#1a1742';
+  const accentGlow=type==='admin'?'rgba(99,102,241,.3)':'rgba(99,102,241,.25)';
+  return(
+    <div style={{width:232,background:bg,height:'100%',display:'flex',flexDirection:'column',flexShrink:0,borderRight:'1px solid rgba(255,255,255,.06)'}}>
+      <div style={{padding:'20px 16px 16px',display:'flex',alignItems:'center',gap:10,borderBottom:'1px solid rgba(255,255,255,.08)',cursor:'pointer'}} onClick={()=>nav('s01')}>
+        <LogoMark size={30} variant="white"/>
+        <div>
+          <div style={{color:'#f1f5f9',fontWeight:800,fontSize:14,letterSpacing:'-.3px'}}>ECVoucher</div>
+          <div style={{color:'rgba(255,255,255,.4)',fontSize:10,fontWeight:500,marginTop:1}}>{brand}</div>
+        </div>
+      </div>
+      <nav style={{padding:'8px 8px',flex:1,overflowY:'auto'}}>
+        {items.map((item,i)=>{
+          const isActive=i===activeIdx;
+          return(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 11px',borderRadius:T.r[8],marginBottom:2,background:isActive?accentGlow:undefined,cursor:'pointer',color:isActive?'#a5b4fc':'rgba(255,255,255,.48)',fontSize:13,fontWeight:isActive?600:400,letterSpacing:'-.01em',transition:'all .15s',fontFamily:T.font}}
+              onClick={()=>item.to&&nav(item.to)}
+              onMouseEnter={e=>!isActive&&(e.currentTarget.style.background='rgba(255,255,255,.05)')}
+              onMouseLeave={e=>!isActive&&(e.currentTarget.style.background='')}>
+              <span style={{display:'flex',alignItems:'center',flexShrink:0,opacity:isActive?1:.8}}>{item.icon}</span>
+              <span style={{flex:1}}>{item.label}</span>
+              {item.badge&&<span style={{background:'rgba(249,115,22,.2)',color:'#fb923c',fontSize:10,fontWeight:700,padding:'2px 6px',borderRadius:T.r.full}}>{item.badge}</span>}
+            </div>
+          );
+        })}
+      </nav>
+      <div style={{padding:'12px 16px',borderTop:'1px solid rgba(255,255,255,.06)',display:'flex',gap:10,alignItems:'center'}}>
+        <Avatar size={32} initials={type==='admin'?'AD':'PT'} color={T.primary}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:'#e2e8f0',letterSpacing:'-.2px',truncate:true,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{type==='admin'?'Admin User':'Lotteria VN'}</div>
+          <div style={{fontSize:10,color:'rgba(255,255,255,.35)'}}>Trực tuyến</div>
+        </div>
+        <span style={{color:'rgba(255,255,255,.3)',cursor:'pointer',display:'flex'}} onClick={()=>nav('s02')} title="Đăng xuất"><Ico n="logOut" size={14} color="rgba(255,255,255,.35)"/></span>
+      </div>
+    </div>
+  );
+};
+
+// Stat Card — refined
+const StatCard=({label,value,change,icon,color=T.primary,sub})=>{
+  const pos=change&&change.startsWith('+');
+  return(
+    <Card elevation="sm" style={{flex:1,minWidth:180}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+        <div style={{width:40,height:40,background:color+'18',borderRadius:T.r[10],display:'flex',alignItems:'center',justifyContent:'center',fontSize:19}}>{icon}</div>
+        {change&&<span style={{fontSize:T.text.xs,fontWeight:600,color:pos?T.success:T.error,background:pos?T.successMuted:T.errorMuted,padding:'3px 8px',borderRadius:T.r.full,display:'flex',alignItems:'center',gap:3}}>
+          {pos?'↑':'↓'}{change}
+        </span>}
+      </div>
+      <div style={{fontSize:T.text.display,fontWeight:800,color:T.gray900,letterSpacing:'-1.5px',lineHeight:1,marginBottom:5,fontVariantNumeric:'tabular-nums'}}>{value}</div>
+      <div style={{fontSize:T.text.sm,color:T.gray500,fontWeight:500}}>{label}</div>
+      {sub&&<div style={{fontSize:T.text.xs,color:T.gray400,marginTop:4}}>{sub}</div>}
+    </Card>
+  );
+};
+
+// Voucher Card — polished
+const VCard=({brand='Lotteria',title='Giảm 30%',discount='-30%',price='140K',orig='200K',cat='Ăn uống',rating=4.8,sold=342,hot=false})=>{
+  const nav=useContext(NavCtx);
+  const [hov,setHov]=useState(false);
+  return(
+    <div
+      onClick={()=>nav('s06')}
+      onMouseEnter={()=>setHov(true)}
+      onMouseLeave={()=>setHov(false)}
+      style={{background:T.white,borderRadius:T.r[16],border:`1px solid ${hov?T.gray300:T.gray200}`,overflow:'hidden',width:220,flexShrink:0,cursor:'pointer',transition:'all .22s',boxShadow:hov?T.shadowLg:T.shadowSm,transform:hov?'translateY(-3px)':'none'}}>
+      {/* Thumbnail — ticket design */}
+      <div style={{height:122,background:'#16163a',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3}}>
+        {/* Stripe texture */}
+        <div style={{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(135deg,rgba(255,255,255,.028) 0px,rgba(255,255,255,.028) 1px,transparent 1px,transparent 18px)',pointerEvents:'none'}}/>
+        {/* Radial glow */}
+        <div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse at 30% 60%,${T.primary}28 0%,transparent 65%)`,pointerEvents:'none'}}/>
+        {/* Top accent bar */}
+        <div style={{position:'absolute',top:0,left:0,right:0,height:2.5,background:`linear-gradient(90deg,${T.primary},${T.accent})`}}/>
+        {/* Discount value */}
+        <span style={{fontSize:36,fontWeight:800,color:'rgba(255,255,255,.95)',letterSpacing:'-2px',lineHeight:1,position:'relative',fontFamily:T.font}}>{discount}</span>
+        <span style={{fontSize:9,fontWeight:600,color:'rgba(255,255,255,.32)',letterSpacing:'.1em',textTransform:'uppercase',position:'relative'}}>ưu đãi</span>
+        {/* Hot badge */}
+        {hot&&<div style={{position:'absolute',top:10,left:10,background:T.accent,color:T.white,fontSize:9.5,fontWeight:700,padding:'2px 8px',borderRadius:T.r.full,letterSpacing:'.01em'}}>HOT</div>}
+        {/* Dashed bottom separator */}
+        <div style={{position:'absolute',bottom:0,left:12,right:12,borderBottom:`1.5px dashed rgba(255,255,255,.12)`}}/>
+        {/* Corner notch fakes */}
+        <div style={{position:'absolute',bottom:-6,left:-6,width:12,height:12,borderRadius:'50%',background:'#f8fafc'}}/>
+        <div style={{position:'absolute',bottom:-6,right:-6,width:12,height:12,borderRadius:'50%',background:'#f8fafc'}}/>
+      </div>
+      {/* Content */}
+      <div style={{padding:'12px 14px 14px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+          <span style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,letterSpacing:'.03em',textTransform:'uppercase'}}>{brand}</span>
+          <span style={{fontSize:T.text.xs,color:T.gray400,background:T.gray100,padding:'2px 7px',borderRadius:T.r.full}}>{cat}</span>
+        </div>
+        <div style={{fontSize:T.text.sm,fontWeight:600,color:T.gray900,marginBottom:10,lineHeight:1.4,height:36,overflow:'hidden'}}>{title}</div>
+        <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:3}}>
+          <Ico n="star" size={11} color={T.warning}/>
+          <span style={{fontSize:T.text.xs,fontWeight:600,color:T.gray700}}>{rating}</span>
+          <span style={{fontSize:T.text.xs,color:T.gray400}}>· {sold} đã mua</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:8}}>
+          <div>
+            <span style={{fontSize:T.text.md,fontWeight:800,color:T.accent,letterSpacing:'-.3px'}}>{price}</span>
+            <span style={{fontSize:T.text.xs,color:T.gray400,textDecoration:'line-through',marginLeft:5}}>{orig}</span>
+          </div>
+          <div style={{width:30,height:30,background:T.primary,borderRadius:T.r[8],display:'flex',alignItems:'center',justifyContent:'center',color:T.white,fontSize:16,fontWeight:700,boxShadow:T.shadowColor}}>+</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Data Table
+const DataTable=({cols=[],rows=[],actions,compact=false})=>(
+  <div style={{width:'100%',overflow:'auto'}}>
+    <table style={{width:'100%',borderCollapse:'collapse',fontSize:T.text.sm}}>
+      <thead>
+        <tr style={{borderBottom:`1px solid ${T.gray200}`}}>
+          {cols.map(c=>(
+            <th key={String(c)} style={{padding:compact?'8px 14px':'11px 16px',textAlign:'left',fontWeight:600,color:T.gray500,fontSize:T.text.xs,letterSpacing:'.04em',textTransform:'uppercase',background:T.gray50,whiteSpace:'nowrap'}}>
+              {c}
+            </th>
+          ))}
+          {actions&&<th style={{padding:'11px 16px',textAlign:'right',fontWeight:600,color:T.gray500,fontSize:T.text.xs,letterSpacing:'.04em',textTransform:'uppercase',background:T.gray50}}>Thao tác</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row,i)=>(
+          <tr key={i} style={{borderBottom:`1px solid ${T.gray100}`,transition:'background .1s'}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.gray50}
+            onMouseLeave={e=>e.currentTarget.style.background=T.white}>
+            {row.map((cell,j)=>(
+              <td key={j} style={{padding:compact?'8px 14px':'12px 16px',color:T.gray700,verticalAlign:'middle'}}>{cell}</td>
+            ))}
+            {actions&&<td style={{padding:'12px 16px',textAlign:'right'}}>
+              <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                <Btn variant="ghost" size="xs">Sửa</Btn>
+                <Btn variant="danger" size="xs">Xoá</Btn>
+              </div>
+            </td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// Pagination
+const Pagination=({current=1,total=5})=>(
+  <div style={{display:'flex',gap:5,alignItems:'center',justifyContent:'center',padding:`${T.sp[24]}px 0 ${T.sp[8]}px`}}>
+    <Btn variant="ghost" size="sm" icon="←">Trước</Btn>
+    <div style={{display:'flex',gap:4,marginInline:6}}>
+      {Array.from({length:total},(_,i)=>i+1).map(p=>(
+        <div key={p} style={{width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:T.r[8],background:p===current?T.primary:T.white,color:p===current?T.white:T.gray600,fontSize:T.text.sm,fontWeight:p===current?700:500,cursor:'pointer',border:`1px solid ${p===current?T.primary:T.gray200}`,transition:'all .15s'}}>{p}</div>
+      ))}
+    </div>
+    <Btn variant="ghost" size="sm">Tiếp <span>→</span></Btn>
+  </div>
+);
+
+// Chart component — proper SVG rendering
+const Chart=({label,type='bar',h=220,color=T.primary})=>(
+  <div style={{height:h,background:T.white,borderRadius:T.r[10],border:`1px solid ${T.gray200}`,position:'relative',overflow:'hidden'}}>
+    {/* Subtle grid */}
+    {[25,50,75].map(p=>(
+      <div key={p} style={{position:'absolute',left:0,right:0,top:`${100-p}%`,borderTop:`1px dashed ${T.gray200}`,pointerEvents:'none'}}/>
+    ))}
+    {type==='bar'&&(
+      <div style={{position:'absolute',bottom:28,left:16,right:16,height:'calc(100% - 52px)',display:'flex',alignItems:'flex-end',gap:5}}>
+        {[58,76,43,88,66,52,82,94,62,71,85,70].map((v,i)=>(
+          <div key={i} style={{flex:1,background:`linear-gradient(to top,${color},${color}99)`,borderRadius:'4px 4px 0 0',height:`${v}%`}}/>
+        ))}
+      </div>
+    )}
+    {type==='line'&&(
+      <svg style={{position:'absolute',inset:0,width:'100%',height:'calc(100% - 28px)'}} viewBox="0 0 300 80" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={`lg-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.18"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,65 C30,48 50,72 75,42 C100,18 125,58 150,34 C175,14 200,44 225,26 C245,16 268,30 300,22" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+        <path d="M0,65 C30,48 50,72 75,42 C100,18 125,58 150,34 C175,14 200,44 225,26 C245,16 268,30 300,22 L300,80 L0,80Z" fill={`url(#lg-${color.replace('#','')})`}/>
+      </svg>
+    )}
+    {type==='pie'&&(
+      <svg style={{position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',width:'60%',maxWidth:120,height:'75%'}} viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="20" strokeDasharray="75 25" strokeDashoffset="25"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke={T.accent} strokeWidth="20" strokeDasharray="45 55" strokeDashoffset="-50"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke={T.success} strokeWidth="20" strokeDasharray="30 70" strokeDashoffset="-95"/>
+        <circle cx="50" cy="50" r="22" fill="white"/>
+      </svg>
+    )}
+    {/* X-axis labels */}
+    {type==='bar'&&(
+      <div style={{position:'absolute',bottom:6,left:16,right:16,display:'flex',justifyContent:'space-between'}}>
+        {['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'].map(m=>(
+          <span key={m} style={{fontSize:9,color:T.gray400,fontWeight:500}}>{m}</span>
+        ))}
+      </div>
+    )}
+    {/* Label */}
+    <div style={{position:'absolute',bottom:type==='pie'?6:28,left:0,right:0,textAlign:'center',padding:'0 8px'}}>
+      {type==='pie'&&<span style={{fontSize:T.text.xs,color:T.gray400,fontWeight:500}}>{label}</span>}
+    </div>
+  </div>
+);
+
+// Toolbar for list pages
+const Toolbar=({search=true,filter=false,filterLabel='Lọc',filters=[],onCreate,onExport,createLabel='Tạo mới'})=>(
+  <div style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:T.sp[16],flexWrap:'wrap'}}>
+    {search&&(
+      <div style={{flex:'1 1 240px',display:'flex',alignItems:'center',gap:T.sp[8],background:T.white,border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],padding:'0 12px',height:40,boxShadow:T.shadowSm,transition:'border .15s'}}
+        onFocusCapture={e=>e.currentTarget.style.borderColor=T.primary}
+        onBlurCapture={e=>e.currentTarget.style.borderColor=T.gray200}>
+        <Ico n="search" size={15} color={T.gray400}/>
+        <input placeholder="Tìm kiếm..." style={{border:'none',outline:'none',fontSize:T.text.sm,color:T.gray700,flex:1,fontFamily:T.font,background:'transparent'}}/>
+      </div>
+    )}
+    {filter&&filters.map(f=>(
+      <select key={f.label} style={{height:40,padding:'0 12px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,color:T.gray600,background:T.white,boxShadow:T.shadowSm}}>
+        <option>{f.label}</option>
+        {(f.options||[]).map(o=><option key={o}>{o}</option>)}
+      </select>
+    ))}
+    <div style={{display:'flex',gap:T.sp[8],marginLeft:'auto'}}>
+      {onExport&&<Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất file</Btn>}
+      {onCreate&&<Btn variant="primary" size="sm" icon="+"> {createLabel}</Btn>}
+    </div>
+  </div>
+);
+
+// Page header
+const PageHeader=({title,subtitle,actions,breadcrumb})=>(
+  <div style={{marginBottom:T.sp[28],paddingTop:T.sp[8]}}>
+    {breadcrumb&&<div style={{display:'flex',gap:6,alignItems:'center',marginBottom:T.sp[10]}}>
+      {breadcrumb.map((b,i)=>(
+        <span key={b} style={{fontSize:T.text.xs,color:i===breadcrumb.length-1?T.gray700:T.gray400,fontWeight:i===breadcrumb.length-1?600:400,cursor:i<breadcrumb.length-1?'pointer':'default'}}>{b}{i<breadcrumb.length-1&&<span style={{marginLeft:6,color:T.gray300}}>/</span>}</span>
+      ))}
+    </div>}
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+      <div>
+        <h1 style={{fontSize:T.text.h2,fontWeight:800,color:T.gray900,letterSpacing:'-0.5px',lineHeight:1.2}}>{title}</h1>
+        {subtitle&&<p style={{fontSize:T.text.sm,color:T.gray500,marginTop:5,fontWeight:400,lineHeight:1.5}}>{subtitle}</p>}
+      </div>
+      {actions&&<div style={{display:'flex',gap:T.sp[8],alignItems:'center',flexShrink:0}}>{actions}</div>}
+    </div>
+  </div>
+);
+
+// Dashboard layout
+const DashLayout=({children,nav,active=0,type='partner',brand})=>(
+  <div style={{display:'flex',width:'100%',height:'100%',minHeight:900}}>
+    <DashSidebar items={nav} activeIdx={active} type={type} brand={brand||( type==='admin'?'Admin Portal':'Partner Portal')}/>
+    <div style={{flex:1,overflowY:'auto',background:T.gray50}}>{children}</div>
+  </div>
+);
+
+// Navs — using SVG icons + `to` for NavCtx navigation
+const CUST_NAV=[
+  {icon:<Ico n="user" size={14}/>,label:'Hồ sơ của tôi',to:'s08'},
+  {icon:<Ico n="ticket" size={14}/>,label:'Voucher của tôi',to:'s09'},
+  {icon:<Ico n="qr" size={14}/>,label:'Dùng Voucher QR',to:'s10'},
+  {icon:<Ico n="cart" size={14}/>,label:'Giỏ hàng',badge:'3',to:'s11'},
+  {icon:<Ico n="history" size={14}/>,label:'Lịch sử đơn hàng',to:'s12'},
+  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'2',to:'s13'},
+  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s14'},
+];
+const PARTNER_NAV=[
+  {icon:<Ico n="chart" size={14}/>,label:'Dashboard',to:'s15'},
+  {icon:<Ico n="ticket" size={14}/>,label:'Voucher của tôi',to:'s16'},
+  {icon:<Ico n="plus" size={14}/>,label:'Tạo Voucher mới',to:'s17'},
+  {icon:<Ico n="edit" size={14}/>,label:'Chỉnh sửa Voucher',to:'s18'},
+  {icon:<Ico n="user" size={14}/>,label:'Hồ sơ Partner',to:'s19'},
+  {icon:<Ico n="trending" size={14}/>,label:'Báo cáo & Thống kê',to:'s20'},
+  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'5',to:'s21'},
+  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s22'},
+];
+const ADMIN_NAV=[
+  {icon:<Ico n="chart" size={14}/>,label:'Dashboard',to:'s23'},
+  {icon:<Ico n="users" size={14}/>,label:'Người dùng',to:'s24'},
+  {icon:<Ico n="building" size={14}/>,label:'Partners',to:'s25'},
+  {icon:<Ico n="ticket" size={14}/>,label:'Vouchers',to:'s26'},
+  {icon:<Ico n="grid" size={14}/>,label:'Danh mục',to:'s27'},
+  {icon:<Ico n="trending" size={14}/>,label:'Báo cáo',to:'s28'},
+  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s29'},
+  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'3',to:'s30'},
+  {icon:<Ico n="log" size={14}/>,label:'Audit Log',to:'s31'},
+];
+
+// ═════════════════════════════════════════════════════════════════
+// PHASE 2 COMPONENTS — Toast, Skeleton, EmptyState
+// ═════════════════════════════════════════════════════════════════
+
+/* ── Toast / Snackbar ── */
+const TOAST_ICONS={success:'check',error:'warning',info:'bell',warning:'warning'};
+const TOAST_COLORS={success:T.success,error:T.error,info:T.primary,warning:T.warning};
+const TOAST_BG={success:T.successMuted,error:T.errorMuted,info:T.primaryMuted,warning:T.warningMuted};
+
+const ToastContainer=({toasts,onDismiss})=>(
+  <div style={{position:'fixed',top:16,right:16,zIndex:9999,display:'flex',flexDirection:'column',gap:T.sp[10],pointerEvents:'none',maxWidth:320}}>
+    {toasts.map(t=>(
+      <div key={t.id} style={{
+        display:'flex',gap:T.sp[12],alignItems:'flex-start',
+        background:TOAST_BG[t.type]||T.white,
+        border:`1px solid ${TOAST_COLORS[t.type]||T.gray200}40`,
+        borderLeft:`4px solid ${TOAST_COLORS[t.type]||T.primary}`,
+        borderRadius:T.r[10],padding:`${T.sp[12]}px ${T.sp[14]}px`,
+        boxShadow:T.shadowLg,pointerEvents:'auto',
+        animation:'toastIn .25s ease',
+      }}>
+        <div style={{width:28,height:28,borderRadius:T.r[6],background:TOAST_COLORS[t.type]+'20',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <Ico n={TOAST_ICONS[t.type]||'bell'} size={14} color={TOAST_COLORS[t.type]||T.primary}/>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          {t.title&&<div style={{fontWeight:700,color:T.gray900,fontSize:T.text.sm,marginBottom:2}}>{t.title}</div>}
+          <div style={{fontSize:T.text.xs,color:T.gray600,lineHeight:1.5}}>{t.message}</div>
+        </div>
+        <button onClick={()=>onDismiss(t.id)} style={{background:'none',border:'none',cursor:'pointer',padding:2,color:T.gray400,flexShrink:0,lineHeight:1}}>✕</button>
+      </div>
+    ))}
+  </div>
+);
+
+/* ── Skeleton loader ── */
+const Skel=({w='100%',h=16,r=6,style={}})=>(
+  <div style={{width:w,height:h,borderRadius:r,background:`linear-gradient(90deg,${T.gray100} 25%,${T.gray200} 50%,${T.gray100} 75%)`,backgroundSize:'200% 100%',animation:'skelShimmer 1.4s ease infinite',...style}}/>
+);
+const SkeletonCard=()=>(
+  <Card elevation="sm" style={{display:'flex',flexDirection:'column',gap:T.sp[12]}}>
+    <div style={{display:'flex',gap:T.sp[12],alignItems:'flex-start'}}>
+      <Skel w={48} h={48} r={10}/>
+      <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[8]}}>
+        <Skel h={14} w="60%"/>
+        <Skel h={11} w="40%"/>
+      </div>
+    </div>
+    <Skel h={11}/>
+    <Skel h={11} w="85%"/>
+    <div style={{display:'flex',gap:T.sp[8],marginTop:T.sp[4]}}>
+      <Skel h={28} w={80} r={8}/>
+      <Skel h={28} w={80} r={8}/>
+    </div>
+  </Card>
+);
+
+/* ── Empty state ── */
+const EmptyState=({icon='ticket',title='Chưa có dữ liệu',desc='',action=null})=>(
+  <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:`${T.sp[64]}px ${T.sp[24]}px`,textAlign:'center',gap:T.sp[14]}}>
+    <div style={{width:72,height:72,borderRadius:T.r[16],background:T.primaryMuted,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <Ico n={icon} size={32} color={T.primary}/>
+    </div>
+    <div>
+      <div style={{fontWeight:700,color:T.gray800,fontSize:T.text.md,marginBottom:T.sp[6]}}>{title}</div>
+      {desc&&<div style={{fontSize:T.text.sm,color:T.gray400,lineHeight:1.6,maxWidth:280,margin:'0 auto'}}>{desc}</div>}
+    </div>
+    {action}
+  </div>
+);
+
+// ═════════════════════════════════════════════════════════════════
+// SCREENS S01–S07 — Public & Auth
+// ═════════════════════════════════════════════════════════════════
+
+const S01=()=>{
+  const nav=useContext(NavCtx);
+  return(
+  <div style={{width:'100%',minHeight:900,background:T.gray50}}>
+    <TopNav/>
+    {/* Hero */}
+    <section style={{background:`linear-gradient(135deg,${T.primaryLight} 0%,${T.white} 55%,${T.accentLight} 100%)`,padding:`${T.sp[64]}px ${T.sp[80]}px`,display:'flex',gap:T.sp[64],alignItems:'center',overflow:'hidden',position:'relative'}}>
+      <div style={{position:'absolute',top:-80,right:200,width:500,height:500,background:`radial-gradient(circle,${T.primary}10 0%,transparent 70%)`,pointerEvents:'none'}}/>
+      <div style={{flex:1,maxWidth:560,position:'relative'}}>
+        <div style={{display:'inline-flex',alignItems:'center',gap:T.sp[8],background:T.white,border:`1px solid ${T.gray200}`,padding:'6px 14px 6px 8px',borderRadius:T.r.full,marginBottom:T.sp[24],boxShadow:T.shadowSm}}>
+          <span style={{background:T.accentMuted,borderRadius:T.r.full,padding:'3px 8px',fontSize:T.text.xs,fontWeight:700,color:T.accent}}>MỚI</span>
+          <span style={{fontSize:T.text.sm,color:T.gray600,fontWeight:500}}>Flash Sale mỗi ngày 12h–14h — Giảm đến 70%</span>
+        </div>
+        <h1 style={{fontSize:T.text.hero,fontWeight:800,color:T.gray900,lineHeight:1.08,marginBottom:T.sp[20],letterSpacing:'-2px',textWrap:'balance'}}>
+          Ưu đãi chính hãng<br/><span style={{background:`linear-gradient(135deg,${T.primary} 0%,${T.accent} 100%)`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>cho mọi trải nghiệm</span>
+        </h1>
+        <p style={{fontSize:T.text.xl,color:T.gray500,marginBottom:T.sp[32],lineHeight:1.65,maxWidth:440,fontWeight:400}}>
+          482,000 voucher từ 2,400+ thương hiệu. Mua trong 30 giây, nhận qua email, dùng ngay tại quầy.
+        </p>
+        <div style={{display:'flex',gap:T.sp[12]}}>
+          <Btn variant="primary" size="xl" icon={<Ico n="ticket" size={16} color="white"/>} onClick={()=>nav('s05')}>Khám phá ngay</Btn>
+          <Btn variant="ghost" size="xl" onClick={()=>nav('s05')}>Xem cách hoạt động</Btn>
+        </div>
+        <div style={{display:'flex',gap:T.sp[40],marginTop:T.sp[40],paddingTop:T.sp[32],borderTop:`1px solid ${T.gray200}`}}>
+          {[['482K+','Voucher sẵn có'],['2,400+','Thương hiệu'],['1,247,835','Khách hàng']].map(([v,l])=>(
+            <div key={l}><div style={{fontSize:T.text.h2,fontWeight:800,color:T.primary,letterSpacing:'-0.5px',fontVariantNumeric:'tabular-nums'}}>{v}</div><div style={{fontSize:T.text.xs,color:T.gray500,marginTop:3}}>{l}</div></div>
+          ))}
+        </div>
+      </div>
+      {/* Hero visual — card stack */}
+      <div style={{flex:1,position:'relative',height:440,minWidth:360}}>
+        {/* Background card */}
+        <div style={{position:'absolute',top:32,left:32,right:0,bottom:0,background:`linear-gradient(135deg,${T.primaryDark},${T.primary})`,borderRadius:T.r[20],opacity:.25}}/>
+        {/* Main voucher card */}
+        <div style={{position:'absolute',top:16,left:16,right:16,bottom:16,background:`linear-gradient(145deg,#1e1b4b 0%,#312e81 100%)`,borderRadius:T.r[20],boxShadow:T.shadowXl,overflow:'hidden'}}>
+          {/* Stripe texture */}
+          <div style={{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0px,rgba(255,255,255,.025) 1px,transparent 1px,transparent 20px)'}}/>
+          {/* Top accent */}
+          <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${T.primary},${T.accent})`}}/>
+          {/* Content */}
+          <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:32}}>
+            <div style={{display:'flex',gap:12}}>
+              {[{bg:'#3730a3',color:'#a5b4fc',label:'Ăn uống'},{bg:'#92400e',color:'#fcd34d',label:'Giải trí'},{bg:'#065f46',color:'#6ee7b7',label:'Du lịch'},{bg:'#831843',color:'#f9a8d4',label:'Làm đẹp'}].map(c=>(
+                <div key={c.label} style={{padding:'5px 12px',background:c.bg,borderRadius:T.r.full,fontSize:T.text.xs,color:c.color,fontWeight:600}}>{c.label}</div>
+              ))}
+            </div>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:56,fontWeight:800,color:'rgba(255,255,255,.97)',letterSpacing:'-3px',lineHeight:1,fontFamily:T.font}}>−55%</div>
+              <div style={{fontSize:12,color:'rgba(255,255,255,.4)',letterSpacing:'.06em',textTransform:'uppercase',marginTop:6}}>voucher chính hãng</div>
+            </div>
+            <div style={{background:'rgba(255,255,255,.08)',borderRadius:T.r[12],padding:'14px 24px',display:'flex',gap:24,border:'1px solid rgba(255,255,255,.08)'}}>
+              {[['482K','Voucher'],['4.9★','Đánh giá'],['5p','Giao hàng']].map(([v,l])=>(
+                <div key={l} style={{textAlign:'center'}}>
+                  <div style={{fontSize:15,fontWeight:800,color:'rgba(255,255,255,.92)',letterSpacing:'-.5px'}}>{v}</div>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,.38)',marginTop:2}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Floating notification — top right */}
+        <div style={{position:'absolute',top:8,right:0,background:T.white,borderRadius:T.r[12],padding:'10px 14px',boxShadow:T.shadowLg,display:'flex',gap:10,alignItems:'center',zIndex:2}}>
+          <div style={{width:28,height:28,background:T.successMuted,borderRadius:T.r[8],display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Ico n="check" size={14} color={T.success}/>
+          </div>
+          <div><div style={{fontSize:T.text.xs,fontWeight:700,color:T.gray900}}>Vừa tiết kiệm</div><div style={{fontSize:T.text.md,fontWeight:800,color:T.success}}>−60.000đ</div></div>
+        </div>
+        {/* Floating user — bottom left */}
+        <div style={{position:'absolute',bottom:8,left:0,background:T.white,borderRadius:T.r[12],padding:'10px 14px',boxShadow:T.shadowLg,display:'flex',gap:10,alignItems:'center',zIndex:2}}>
+          <Avatar size={28} initials="LV" color={T.accent}/>
+          <div><div style={{fontSize:T.text.xs,fontWeight:700,color:T.gray900}}>Lê Thành Vinh vừa mua</div><div style={{fontSize:T.text.xs,color:T.gray500}}>Lotteria −30% · 3 giây trước</div></div>
+        </div>
+      </div>
+    </section>
+    {/* Category bar */}
+    <div style={{background:T.white,borderBottom:`1px solid ${T.gray200}`,padding:`${T.sp[16]}px ${T.sp[80]}px`,display:'flex',gap:T.sp[8],overflowX:'auto',boxShadow:T.shadowSm}}>
+      {[{e:'grid',l:'Tất cả',active:true},{e:'ticket',l:'Ăn uống'},{e:'package',l:'Mua sắm'},{e:'trending',l:'Du lịch'},{e:'star',l:'Làm đẹp'},{e:'play',l:'Giải trí'},{e:'shield',l:'Sức khoẻ'},{e:'settings',l:'Gaming'},{e:'home',l:'Di chuyển'}].map((c,i)=>(
+        <div key={c.l} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 16px',borderRadius:T.r.full,background:c.active?T.primary:T.gray100,color:c.active?T.white:T.gray600,fontSize:T.text.sm,fontWeight:c.active?600:500,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,transition:'all .15s',border:`1px solid ${c.active?T.primary:'transparent'}`}}>
+          <Ico n={c.e} size={13} color={c.active?T.white:T.gray500}/><span>{c.l}</span>
+        </div>
+      ))}
+    </div>
+    {/* Featured section */}
+    <div style={{padding:`${T.sp[48]}px ${T.sp[80]}px`}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:T.sp[28]}}>
+        <div>
+          <h2 style={{fontSize:T.text.h2,fontWeight:800,color:T.gray900,letterSpacing:'-.5px'}}>Deals nổi bật hôm nay</h2>
+          <p style={{fontSize:T.text.sm,color:T.gray500,marginTop:4}}>Ưu đãi độc quyền, chỉ có tại ECVoucher</p>
+        </div>
+        <Btn variant="subtle" size="sm" onClick={()=>nav('s05')}>Xem tất cả →</Btn>
+      </div>
+      <div style={{display:'flex',gap:T.sp[16],overflowX:'auto',paddingBottom:T.sp[8]}}>
+        {/* Hero deal */}
+        <div style={{width:420,flexShrink:0,background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,borderRadius:T.r[20],overflow:'hidden',color:T.white,position:'relative',boxShadow:T.shadowColor}}>
+          <div style={{padding:`${T.sp[32]}px ${T.sp[28]}px`}}>
+            <Badge variant="accent" size="sm">Siêu HOT</Badge>
+            <h3 style={{fontSize:T.text.h3,fontWeight:800,color:T.white,marginTop:T.sp[14],marginBottom:T.sp[10],lineHeight:1.25,letterSpacing:'-.4px'}}>Voucher Sendo<br/>Giảm 55% thời trang</h3>
+            <div style={{fontSize:T.text.display,fontWeight:800,color:T.white,letterSpacing:'-1.5px',lineHeight:1}}>45K</div>
+            <div style={{fontSize:T.text.sm,color:'rgba(255,255,255,.6)',textDecoration:'line-through',marginTop:4,marginBottom:T.sp[20]}}>100.000đ</div>
+            <Btn variant="accent" size="md" onClick={()=>nav('s06')}>Mua ngay — tiết kiệm 55K</Btn>
+          </div>
+          <div style={{position:'absolute',top:0,right:0,width:160,height:'100%',display:'flex',alignItems:'center',justifyContent:'center',opacity:.07}}><Ico n="ticket" size={120} color={T.white}/></div>
+        </div>
+        {[
+          {brand:'CGV Cinema',title:'Mua 1 tặng 1 bắp rang bơ',d:'-50%',p:'50K',o:'100K',cat:'Giải trí',r:4.9,s:2184,hot:true},
+          {brand:'Lotteria',title:'Giảm 30% tất cả combo bữa',d:'-30%',p:'140K',o:'200K',cat:'Ăn uống',r:4.8,s:3420},
+          {brand:'Galaxy Studio',title:'Vé xem phim giảm 30%',d:'-30%',p:'70K',o:'100K',cat:'Giải trí',r:4.7,s:987},
+          {brand:'Grab Food',title:'Freeship không giới hạn ×5',d:'-100%',p:'0đ',o:'25K',cat:'Giao đồ ăn',r:4.6,s:8421},
+        ].map(v=><VCard key={v.brand}{...v}/>)}
+      </div>
+    </div>
+    {/* Trust strip */}
+    <div style={{background:T.white,borderTop:`1px solid ${T.gray200}`,padding:`${T.sp[32]}px ${T.sp[80]}px`,display:'flex',justifyContent:'center',gap:T.sp[64]}}>
+      {[['lock','Thanh toán bảo mật SSL'],['check','Voucher chính hãng 100%'],['trending','Giao ngay trong 5 phút'],['bell','Hỗ trợ 24/7 mọi lúc']].map(([ico,l])=>(
+        <div key={l} style={{display:'flex',alignItems:'center',gap:T.sp[12]}}>
+          <div style={{width:36,height:36,background:T.primaryMuted,borderRadius:T.r[8],display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Ico n={ico} size={16} color={T.primary}/>
+          </div>
+          <span style={{fontSize:T.text.sm,color:T.gray600,fontWeight:500}}>{l}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+  );
+};
+
+const S02=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  const [loginErr,setLoginErr]=useState(false);
+  const handleLogin=()=>{
+    if(!loginErr){
+      setLoginErr(true);
+      toast('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.','error','Đăng nhập thất bại');
+    } else {
+      toast('Chào mừng bạn quay trở lại ECVoucher!','success','Đăng nhập thành công');
+      nav('s08');
+    }
+  };
+  return(
+  <div style={{width:'100%',height:900,display:'flex'}}>
+    {/* Left panel */}
+    <div style={{flex:1,background:`linear-gradient(155deg,${T.primaryDark} 0%,${T.primary} 60%,#6366f1 100%)`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:T.sp[64],position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',top:-100,left:-100,width:400,height:400,background:'rgba(255,255,255,.05)',borderRadius:'50%'}}/>
+      <div style={{position:'absolute',bottom:-80,right:-60,width:300,height:300,background:'rgba(255,255,255,.04)',borderRadius:'50%'}}/>
+      <LogoMark size={48} variant="white"/>
+      <h2 style={{fontSize:T.text.h1,fontWeight:800,color:T.white,textAlign:'center',marginTop:T.sp[24],marginBottom:T.sp[14],letterSpacing:'-.5px',lineHeight:1.2}}>Chào mừng<br/>trở lại!</h2>
+      <p style={{fontSize:T.text.md,color:'rgba(255,255,255,.7)',textAlign:'center',lineHeight:1.65,maxWidth:320}}>Hàng nghìn deal đang chờ bạn. Đăng nhập để không bỏ lỡ bất kỳ ưu đãi nào.</p>
+      <div style={{display:'flex',gap:T.sp[32],marginTop:T.sp[40],padding:`${T.sp[24]}px ${T.sp[32]}px`,background:'rgba(255,255,255,.08)',borderRadius:T.r[16],backdropFilter:'blur(8px)'}}>
+        {[['ticket','500K+','Voucher'],['check','100%','Chính hãng'],['trending','5 phút','Giao ngay']].map(([ico,v,l])=>(
+          <div key={l} style={{textAlign:'center'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:6,opacity:.9}}><Ico n={ico} size={22} color="rgba(255,255,255,.85)"/></div>
+            <div style={{fontSize:T.text.sm,color:'rgba(255,255,255,.95)',fontWeight:700,lineHeight:1.2}}>{v}</div>
+            <div style={{fontSize:T.text.xs,color:'rgba(255,255,255,.55)',fontWeight:500,lineHeight:1.4,marginTop:2}}>{l}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+    {/* Right: form */}
+    <div style={{width:480,background:T.white,display:'flex',flexDirection:'column',justifyContent:'center',padding:`${T.sp[64]}px ${T.sp[48]}px`,overflowY:'auto'}}>
+      <h1 style={{fontSize:T.text.h2,fontWeight:800,color:T.gray900,marginBottom:T.sp[8],letterSpacing:'-.5px'}}>Đăng nhập</h1>
+      <p style={{fontSize:T.text.sm,color:T.gray500,marginBottom:T.sp[32]}}>Chưa có tài khoản? <a onClick={()=>nav('s03')} style={{color:T.primary,fontWeight:600,cursor:'pointer'}}>Đăng ký miễn phí →</a></p>
+      <div style={{display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+        <Input label="Địa chỉ email" placeholder="ten@email.com" type="email" error={loginErr?'Email không tồn tại trong hệ thống':''}/>
+        <Input label="Mật khẩu" placeholder="Nhập mật khẩu" type="password" error={loginErr?'Mật khẩu không chính xác':''} hint={<a onClick={()=>nav('s04')} style={{color:T.primary,cursor:'pointer',fontWeight:600,fontSize:T.text.xs}}>Quên mật khẩu?</a>}/>
+        <label style={{display:'flex',gap:T.sp[10],alignItems:'center',fontSize:T.text.sm,color:T.gray700,cursor:'pointer'}}>
+          <input type="checkbox" style={{width:16,height:16,accentColor:T.primary}}/> Ghi nhớ đăng nhập 30 ngày
+        </label>
+        <Btn variant="primary" size="lg" full onClick={handleLogin}>{loginErr?'Thử lại':'Đăng nhập'}</Btn>
+        <Divider my={4} label="hoặc tiếp tục với"/>
+        <div style={{display:'flex',gap:T.sp[10]}}>
+          {[{e:'G',l:'Google',color:'#4285F4'},{e:'f',l:'Facebook',color:'#1877F2'}].map(({e,l,color})=>(
+            <button key={l} style={{flex:1,height:42,display:'flex',alignItems:'center',justifyContent:'center',gap:8,border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],cursor:'pointer',fontSize:T.text.sm,fontFamily:T.font,fontWeight:600,color:T.gray700,background:T.white,boxShadow:T.shadowSm,transition:'all .15s'}}
+              onMouseEnter={e2=>e2.currentTarget.style.background=T.gray50}
+              onMouseLeave={e2=>e2.currentTarget.style.background=T.white}>
+              <span style={{width:18,height:18,borderRadius:'50%',background:color,color:'#fff',fontSize:11,fontWeight:800,display:'inline-flex',alignItems:'center',justifyContent:'center',letterSpacing:'-0.5px',fontFamily:T.font,flexShrink:0}}>{e}</span>{l}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+  );
+};
+
+const S03=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  const [step,setStep]=useState(1);
+  return(
+    <div style={{width:'100%',height:900,display:'flex'}}>
+      <div style={{flex:1,background:`linear-gradient(155deg,${T.accentLight} 0%,${T.white} 50%,${T.primaryLight} 100%)`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:T.sp[64]}}>
+        <div style={{width:72,height:72,borderRadius:'50%',background:T.primaryMuted,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:T.sp[24]}}>
+          {step===0&&<Ico n="user" size={32} color={T.primary}/>}
+          {step===1&&<Ico n="check" size={32} color={T.success}/>}
+          {step===2&&<Ico n="lock" size={32} color={T.primary}/>}
+          {step===3&&<Ico n="shield" size={32} color={T.success}/>}
+        </div>
+        <h2 style={{fontSize:T.text.h2,fontWeight:800,color:T.gray900,textAlign:'center',letterSpacing:'-.5px',marginBottom:T.sp[12]}}>
+          {['','Tạo tài khoản miễn phí','Bảo mật tài khoản','Xác thực email'][step]}
+        </h2>
+        <p style={{fontSize:T.text.md,color:T.gray500,textAlign:'center',lineHeight:1.6,maxWidth:300}}>
+          {['','Nhận ngay voucher chào mừng 50.000đ sau khi đăng ký thành công.','Mật khẩu mạnh giúp bảo vệ tài khoản và ví voucher của bạn.','Kiểm tra hộp thư và nhấp vào đường link xác nhận.'][step]}
+        </p>
+      </div>
+      <div style={{width:500,background:T.white,display:'flex',flexDirection:'column',justifyContent:'center',padding:`${T.sp[48]}px ${T.sp[48]}px`,overflowY:'auto'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:T.sp[32]}}>
+          <LogoMark size={28}/>
+          <span style={{fontSize:T.text.md,fontWeight:800,color:T.primary,letterSpacing:'-.3px'}}>ECVoucher</span>
+          <span style={{marginLeft:'auto',fontSize:T.text.xs,color:T.gray400,fontWeight:500}}>Bước {step}/3</span>
+        </div>
+        {/* Steps indicator */}
+        <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:T.sp[32]}}>
+          {[1,2,3].map((s,i)=>(
+            <React.Fragment key={s}>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
+                <div style={{width:32,height:32,borderRadius:T.r.full,background:s<step?T.success:s===step?T.primary:T.gray100,color:s<=step?T.white:T.gray400,display:'flex',alignItems:'center',justifyContent:'center',fontSize:T.text.sm,fontWeight:700,transition:'all .3s'}}>{s<step?<Ico n="check" size={13} color={T.white}/>:s}</div>
+                <span style={{fontSize:T.text.xs,color:s===step?T.primary:T.gray400,fontWeight:s===step?600:400}}>
+                  {['','Thông tin','Mật khẩu','Xác nhận'][s]}
+                </span>
+              </div>
+              {i<2&&<div style={{flex:1,height:2,background:s<step?T.success:T.gray200,marginBottom:20,marginInline:6,transition:'background .3s'}}/>}
+            </React.Fragment>
+          ))}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:T.sp[18]}}>
+          {step===1&&<>
+            <div style={{display:'flex',gap:T.sp[12]}}><Input label="Họ" placeholder="Nguyễn" width="50%"/><Input label="Tên" placeholder="Văn An" width="50%"/></div>
+            <Input label="Địa chỉ email" placeholder="ten@email.com" type="email"/>
+            <Input label="Số điện thoại" placeholder="09x xxxx xxxx" helper="Dùng để nhận OTP xác thực"/>
+          </>}
+          {step===2&&<>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[8]}}>
+              <Input label="Mật khẩu" placeholder="Tối thiểu 8 ký tự" type="password"/>
+              <div style={{display:'flex',gap:4,paddingTop:2}}>
+                {[T.success,T.success,T.success,T.gray200].map((c,i)=><div key={i} style={{flex:1,height:3,background:c,borderRadius:T.r.full,transition:'background .3s'}}/>)}
+              </div>
+              <p style={{fontSize:T.text.xs,color:T.success,display:'flex',alignItems:'center',gap:4,marginTop:2}}><Ico n="check" size={12} color={T.success}/>Mật khẩu đạt yêu cầu bảo mật</p>
+            </div>
+            <Input label="Xác nhận mật khẩu" placeholder="Nhập lại mật khẩu" type="password"/>
+          </>}
+          {step===3&&<>
+            <div style={{background:T.successLight,borderRadius:T.r[12],padding:T.sp[24],textAlign:'center',border:`1px solid ${T.success}33`}}>
+              <div style={{display:'inline-flex',width:56,height:56,borderRadius:'50%',background:T.successMuted,alignItems:'center',justifyContent:'center',marginBottom:4}}><Ico n="check" size={28} color={T.success}/></div>
+              <p style={{marginTop:T.sp[12],fontSize:T.text.sm,color:T.success,fontWeight:600}}>Email xác nhận đã được gửi!</p>
+              <p style={{fontSize:T.text.xs,color:T.gray500,marginTop:6}}>Kiểm tra hộp thư của <strong>ten@email.com</strong></p>
+            </div>
+            <p style={{fontSize:T.text.xs,color:T.gray400,textAlign:'center'}}>Không nhận được email? <a style={{color:T.primary,fontWeight:600,cursor:'pointer'}}>Gửi lại</a></p>
+          </>}
+          {step<3&&<label style={{display:'flex',gap:T.sp[10],alignItems:'flex-start',fontSize:T.text.xs,color:T.gray600,cursor:'pointer',lineHeight:1.5}}>
+            <input type="checkbox" style={{marginTop:2,accentColor:T.primary}}/> Tôi đồng ý với <a style={{color:T.primary}}>Điều khoản dịch vụ</a> và <a style={{color:T.primary}}>Chính sách bảo mật</a>
+          </label>}
+          <Btn variant="primary" size="lg" full onClick={()=>step<3?setStep(s=>s+1):(toast('Tài khoản của bạn đã được tạo thành công!','success','Đăng ký thành công'),nav('s08'))}>
+            {step===1?'Tiếp theo →':step===2?'Tạo tài khoản':'Đến trang chủ'}
+          </Btn>
+          {step>1&&step<3&&<Btn variant="ghost" size="md" full onClick={()=>setStep(s=>s-1)}>← Quay lại</Btn>}
+          {step===1&&<p style={{fontSize:T.text.xs,color:T.gray400,textAlign:'center'}}>Đã có tài khoản? <a onClick={()=>nav('s02')} style={{color:T.primary,fontWeight:600,cursor:'pointer'}}>Đăng nhập</a></p>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const S04=()=>{
+  const nav=useContext(NavCtx);
+  return(
+  <div style={{width:'100%',minHeight:900,background:`linear-gradient(135deg,${T.primaryLight},${T.white} 60%)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+    <TopNav/>
+    <Card style={{width:440,margin:'auto',marginTop:T.sp[80]}} elevation="lg">
+      <div style={{textAlign:'center',marginBottom:T.sp[28]}}>
+        <div style={{width:64,height:64,background:T.primaryMuted,borderRadius:T.r[16],display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px'}}><Ico n="lock" size={28} color={T.primary}/></div>
+        <h1 style={{fontSize:T.text.h3,fontWeight:800,color:T.gray900,letterSpacing:'-.4px'}}>Khôi phục mật khẩu</h1>
+        <p style={{fontSize:T.text.sm,color:T.gray500,marginTop:T.sp[8],lineHeight:1.6}}>Nhập email đăng ký và chúng tôi sẽ gửi đường link đặt lại mật khẩu.</p>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+        <Input label="Địa chỉ email" placeholder="ten@email.com" type="email" helper="Nhập đúng email đã đăng ký tài khoản"/>
+        <Btn variant="primary" size="lg" full icon={<Ico n="bell" size={15}/>} onClick={()=>nav('s02')}>Gửi link khôi phục</Btn>
+        <a onClick={()=>nav('s02')} style={{fontSize:T.text.sm,color:T.primary,cursor:'pointer',fontWeight:600,textAlign:'center',display:'block',marginTop:T.sp[8]}}>← Quay lại đăng nhập</a>
+      </div>
+    </Card>
+  </div>
+  );
+};
+
+const S05_ITEMS=[
+  {brand:'Lotteria',title:'Giảm 30% tất cả combo bữa',d:'-30%',p:'140K',o:'200K',cat:'Ăn uống',r:4.8,s:3420,hot:true},
+  {brand:'Pizza Hut',title:'Buy 1 Get 1 pizza cỡ lớn',d:'-50%',p:'120K',o:'240K',cat:'Ăn uống',r:4.7,s:1842},
+  {brand:'CGV',title:'Mua 1 tặng 1 bắp rang bơ lớn',d:'-50%',p:'50K',o:'100K',cat:'Giải trí',r:4.9,s:2184},
+  {brand:'Galaxy',title:'Giảm 30% vé xem phim tất cả rạp',d:'-30%',p:'70K',o:'100K',cat:'Giải trí',r:4.7,s:987},
+  {brand:'Sendo',title:'Giảm 55% toàn bộ thời trang',d:'-55%',p:'45K',o:'100K',cat:'Mua sắm',r:4.5,s:634,hot:true},
+  {brand:'Shopee',title:'Voucher giảm 200K đơn >500K',d:'-40%',p:'Free',o:'200K',cat:'Mua sắm',r:4.4,s:5211},
+  {brand:'Agoda',title:'Giảm 20% khách sạn 4–5 sao',d:'-20%',p:'Free',o:'500K',cat:'Du lịch',r:4.6,s:876},
+  {brand:'Klook',title:'Combo tour Đà Lạt −25%',d:'-25%',p:'180K',o:'240K',cat:'Du lịch',r:4.7,s:432},
+  {brand:'Guardian',title:'Giảm 30% mỹ phẩm nhập khẩu',d:'-30%',p:'Free',o:'300K',cat:'Làm đẹp',r:4.8,s:1124},
+  {brand:'Hasaki',title:'Buy 2 Get 1 skincare set',d:'-33%',p:'Free',o:'450K',cat:'Làm đẹp',r:4.6,s:789},
+  {brand:'Pharmacity',title:'Giảm 15% toàn bộ thực phẩm chức năng',d:'-15%',p:'Free',o:'200K',cat:'Sức khoẻ',r:4.5,s:543},
+  {brand:'Long Châu',title:'Vitamin tổng hợp −20% combo 3 tháng',d:'-20%',p:'Free',o:'380K',cat:'Sức khoẻ',r:4.7,s:312},
+];
+
+const S05_CATS=['Ăn uống','Mua sắm','Du lịch','Làm đẹp','Giải trí','Sức khoẻ'];
+
+const S05=()=>{
+  const nav=useContext(NavCtx);
+  const [selCats,setSelCats]=useState([]);
+  const toggleCat=(cat)=>setSelCats(p=>p.includes(cat)?p.filter(c=>c!==cat):[...p,cat]);
+  const shown=selCats.length===0?S05_ITEMS:S05_ITEMS.filter(v=>selCats.includes(v.cat));
+  return(
+  <div style={{width:'100%',minHeight:900,background:T.gray50}}>
+    <TopNav loggedIn/>
+    <div style={{display:'flex',height:832}}>
+      {/* Filter sidebar */}
+      <div style={{width:272,background:T.white,borderRight:`1px solid ${T.gray200}`,padding:T.sp[24],overflowY:'auto',flexShrink:0}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[20]}}>
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>Bộ lọc</h3>
+          <a style={{fontSize:T.text.xs,color:T.primary,fontWeight:600,cursor:'pointer'}} onClick={()=>setSelCats([])}>Xoá tất cả</a>
+        </div>
+        <div style={{marginBottom:T.sp[24]}}>
+          <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray700,marginBottom:T.sp[12],letterSpacing:'-.01em'}}>Danh mục</h4>
+          {S05_CATS.map(cat=>{
+            const count=S05_ITEMS.filter(v=>v.cat===cat).length;
+            return(
+              <label key={cat} style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:T.sp[10],cursor:'pointer',fontSize:T.text.sm,color:selCats.includes(cat)?T.primary:T.gray700,fontWeight:selCats.includes(cat)?600:400}}>
+                <input type="checkbox" checked={selCats.includes(cat)} onChange={()=>toggleCat(cat)} style={{width:16,height:16,accentColor:T.primary}}/><span style={{flex:1}}>{cat}</span><span style={{fontSize:T.text.xs,color:T.gray400}}>({count})</span>
+              </label>
+            );
+          })}
+        </div>
+        <div style={{marginBottom:T.sp[24]}}>
+          <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray700,marginBottom:T.sp[12]}}>Mức giảm</h4>
+          {['Trên 50%','30% – 50%','10% – 30%','Dưới 10%'].map(r=>(
+            <label key={r} style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:T.sp[10],cursor:'pointer',fontSize:T.text.sm,color:T.gray700}}>
+              <input type="radio" name="disc" style={{accentColor:T.primary}}/>{r}
+            </label>
+          ))}
+        </div>
+        {selCats.length>0&&(
+          <div style={{background:T.primaryMuted,borderRadius:T.r[8],padding:`${T.sp[10]}px ${T.sp[12]}px`,marginBottom:T.sp[16],fontSize:T.text.xs,color:T.primary,fontWeight:600}}>
+            {selCats.length} danh mục đang lọc · {shown.length} kết quả
+          </div>
+        )}
+        <Btn variant="primary" full onClick={()=>setSelCats([])}>Xoá bộ lọc</Btn>
+      </div>
+      {/* Results */}
+      <div style={{flex:1,padding:`${T.sp[24]}px ${T.sp[32]}px`,overflowY:'auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:T.sp[20]}}>
+          <div>
+            <h2 style={{fontSize:T.text.xl,fontWeight:800,color:T.gray900,letterSpacing:'-.3px'}}>
+              {selCats.length>0?selCats.join(', '):'Tất cả Voucher'}
+            </h2>
+            <p style={{fontSize:T.text.sm,color:T.gray400,marginTop:3}}>Hiển thị {shown.length} kết quả</p>
+          </div>
+          <select style={{padding:'8px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,color:T.gray600,background:T.white,boxShadow:T.shadowSm}}>
+            <option>Phổ biến nhất</option><option>Giá thấp nhất</option><option>Giảm nhiều nhất</option><option>Mới nhất</option>
+          </select>
+        </div>
+        {shown.length===0?(
+          <Card elevation="sm">
+            <EmptyState icon="ticket" title="Không có voucher trong danh mục này" desc="Thử chọn danh mục khác hoặc xoá bộ lọc để xem tất cả." action={<Btn variant="primary" size="sm" onClick={()=>setSelCats([])}>Xem tất cả</Btn>}/>
+          </Card>
+        ):(
+          <div style={{display:'flex',flexWrap:'wrap',gap:T.sp[16]}}>
+            {shown.map((v,i)=><VCard key={i} brand={v.brand} title={v.title} discount={v.d} price={v.p} orig={v.o} cat={v.cat} r={v.r} s={v.s} hot={v.hot}/>)}
+          </div>
+        )}
+        {shown.length>0&&<Pagination/>}
+      </div>
+    </div>
+  </div>
+  );
+};
+
+const S06=()=>{
+  const nav=useContext(NavCtx);
+  return(
+  <div style={{width:'100%',minHeight:900,background:T.gray50}}>
+    <TopNav loggedIn/>
+    <div style={{padding:`${T.sp[24]}px ${T.sp[80]}px`}}>
+      <div style={{fontSize:T.text.xs,color:T.gray400,marginBottom:T.sp[20],display:'flex',gap:T.sp[6],alignItems:'center'}}>
+        <a style={{cursor:'pointer',color:T.gray400}}>Trang chủ</a><span>/</span>
+        <a style={{cursor:'pointer',color:T.gray400}}>Ăn uống</a><span>/</span>
+        <span style={{color:T.gray700,fontWeight:500}}>Lotteria Giảm 30%</span>
+      </div>
+      <div style={{display:'flex',gap:T.sp[40],alignItems:'flex-start'}}>
+        {/* Left */}
+        <div style={{flex:1,maxWidth:580}}>
+          <div style={{height:360,background:`linear-gradient(135deg,${T.primaryLight},${T.accentLight})`,borderRadius:T.r[20],display:'flex',alignItems:'center',justifyContent:'center',position:'relative',marginBottom:T.sp[24],boxShadow:T.shadowMd,overflow:'hidden'}}>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,position:'relative',zIndex:1}}>
+              <Ico n="ticket" size={80} color={T.primary} style={{opacity:.35}}/>
+              <span style={{fontSize:T.text.xl,fontWeight:800,color:T.primary,letterSpacing:'-.5px'}}>Lotteria Vietnam</span>
+            </div>
+            <div style={{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(45deg,rgba(79,70,229,.04) 0,rgba(79,70,229,.04) 1px,transparent 1px,transparent 24px)',pointerEvents:'none'}}/>
+            <div style={{position:'absolute',top:16,left:16}}><Badge variant="error" size="md">HOT -30%</Badge></div>
+            <div style={{position:'absolute',top:16,right:16}}><Badge variant="success" size="sm">Chính hãng</Badge></div>
+          </div>
+          <div style={{display:'flex',gap:T.sp[10]}}>
+            {[['Burger','#fef3c7'],['Nước uống','#ecfdf5'],['Khoai tây','#eff6ff']].map(([l,bg])=>(
+              <div key={l} style={{flex:1,height:64,background:bg,border:`1.5px solid ${T.gray200}`,borderRadius:T.r[12],display:'flex',alignItems:'center',justifyContent:'center',fontSize:T.text.xs,fontWeight:600,color:T.gray700,cursor:'pointer',boxShadow:T.shadowSm}}>{l}</div>
+            ))}
+          </div>
+          <Divider my={24}/>
+          <h2 style={{fontSize:T.text.lg,fontWeight:700,color:T.gray900,marginBottom:T.sp[12]}}>Mô tả</h2>
+          <p style={{fontSize:T.text.sm,color:T.gray600,lineHeight:1.75,marginBottom:T.sp[20]}}>Voucher giảm 30% áp dụng cho toàn bộ combo bữa tại Lotteria — bao gồm Combo Gà Rán, Burger và Set Gia Đình. Đơn tối thiểu 100.000đ. Không áp dụng đồng thời với các chương trình khuyến mãi khác. Có hiệu lực tại hơn 240 chi nhánh Lotteria toàn quốc, kể cả ngày lễ và cuối tuần.</p>
+          <h2 style={{fontSize:T.text.lg,fontWeight:700,color:T.gray900,marginBottom:T.sp[12]}}>Điều kiện sử dụng</h2>
+          {['Áp dụng đơn từ 100.000đ','Không gộp với KM khác','HSD đến 31/12/2026','Tại tất cả chi nhánh Lotteria'].map(i=>(
+            <div key={i} style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:T.sp[10]}}>
+              <div style={{width:20,height:20,background:T.successLight,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ico n="check" size={12} color={T.success}/></div>
+              <span style={{fontSize:T.text.sm,color:T.gray700}}>{i}</span>
+            </div>
+          ))}
+        </div>
+        {/* Right */}
+        <div style={{width:400,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+          <Card elevation="lg">
+            <div style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,letterSpacing:'.03em',textTransform:'uppercase',marginBottom:T.sp[6]}}>Lotteria Vietnam</div>
+            <h1 style={{fontSize:T.text.xl,fontWeight:800,color:T.gray900,marginBottom:T.sp[14],letterSpacing:'-.3px',lineHeight:1.3}}>Giảm 30% tất cả combo tại Lotteria</h1>
+            <div style={{display:'flex',gap:T.sp[14],alignItems:'center',marginBottom:T.sp[16],flexWrap:'wrap'}}>
+              <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                {[1,2,3,4,5].map(s=><Ico key={s} n="star" size={15} color={T.warning}/>)}
+                <span style={{fontSize:T.text.sm,fontWeight:700,color:T.gray700,marginLeft:4}}>4.8</span>
+                <span style={{fontSize:T.text.xs,color:T.gray400}}>(1,234 đánh giá)</span>
+              </div>
+              <span style={{width:1,height:14,background:T.gray200,display:'inline-block'}}/>
+              <span style={{fontSize:T.text.xs,color:T.gray400}}>Đã bán 8,420</span>
+            </div>
+            <div style={{background:`linear-gradient(135deg,${T.accentLight},${T.white})`,borderRadius:T.r[12],padding:T.sp[20],marginBottom:T.sp[20],border:`1px solid ${T.accent}33`}}>
+              <div style={{fontSize:T.text.xs,color:T.gray500,marginBottom:4}}>Giá gốc: <span style={{textDecoration:'line-through'}}>200.000đ</span></div>
+              <div style={{fontSize:T.text.hero,fontWeight:800,color:T.accent,letterSpacing:'-2px',lineHeight:1}}>140K</div>
+              <div style={{fontSize:T.text.sm,color:T.success,marginTop:6,fontWeight:600,display:'flex',alignItems:'center',gap:5}}>
+                <Ico n="trending" size={13} color={T.success}/> Tiết kiệm 60.000đ · Giảm 30%
+              </div>
+            </div>
+            {/* Quantity */}
+            <div style={{display:'flex',alignItems:'center',gap:T.sp[16],marginBottom:T.sp[20]}}>
+              <span style={{fontSize:T.text.sm,fontWeight:600,color:T.gray700}}>Số lượng:</span>
+              <div style={{display:'flex',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],overflow:'hidden'}}>
+                {['−','1','＋'].map((t,i)=>(
+                  <div key={i} style={{width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',background:i===1?T.white:T.gray50,fontWeight:700,fontSize:T.text.lg,color:i===1?T.gray900:T.gray500,borderRight:i<2?`1px solid ${T.gray200}`:undefined}}>{t}</div>
+                ))}
+              </div>
+              <span style={{fontSize:T.text.xs,color:T.gray400}}>Còn 58 lượt</span>
+            </div>
+            <div style={{display:'flex',gap:T.sp[10],marginBottom:T.sp[16]}}>
+              <Btn variant="primary" size="lg" full icon={<Ico n="cart" size={15}/>} onClick={()=>nav('s11')}>Mua ngay</Btn>
+              <button style={{width:44,height:44,border:`1.5px solid ${T.gray200}`,borderRadius:T.r[10],background:T.white,cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="heart" size={20} color={T.gray400}/></button>
+            </div>
+            <div style={{background:T.gray50,borderRadius:T.r[8],padding:`${T.sp[12]}px ${T.sp[14]}px`,display:'flex',gap:T.sp[10],alignItems:'center'}}>
+              <Ico n="check" size={16} color={T.success}/>
+              <span style={{fontSize:T.text.xs,color:T.gray500,lineHeight:1.5}}>Voucher giao ngay qua email trong <strong>5 phút</strong></span>
+            </div>
+          </Card>
+          <Card elevation="sm">
+            <div style={{fontSize:T.text.sm,fontWeight:700,color:T.gray900,marginBottom:T.sp[12]}}>Về thương hiệu</div>
+            <div style={{display:'flex',gap:T.sp[12],alignItems:'center'}}>
+              <div style={{width:44,height:44,background:T.accentLight,borderRadius:T.r[10],display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="building" size={22} color={T.accent}/></div>
+              <div>
+                <div style={{fontWeight:700,color:T.gray900,fontSize:T.text.sm}}>Lotteria Vietnam</div>
+                <div style={{fontSize:T.text.xs,color:T.gray500,marginTop:2}}>200+ chi nhánh · Ăn uống · FastFood</div>
+              </div>
+              <Badge variant="success" style={{marginLeft:'auto'}}>Đã xác minh</Badge>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  </div>
+  );
+};
+
+const S07_ALL=[
+  {brand:'Lotteria',title:'Giảm 30% combo bữa chính',d:'-30%',p:'140K',o:'200K',cat:'Ăn uống',r:4.8,s:3420,hot:true},
+  {brand:'Lotteria',title:'Mua 2 tặng 1 Snack Box',d:'-33%',p:'60K',o:'90K',cat:'Ăn uống',r:4.7,s:1284},
+  {brand:'Lotteria',title:'Trà sữa miễn phí kèm combo',d:'-100%',p:'0đ',o:'35K',cat:'Đồ uống',r:4.9,s:987,hot:true},
+  {brand:'Lotteria',title:'Family Set −25%',d:'-25%',p:'150K',o:'200K',cat:'Ăn uống',r:4.6,s:654},
+  {brand:'Lotteria',title:'Bữa sáng −20% trước 10h',d:'-20%',p:'80K',o:'100K',cat:'Ăn uống',r:4.5,s:432},
+  {brand:'Lotteria',title:'Burger Deluxe −35%',d:'-35%',p:'65K',o:'100K',cat:'Ăn uống',r:4.7,s:812},
+  {brand:'Lotteria',title:'Khoai tây chiên free khi mua combo',d:'-100%',p:'0đ',o:'20K',cat:'Ăn uống',r:4.8,s:2103},
+  {brand:'Lotteria',title:'Set đôi Valentine −40%',d:'-40%',p:'120K',o:'200K',cat:'Ăn uống',r:4.6,s:376},
+  {brand:'CGV',title:'Mua 1 tặng 1 bắp rang bơ lớn',d:'-50%',p:'50K',o:'100K',cat:'Giải trí',r:4.9,s:2184},
+  {brand:'Grab Food',title:'Freeship ×5 Grab Food',d:'-100%',p:'0đ',o:'25K',cat:'Giao đồ ăn',r:4.6,s:8421,hot:true},
+  {brand:'Shopee',title:'Voucher giảm 200K đơn >500K',d:'-40%',p:'Free',o:'200K',cat:'Mua sắm',r:4.4,s:5211},
+  {brand:'Pizza Hut',title:'Buy 1 Get 1 pizza cỡ lớn',d:'-50%',p:'120K',o:'240K',cat:'Ăn uống',r:4.7,s:1842},
+  {brand:'Tiki',title:'Giảm 40% mua sách & văn phòng phẩm',d:'-40%',p:'20K',o:'35K',cat:'Giáo dục',r:4.8,s:3109},
+  {brand:'Galaxy',title:'Giảm 30% vé xem phim tất cả rạp',d:'-30%',p:'70K',o:'100K',cat:'Giải trí',r:4.7,s:987},
+];
+
+const S07=()=>{
+  const nav=useContext(NavCtx);
+  const [query,setQuery]=useState('lotteria');
+  const [inputVal,setInputVal]=useState('lotteria');
+  const filtered=S07_ALL.filter(v=>
+    v.brand.toLowerCase().includes(query.toLowerCase())||
+    v.title.toLowerCase().includes(query.toLowerCase())||
+    v.cat.toLowerCase().includes(query.toLowerCase())
+  );
+  const doSearch=()=>setQuery(inputVal);
+  return(
+  <div style={{width:'100%',minHeight:900,background:T.gray50}}>
+    <TopNav loggedIn/>
+    <div style={{padding:`${T.sp[24]}px ${T.sp[80]}px`}}>
+      <Card elevation="md" style={{display:'flex',gap:T.sp[12],alignItems:'center',marginBottom:T.sp[24],padding:`${T.sp[16]}px ${T.sp[20]}px`}}>
+        <Ico n="search" size={18} color={T.gray400}/>
+        <input
+          value={inputVal}
+          onChange={e=>setInputVal(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&doSearch()}
+          style={{flex:1,border:'none',outline:'none',fontSize:T.text.xl,fontFamily:T.font,color:T.gray900,fontWeight:600,letterSpacing:'-.2px'}}/>
+        <Btn variant="primary" size="sm" onClick={doSearch}>Tìm kiếm</Btn>
+      </Card>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:T.sp[14]}}>
+        <div>
+          <span style={{fontSize:T.text.lg,fontWeight:800,color:T.gray900,letterSpacing:'-.3px'}}>{filtered.length} kết quả cho </span>
+          <span style={{color:T.primary,fontWeight:800}}>"{query}"</span>
+        </div>
+        <select style={{padding:'7px 12px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,color:T.gray600,background:T.white}}>
+          <option>Liên quan nhất</option><option>Giá thấp nhất</option><option>Giảm nhiều nhất</option>
+        </select>
+      </div>
+      {filtered.length===0?(
+        <Card elevation="sm">
+          <EmptyState icon="search" title={`Không tìm thấy kết quả cho "${query}"`} desc="Hãy thử từ khoá khác như tên thương hiệu hoặc danh mục." action={<Btn variant="primary" size="sm" onClick={()=>{setQuery('');setInputVal('');}}>Xem tất cả voucher</Btn>}/>
+        </Card>
+      ):(
+        <div style={{display:'flex',flexWrap:'wrap',gap:T.sp[16]}}>
+          {filtered.map((v,i)=><VCard key={i} brand={v.brand} title={v.title} discount={v.d} price={v.p} orig={v.o} cat={v.cat} r={v.r} s={v.s} hot={v.hot}/>)}
+        </div>
+      )}
+      {filtered.length>0&&<Pagination/>}
+    </div>
+  </div>
+  );
+};
+
+
+// ═════════════════════════════════════════════════════════════════
+// SCREENS S08–S14 — Customer Dashboard
+// ═════════════════════════════════════════════════════════════════
+
+const S08=()=>(
+  <DashLayout nav={CUST_NAV} active={0} type="partner" brand="Tài khoản của tôi">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Hồ sơ của tôi" subtitle="Quản lý thông tin cá nhân và địa chỉ giao hàng"/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <Card style={{width:260,flexShrink:0,textAlign:'center'}} elevation="sm">
+          <div style={{position:'relative',display:'inline-block',marginBottom:T.sp[14]}}>
+            <Avatar size={88} initials="NV" color={T.primary} status="online"/>
+            <button style={{position:'absolute',bottom:0,right:0,width:26,height:26,background:T.primary,border:`2px solid ${T.white}`,borderRadius:'50%',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="edit" size={11} color={T.white}/></button>
+          </div>
+          <div style={{fontWeight:800,fontSize:T.text.lg,color:T.gray900,letterSpacing:'-.3px'}}>Nguyễn Văn An</div>
+          <div style={{fontSize:T.text.xs,color:T.gray400,marginTop:4,marginBottom:T.sp[16]}}>Thành viên từ tháng 1, 2024</div>
+          <div style={{display:'flex',justifyContent:'space-around',padding:`${T.sp[16]}px 0`,border:`1px solid ${T.gray100}`,borderRadius:T.r[12],background:T.gray50}}>
+            {[['24','Đã mua'],['8','Đang dùng'],['6','Đã dùng']].map(([v,l])=>(
+              <div key={l}><div style={{fontSize:T.text.h4,fontWeight:800,color:T.primary}}>{v}</div><div style={{fontSize:10,color:T.gray500,marginTop:2}}>{l}</div></div>
+            ))}
+          </div>
+          <Divider my={16}/>
+          <div style={{display:'flex',flexDirection:'column',gap:T.sp[8]}}>
+            <Btn variant="ghost" full size="sm" icon={<Ico n="camera" size={13}/>}>Đổi ảnh đại diện</Btn>
+            <Btn variant="danger" full size="sm">Đăng xuất</Btn>
+          </div>
+        </Card>
+        <Card style={{flex:1}} elevation="sm">
+          <h2 style={{fontSize:T.text.lg,fontWeight:700,color:T.gray900,marginBottom:T.sp[24],letterSpacing:'-.3px'}}>Thông tin cá nhân</h2>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:`${T.sp[20]}px ${T.sp[16]}px`,marginBottom:T.sp[24]}}>
+            <Input label="Họ và tên" placeholder="Nguyễn Văn An" defaultValue="Nguyễn Văn An"/>
+            <Input label="Ngày sinh" type="date" required={false}/>
+            <Input label="Email" placeholder="ten@email.com" type="email" defaultValue="nguyenvana@email.com"/>
+            <Input label="Số điện thoại" placeholder="09x xxxx xxxx" defaultValue="0901234567"/>
+            <Select label="Giới tính" options={['Nam','Nữ','Khác']}/>
+            <Select label="Tỉnh/Thành phố" options={['Hồ Chí Minh','Hà Nội','Đà Nẵng','Cần Thơ']}/>
+          </div>
+          <Divider my={20}/>
+          <h2 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[16]}}>Địa chỉ nhận voucher</h2>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:`${T.sp[16]}px ${T.sp[16]}px`,marginBottom:T.sp[24]}}>
+            <Input label="Địa chỉ" placeholder="Số nhà, tên đường"/>
+            <Input label="Phường/Xã" placeholder="Phường Bến Nghé"/>
+            <Input label="Quận/Huyện" placeholder="Quận 1"/>
+            <Select label="Tỉnh/TP" options={['Hồ Chí Minh','Hà Nội','Đà Nẵng']}/>
+          </div>
+          <div style={{display:'flex',gap:T.sp[10],justifyContent:'flex-end'}}>
+            <Btn variant="ghost">Huỷ thay đổi</Btn>
+            <Btn variant="primary" icon={<Ico n="check" size={14}/>}>Lưu thông tin</Btn>
+          </div>
+        </Card>
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S09=()=>{
+  const nav=useContext(NavCtx);
+  const [tab,setTab]=useState(0);
+  const tabs=['Tất cả (24)','Đang dùng (8)','Đã dùng (6)','Hết hạn (10)'];
+  const tabStatus=[null,'active','used','expired'];
+  const allItems=[
+    {brand:'CGV Cinema',title:'Mua 1 tặng 1 bắp rang bơ lớn',exp:'31/12/2026',status:'active',code:'CGV2026X',cat:'Giải trí',val:'Miễn phí bắp'},
+    {brand:'Lotteria',title:'Giảm 30% tất cả combo bữa',exp:'31/10/2026',status:'active',code:'LTX30P',cat:'Ăn uống',val:'−30%'},
+    {brand:'Grab Food',title:'Freeship ×5 đơn Grab Food',exp:'28/02/2026',status:'used',code:'GRAB5F',cat:'Giao đồ ăn',val:'Freeship'},
+    {brand:'Shopee',title:'Giảm 200K đơn hàng từ 500K',exp:'30/06/2026',status:'used',code:'SHOP200K',cat:'Mua sắm',val:'−200K'},
+    {brand:'Pizza Hut',title:'Mua 1 tặng 1 pizza size M',exp:'31/05/2026',status:'expired',code:'PHB1G1M',cat:'Ăn uống',val:'Buy 1 Get 1'},
+    {brand:'Tiki',title:'Freeship không giới hạn tháng 5',exp:'31/05/2026',status:'expired',code:'TIKIFS5',cat:'Mua sắm',val:'Freeship'},
+    {brand:'Sendo',title:'Giảm 15% toàn bộ đơn hàng',exp:'30/04/2026',status:'expired',code:'SENDO15',cat:'Mua sắm',val:'−15%'},
+    {brand:'Galaxy Cinema',title:'Vé xem phim 2D tặng combo bắp nước',exp:'28/03/2026',status:'expired',code:'GLXCOMBO',cat:'Giải trí',val:'Tặng combo'},
+    {brand:'Lotteria',title:'Trà sữa miễn phí khi mua set',exp:'28/02/2026',status:'expired',code:'LTFREEDRK',cat:'Ăn uống',val:'Miễn phí'},
+    {brand:'Grab Food',title:'Giảm 50K đơn đầu tiên',exp:'31/01/2026',status:'expired',code:'GRAB50K',cat:'Giao đồ ăn',val:'−50K'},
+  ];
+  const items=tabStatus[tab]?allItems.filter(v=>v.status===tabStatus[tab]):allItems;
+  return(
+    <DashLayout nav={CUST_NAV} active={1} type="partner" brand="Tài khoản của tôi">
+      <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+        <PageHeader title="Voucher của tôi" subtitle="Quản lý và sử dụng toàn bộ voucher đã mua"
+          actions={<Btn variant="primary" icon={<Ico n="ticket" size={13}/>} size="sm">Mua thêm voucher</Btn>}/>
+        <div style={{display:'flex',gap:0,borderBottom:`1px solid ${T.gray200}`,marginBottom:T.sp[24]}}>
+          {tabs.map((t,i)=>(
+            <div key={t} onClick={()=>setTab(i)} style={{padding:'10px 20px',fontWeight:600,fontSize:T.text.sm,cursor:'pointer',color:i===tab?T.primary:T.gray500,borderBottom:`2px solid ${i===tab?T.primary:'transparent'}`,marginBottom:-1,letterSpacing:'-.01em',transition:'color .15s'}}>{t}</div>
+          ))}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:T.sp[12]}}>
+          {items.length===0&&<Card elevation="sm"><EmptyState icon="ticket" title={tab===3?'Không có voucher hết hạn':'Chưa có voucher'} desc={tab===3?'Bạn không có voucher nào hết hạn.':'Hãy khám phá và mua voucher để hiển thị tại đây.'} action={<Btn variant="primary" size="sm" icon={<Ico n="ticket" size={13}/>} onClick={()=>nav('s05')}>Khám phá Voucher</Btn>}/></Card>}
+          {items.map(v=>(
+            <Card key={v.code} elevation="sm" style={{display:'flex',gap:T.sp[20],alignItems:'center',opacity:v.status==='expired'?.6:1}}>
+              <div style={{width:72,height:72,background:v.status==='expired'?T.gray100:`linear-gradient(135deg,${T.primaryLight},${T.accentLight})`,borderRadius:T.r[12],display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:`1px solid ${T.gray200}`}}><Ico n="ticket" size={28} color={v.status==='expired'?T.gray400:T.primary}/></div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',gap:T.sp[8],alignItems:'center',marginBottom:4}}>
+                  <span style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,textTransform:'uppercase',letterSpacing:'.03em'}}>{v.brand}</span>
+                  <Badge variant={v.status==='active'?'success':v.status==='used'?'primary':'default'}>
+                    {v.status==='active'?'Đang dùng':v.status==='used'?'Đã dùng':'Hết hạn'}
+                  </Badge>
+                </div>
+                <div style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:6,letterSpacing:'-.2px'}}>{v.title}</div>
+                <div style={{display:'flex',gap:T.sp[16],alignItems:'center'}}>
+                  <span style={{fontSize:T.text.xs,color:T.gray400}}>HSD: <strong style={{color:T.gray600}}>{v.exp}</strong></span>
+                  <div style={{background:T.gray100,borderRadius:T.r[6],padding:'2px 10px',fontFamily:'monospace',fontSize:T.text.sm,color:T.gray700,letterSpacing:'.05em',cursor:'pointer'}}>{v.code}</div>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:T.sp[8],flexShrink:0}}>
+                {v.status==='active'&&<Btn variant="primary" size="sm" icon={<Ico n="qr" size={13}/>} onClick={()=>nav('s10')}>Dùng ngay</Btn>}
+                <Btn variant="ghost" size="sm" icon={<Ico n="copy" size={13}/>}>Sao chép mã</Btn>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </DashLayout>
+  );
+};
+
+const S10=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  return(
+  <DashLayout nav={CUST_NAV} active={2} type="partner" brand="Tài khoản của tôi">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Dùng Voucher (QR)" subtitle="Quét mã tại quầy thu ngân để sử dụng voucher"/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <Card style={{flex:1}} elevation="sm">
+          <h3 style={{fontSize:T.text.lg,fontWeight:700,color:T.gray900,marginBottom:T.sp[6]}}>Quét mã QR</h3>
+          <p style={{fontSize:T.text.sm,color:T.gray500,marginBottom:T.sp[24]}}>Nhờ thu ngân quét mã này hoặc nhập mã thủ công.</p>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:T.sp[24]}}>
+            <div style={{width:240,height:240,background:T.gray50,border:`2px dashed ${T.gray300}`,borderRadius:T.r[16],display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+              <span style={{fontSize:88,opacity:.25}}>▦</span>
+              {/* Stylised corners */}
+              {[[0,0,'top','left'],[0,'auto','top','right'],['auto',0,'bottom','left'],['auto','auto','bottom','right']].map(([t,b,tv,lv],i)=>(
+                <div key={i} style={{position:'absolute',[tv]:12,[lv]:12,width:28,height:28,borderTop:tv==='top'?`3px solid ${T.primary}`:'none',borderBottom:tv==='bottom'?`3px solid ${T.primary}`:'none',borderLeft:lv==='left'?`3px solid ${T.primary}`:'none',borderRight:lv==='right'?`3px solid ${T.primary}`:'none',borderRadius:lv==='left'&&tv==='top'?`${T.r[4]}px 0 0 0`:lv==='right'&&tv==='top'?`0 ${T.r[4]}px 0 0`:lv==='left'&&tv==='bottom'?`0 0 0 ${T.r[4]}px`:`0 0 ${T.r[4]}px 0`}}/>
+              ))}
+            </div>
+          </div>
+          <Btn variant="primary" full icon={<Ico n="camera" size={15}/>} size="lg">Mở camera để quét</Btn>
+          <Divider my={20} label="hoặc nhập mã thủ công"/>
+          <div style={{display:'flex',gap:T.sp[10]}}>
+            <input placeholder="VD: CGV2026X" style={{flex:1,padding:'10px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.base,fontFamily:T.font,textTransform:'uppercase',letterSpacing:'.08em',boxShadow:T.shadowSm,outline:'none'}}/>
+            <Btn variant="primary">Áp dụng</Btn>
+          </div>
+        </Card>
+        <div style={{width:340,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+          <Card elevation="sm" style={{background:T.primaryMuted,borderColor:T.primary+'40'}}>
+            <div style={{display:'flex',gap:T.sp[14],alignItems:'center',marginBottom:T.sp[16]}}>
+              <div style={{width:48,height:48,background:T.primary,borderRadius:T.r[12],display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ico n="ticket" size={22} color={T.white}/></div>
+              <div>
+                <div style={{fontWeight:700,color:T.primary,fontSize:T.text.base,letterSpacing:'-.2px'}}>CGV Cinema</div>
+                <div style={{fontSize:T.text.sm,color:T.gray600,marginTop:2}}>Mua 1 tặng 1 bắp rang bơ</div>
+              </div>
+            </div>
+            {[['Mã voucher','CGV2025X'],['Giá trị','Miễn phí 1 bắp lớn'],['HSD','31/12/2026'],['Chi nhánh','Tất cả CGV']].map(([l,v])=>(
+              <div key={l} style={{display:'flex',justifyContent:'space-between',padding:`${T.sp[10]}px 0`,borderTop:`1px solid ${T.primary}22`}}>
+                <span style={{fontSize:T.text.xs,color:T.gray500}}>{l}</span>
+                <span style={{fontSize:T.text.xs,fontWeight:700,color:T.gray900}}>{v}</span>
+              </div>
+            ))}
+            <Btn variant="primary" full style={{marginTop:T.sp[16]}} icon={<Ico n="check" size={14}/>} onClick={()=>{toast('Voucher đã được sử dụng thành công! Chúc bạn ngon miệng.','success','Sử dụng thành công');nav('s12');}}>Xác nhận sử dụng</Btn>
+          </Card>
+          <Card elevation="sm">
+            <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray900,marginBottom:T.sp[14]}}>Lịch sử dùng gần đây</h4>
+            {[{v:'Lotteria −30%',t:'Hôm nay 10:30',s:'success'},{v:'Grab Freeship',t:'Hôm qua 19:00',s:'success'},{v:'CGV Bắp rang',t:'3 ngày trước',s:'success'}].map(i=>(
+              <div key={i.v} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:`${T.sp[10]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+                <div style={{display:'flex',gap:T.sp[8],alignItems:'center'}}>
+                  <div style={{width:6,height:6,borderRadius:'50%',background:T.success}}/>
+                  <span style={{fontSize:T.text.sm,color:T.gray700,fontWeight:500}}>{i.v}</span>
+                </div>
+                <span style={{fontSize:T.text.xs,color:T.gray400}}>{i.t}</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      </div>
+    </div>
+  </DashLayout>
+  );
+};
+
+const S11=()=>{
+  const _nav11=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  return(
+  <DashLayout nav={CUST_NAV} active={3} type="partner" brand="Tài khoản của tôi">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Giỏ hàng" subtitle="3 voucher đang chờ thanh toán"/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[12]}}>
+          <label style={{display:'flex',gap:T.sp[10],alignItems:'center',fontSize:T.text.sm,color:T.gray600,cursor:'pointer'}}>
+            <input type="checkbox" defaultChecked style={{accentColor:T.primary}}/> Chọn tất cả (3 sản phẩm)
+          </label>
+          {[{brand:'Lotteria',title:'Giảm 30% tất cả combo bữa',qty:1,price:'140.000đ',cat:'Ăn uống'},{brand:'CGV Cinema',title:'Mua 1 tặng 1 bắp rang bơ',qty:2,price:'100.000đ',cat:'Giải trí'},{brand:'Grab Food',title:'Freeship ×5 Grab Food',qty:1,price:'0đ',cat:'Giao đồ ăn'}].map(item=>(
+            <Card key={item.brand} elevation="sm" style={{display:'flex',gap:T.sp[16],alignItems:'center'}}>
+              <input type="checkbox" defaultChecked style={{width:16,height:16,accentColor:T.primary,flexShrink:0}}/>
+              <div style={{width:60,height:60,background:`linear-gradient(135deg,${T.primaryLight},${T.accentLight})`,borderRadius:T.r[12],display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ico n="ticket" size={26} color={T.primary}/></div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,textTransform:'uppercase',letterSpacing:'.03em'}}>{item.brand}</div>
+                <div style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginTop:2,letterSpacing:'-.2px'}}>{item.title}</div>
+                <span style={{fontSize:T.text.xs,background:T.gray100,padding:'2px 8px',borderRadius:T.r.full,color:T.gray500,marginTop:5,display:'inline-block'}}>{item.cat}</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',border:`1px solid ${T.gray200}`,borderRadius:T.r[8],overflow:'hidden'}}>
+                {['−',item.qty,'+'].map((t,i)=><div key={i} style={{width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',background:i===1?T.white:T.gray50,cursor:'pointer',fontSize:T.text.base,fontWeight:700,color:T.gray700,borderRight:i<2?`1px solid ${T.gray200}`:undefined}}>{t}</div>)}
+              </div>
+              <div style={{fontWeight:800,fontSize:T.text.lg,color:T.accent,width:100,textAlign:'right',letterSpacing:'-.5px'}}>{item.price}</div>
+              <button style={{border:'none',background:'none',cursor:'pointer',display:'flex',alignItems:'center',color:T.gray300,transition:'color .15s',padding:4}} onMouseEnter={e=>{e.currentTarget.style.color=T.error}} onMouseLeave={e=>{e.currentTarget.style.color=T.gray300}}><Ico n="trash" size={16} color="currentColor"/></button>
+            </Card>
+          ))}
+        </div>
+        <Card style={{width:320,flexShrink:0}} elevation="md">
+          <h3 style={{fontSize:T.text.lg,fontWeight:800,color:T.gray900,marginBottom:T.sp[20],letterSpacing:'-.3px'}}>Tóm tắt đơn hàng</h3>
+          {[['Tạm tính (3 voucher)','240.000đ'],['Phí dịch vụ','0đ'],['Mã giảm giá','−0đ']].map(([l,v])=>(
+            <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[14],fontSize:T.text.sm}}>
+              <span style={{color:T.gray500}}>{l}</span><span style={{fontWeight:600,color:T.gray700}}>{v}</span>
+            </div>
+          ))}
+          <Divider my={14}/>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[20],fontWeight:800,fontSize:T.text.lg,letterSpacing:'-.3px'}}>
+            <span>Tổng cộng</span><span style={{color:T.accent}}>240.000đ</span>
+          </div>
+          <div style={{display:'flex',gap:T.sp[8],marginBottom:T.sp[16]}}>
+            <input placeholder="Nhập mã ưu đãi" style={{flex:1,padding:'9px 12px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,letterSpacing:'.03em',textTransform:'uppercase'}}/>
+            <Btn variant="outlined" size="sm">Áp dụng</Btn>
+          </div>
+          <Btn variant="primary" full size="lg" icon={<Ico n="bank" size={15}/>} onClick={()=>{toast('Đặt hàng thành công! Voucher đang được xử lý.','success','Đặt hàng thành công');_nav11('s12');}}>Thanh toán ngay</Btn>
+          <div style={{display:'flex',justifyContent:'center',gap:T.sp[12],marginTop:T.sp[16]}}>
+            {['Thẻ tín dụng','ATM nội địa','MoMo','VNPay'].map(m=><span key={m} style={{fontSize:T.text.xs,color:T.gray400,background:T.gray100,padding:'2px 7px',borderRadius:4}}>{m}</span>)}
+          </div>
+        </Card>
+      </div>
+    </div>
+  </DashLayout>
+  );
+};
+
+const S12=()=>(
+  <DashLayout nav={CUST_NAV} active={4} type="partner" brand="Tài khoản của tôi">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Lịch sử đơn hàng" subtitle="Xem lại toàn bộ giao dịch mua voucher của bạn"/>
+      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Hoàn thành','Đang xử lý','Hoàn tiền']},{label:'Tháng này',options:['Tháng này','Tháng trước','3 tháng']}]}/>
+      <Card elevation="sm">
+        <DataTable
+          cols={['Mã đơn hàng','Ngày mua','Sản phẩm','Tổng tiền','Thanh toán','Trạng thái','']}
+          rows={[
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-001</span>,'10/07/2026','Lotteria ×1, CGV ×2',<span style={{fontWeight:700}}>240.000đ</span>,'Thẻ Visa',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-002</span>,'05/07/2026','Grab Freeship ×1',<span style={{fontWeight:700}}>0đ</span>,'Ví MoMo',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-003</span>,'01/07/2026','Shopee −200K ×1',<span style={{fontWeight:700}}>35.000đ</span>,'VNPay',<Badge variant="warning">Hoàn tiền</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-004</span>,'25/06/2026','Pizza Hut B1G1 ×2',<span style={{fontWeight:700}}>240.000đ</span>,'Thẻ Visa',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
+          ]}
+        />
+      </Card>
+      <Pagination/>
+    </div>
+  </DashLayout>
+);
+
+const S13=()=>(
+  <DashLayout nav={CUST_NAV} active={5} type="partner" brand="Tài khoản của tôi">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Thông báo" subtitle="Cập nhật mới nhất về voucher và đơn hàng của bạn"
+        actions={<><Btn variant="ghost" size="sm">Đánh dấu tất cả đã đọc</Btn><Btn variant="subtle" size="sm" icon={<Ico n="settings" size={13}/>}>Cài đặt thông báo</Btn></>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        {[{l:'Tất cả',v:12,active:true},{l:'Chưa đọc',v:2},{l:'Đơn hàng',v:4},{l:'Voucher',v:6}].map(t=>(
+          <div key={t.l} style={{padding:'7px 16px',borderRadius:T.r.full,background:t.active?T.primary:T.white,color:t.active?T.white:T.gray600,fontSize:T.text.sm,fontWeight:t.active?600:500,cursor:'pointer',border:`1px solid ${t.active?T.primary:T.gray200}`,display:'flex',alignItems:'center',gap:6}}>
+            {t.l}{t.v&&<span style={{background:t.active?'rgba(255,255,255,.25)':T.gray100,borderRadius:T.r.full,padding:'1px 7px',fontSize:T.text.xs,fontWeight:700}}>{t.v}</span>}
+          </div>
+        ))}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:T.sp[10]}}>
+        {[
+          {icon:'ticket',t:'Voucher Lotteria mới: Giảm 30%!',b:'Voucher độc quyền chỉ còn 2 ngày — Mua ngay để không bỏ lỡ.',time:'5 phút trước',unread:true,type:'voucher'},
+          {icon:'check',t:'Đơn hàng #ORD-2026-001 hoàn tất',b:'Voucher đã được gửi vào email nguyenvana@email.com của bạn.',time:'2 giờ trước',unread:true,type:'order'},
+          {icon:'history',t:'Grab Freeship sắp hết hạn — còn 3 ngày',b:'Voucher Freeship của bạn hết hạn vào 28/02/2026. Dùng ngay!',time:'1 ngày trước',unread:false,type:'voucher'},
+          {icon:'trending',t:'Flash Sale hôm nay 12h–14h',b:'Giảm đến 70% voucher ăn uống chỉ trong 2 tiếng. Đừng bỏ lỡ!',time:'2 ngày trước',unread:false,type:'promo'},
+        ].map((n,i)=>(
+          <div key={i} style={{background:n.unread?T.primaryMuted:T.white,border:`1px solid ${n.unread?T.primary+'30':T.gray200}`,borderRadius:T.r[12],padding:`${T.sp[16]}px ${T.sp[20]}px`,display:'flex',gap:T.sp[14],alignItems:'flex-start',transition:'all .15s',cursor:'pointer'}}
+            onMouseEnter={e=>!n.unread&&(e.currentTarget.style.background=T.gray50)}
+            onMouseLeave={e=>!n.unread&&(e.currentTarget.style.background=T.white)}>
+            <div style={{width:42,height:42,borderRadius:T.r[10],background:n.unread?T.primary:T.gray100,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ico n={n.icon} size={18} color={n.unread?T.white:T.gray500}/></div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:n.unread?700:600,color:T.gray900,fontSize:T.text.sm,letterSpacing:'-.01em',marginBottom:4}}>{n.t}</div>
+              <div style={{fontSize:T.text.xs,color:T.gray500,lineHeight:1.5}}>{n.b}</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
+              <span style={{fontSize:T.text.xs,color:T.gray400,whiteSpace:'nowrap'}}>{n.time}</span>
+              {n.unread&&<div style={{width:8,height:8,borderRadius:'50%',background:T.primary}}/>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const Toggle=({on=true,label})=>(
+  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:`${T.sp[14]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+    <span style={{fontSize:T.text.sm,color:T.gray700}}>{label}</span>
+    <div style={{width:44,height:24,background:on?T.primary:T.gray200,borderRadius:T.r.full,cursor:'pointer',position:'relative',transition:'background .2s',flexShrink:0}}>
+      <div style={{position:'absolute',top:2,right:on?2:undefined,left:on?undefined:2,width:20,height:20,background:T.white,borderRadius:'50%',boxShadow:T.shadowSm,transition:'all .2s'}}/>
+    </div>
+  </div>
+);
+
+const S14=()=>{
+  const toast=useContext(ToastCtx);
+  const [showDeleteModal,setShowDeleteModal]=useState(false);
+  return(
+  <DashLayout nav={CUST_NAV} active={6} type="partner" brand="Tài khoản của tôi">
+    {/* Delete confirmation modal */}
+    {showDeleteModal&&(
+      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:9998,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{background:T.white,borderRadius:T.r[16],padding:T.sp[32],width:420,boxShadow:'0 24px 64px rgba(0,0,0,.18)',animation:'toastIn .2s ease'}}>
+          <div style={{width:56,height:56,background:T.errorMuted,borderRadius:T.r[12],display:'flex',alignItems:'center',justifyContent:'center',marginBottom:T.sp[20]}}>
+            <Ico n="trash" size={26} color={T.error}/>
+          </div>
+          <h2 style={{fontSize:T.text.h4,fontWeight:800,color:T.gray900,marginBottom:T.sp[10],letterSpacing:'-.3px'}}>Xoá tài khoản?</h2>
+          <p style={{fontSize:T.text.sm,color:T.gray500,lineHeight:1.7,marginBottom:T.sp[20]}}>Hành động này <strong style={{color:T.error}}>không thể hoàn tác</strong>. Toàn bộ dữ liệu cá nhân, voucher chưa sử dụng và lịch sử giao dịch sẽ bị xoá vĩnh viễn.</p>
+          <div style={{background:T.warningMuted,border:`1px solid ${T.warning}40`,borderRadius:T.r[8],padding:`${T.sp[12]}px ${T.sp[14]}px`,marginBottom:T.sp[24],display:'flex',gap:T.sp[8],alignItems:'flex-start'}}>
+            <Ico n="warning" size={14} color={T.warning} style={{flexShrink:0,marginTop:2}}/>
+            <span style={{fontSize:T.text.xs,color:T.warning,lineHeight:1.6}}>Bạn còn <strong>8 voucher đang dùng</strong> sẽ bị mất nếu xoá tài khoản. Hãy sử dụng trước khi tiếp tục.</span>
+          </div>
+          <div style={{display:'flex',gap:T.sp[10]}}>
+            <Btn variant="ghost" full onClick={()=>setShowDeleteModal(false)}>Huỷ bỏ</Btn>
+            <Btn variant="danger" full icon={<Ico n="trash" size={13}/>} onClick={()=>{setShowDeleteModal(false);toast('Yêu cầu xoá tài khoản đã được ghi nhận. Chúng tôi sẽ xử lý trong 48 giờ.','error','Xoá tài khoản');}}>Tôi hiểu, xoá tài khoản</Btn>
+          </div>
+        </div>
+      </div>
+    )}
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Cài đặt tài khoản" subtitle="Quản lý bảo mật, quyền riêng tư và tùy chọn thông báo"/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20],display:'flex',gap:8,alignItems:'center'}}><Ico n="lock" size={16} color={T.primary}/> Bảo mật</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+              <Input label="Mật khẩu hiện tại" placeholder="••••••••" type="password"/>
+              <Input label="Mật khẩu mới" placeholder="Tối thiểu 8 ký tự" type="password"/>
+              <Input label="Xác nhận mật khẩu mới" placeholder="Nhập lại" type="password"/>
+              <Btn variant="primary" icon={<Ico n="lock" size={13}/>} style={{alignSelf:'flex-start'}}>Cập nhật mật khẩu</Btn>
+            </div>
+          </Card>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[6],display:'flex',gap:8,alignItems:'center'}}><Ico n="shield" size={16} color={T.primary}/> Xác thực 2 bước</h3>
+            <p style={{fontSize:T.text.xs,color:T.gray500,marginBottom:T.sp[16]}}>Thêm lớp bảo vệ bằng mã OTP qua SMS hoặc ứng dụng xác thực.</p>
+            <Toggle on={true} label="Bật xác thực 2 bước (đang hoạt động)"/>
+          </Card>
+        </div>
+        <div style={{width:340,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[4],display:'flex',gap:8,alignItems:'center'}}><Ico n="bell" size={16} color={T.primary}/> Tùy chọn thông báo</h3>
+            <p style={{fontSize:T.text.xs,color:T.gray500,marginBottom:T.sp[14]}}>Chọn loại thông báo bạn muốn nhận.</p>
+            <Toggle on={true} label="Email — Voucher mới"/>
+            <Toggle on={true} label="Email — Cập nhật đơn hàng"/>
+            <Toggle on={false} label="Push — Flash sale & khuyến mãi"/>
+            <Toggle on={true} label="Push — Voucher sắp hết hạn"/>
+            <Toggle on={false} label="SMS — Mã OTP"/>
+          </Card>
+          <Card elevation="sm" style={{borderColor:T.error+'40',background:T.errorMuted}}>
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.error,marginBottom:T.sp[8],display:'flex',gap:8,alignItems:'center'}}><Ico n="warning" size={16} color={T.error}/> Vùng nguy hiểm</h3>
+            <p style={{fontSize:T.text.xs,color:T.gray600,lineHeight:1.6,marginBottom:T.sp[16]}}>Xoá tài khoản là hành động vĩnh viễn. Toàn bộ dữ liệu, voucher và lịch sử giao dịch sẽ bị xoá và không thể khôi phục.</p>
+            <Btn variant="danger" full icon={<Ico n="trash" size={14}/>} onClick={()=>setShowDeleteModal(true)}>Xoá tài khoản của tôi</Btn>
+          </Card>
+        </div>
+      </div>
+    </div>
+  </DashLayout>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════
+// SCREENS S15–S22 — Partner Dashboard
+// ═════════════════════════════════════════════════════════════════
+
+const S15=()=>{
+  const nav=useContext(NavCtx);
+  return(
+  <DashLayout nav={PARTNER_NAV} active={0} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Dashboard" subtitle="Xin chào, Lotteria Vietnam! Hôm nay 15 tháng 7, 2026"
+        actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất báo cáo</Btn><Btn variant="primary" size="sm" icon="+" onClick={()=>nav('s17')}>Tạo Voucher mới</Btn></>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        <StatCard label="Voucher đang bán" value="48" change="+12%" icon={<Ico n="ticket" size={18} color={T.primary}/>} color={T.primary}/>
+        <StatCard label="Đã bán tháng này" value="1,284" change="+23%" icon={<Ico n="money" size={18} color={T.accent}/>} color={T.accent}/>
+        <StatCard label="Doanh thu tháng" value="89.4M" change="+18%" icon={<Ico n="trending" size={18} color={T.success}/>} color={T.success}/>
+        <StatCard label="Đánh giá TB" value="4.8★" change="+0.2" icon={<Ico n="star" size={18} color='#f59e0b'/>} color='#f59e0b'/>
+      </div>
+      <div style={{display:'flex',gap:T.sp[16]}}>
+        <Card style={{flex:3}} elevation="sm">
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:T.sp[20]}}>
+            <div>
+              <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,letterSpacing:'-.2px'}}>Doanh thu 6 tháng</h3>
+              <p style={{fontSize:T.text.xs,color:T.gray400,marginTop:3}}>Tháng 1 – Tháng 6 năm 2026</p>
+            </div>
+            <div style={{display:'flex',gap:T.sp[6]}}>
+              {['7 ngày','30 ngày','6 tháng'].map((p,i)=><div key={p} style={{padding:'5px 12px',borderRadius:T.r[6],background:i===2?T.primary:T.white,color:i===2?T.white:T.gray500,fontSize:T.text.xs,fontWeight:500,cursor:'pointer',border:`1px solid ${i===2?T.primary:T.gray200}`}}>{p}</div>)}
+            </div>
+          </div>
+          <Chart label="Doanh thu tháng 1–6/2026" h={200} color={T.primary}/>
+        </Card>
+        <Card style={{flex:2}} elevation="sm">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20],letterSpacing:'-.2px'}}>Top voucher bán chạy</h3>
+          {[{t:'Giảm 30% combo',s:342,g:68},{t:'Mua 2 tặng 1',s:218,g:44},{t:'Family Set −25%',s:167,g:33},{t:'Trà sữa Free',s:94,g:19},{t:'Burger Deluxe',s:63,g:13}].map((v,i)=>(
+            <div key={v.t} style={{display:'flex',gap:T.sp[12],alignItems:'center',marginBottom:T.sp[14]}}>
+              <div style={{width:22,height:22,borderRadius:T.r[6],background:i===0?T.accent:T.gray100,color:i===0?T.white:T.gray500,display:'flex',alignItems:'center',justifyContent:'center',fontSize:T.text.xs,fontWeight:800,flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:T.text.sm,color:T.gray900,fontWeight:600,marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v.t}</div>
+                <div style={{height:4,background:T.gray100,borderRadius:T.r.full}}><div style={{height:'100%',width:`${v.g}%`,background:i===0?T.accent:T.primary,borderRadius:T.r.full}}/></div>
+              </div>
+              <span style={{fontSize:T.text.sm,fontWeight:700,color:T.gray700,flexShrink:0}}>{v.s}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  </DashLayout>
+  );
+};
+
+const S16=()=>{
+  const nav=useContext(NavCtx);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{const t=setTimeout(()=>setLoading(false),1200);return()=>clearTimeout(t);},[]);
+  return(
+  <DashLayout nav={PARTNER_NAV} active={1} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Voucher của tôi" subtitle="Quản lý toàn bộ voucher đang phát hành"
+        actions={<Btn variant="primary" size="sm" icon="+" onClick={()=>nav('s17')}>Tạo Voucher mới</Btn>}/>
+      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Đang bán','Tạm dừng','Hết hạn']},{label:'Tất cả danh mục',options:['Ăn uống','Đồ uống']}]}/>
+      {loading?(
+        <div style={{display:'flex',flexDirection:'column',gap:T.sp[12]}}>
+          {[1,2,3].map(i=><SkeletonCard key={i}/>)}
+        </div>
+      ):(
+      <Card elevation="sm">
+        <DataTable
+          cols={['Tên Voucher','Danh mục','Giảm giá','Giá bán','Đã bán / Tổng','HSD','Trạng thái']}
+          rows={[
+            ['Giảm 30% combo bữa','Ăn uống',<Badge variant="error">−30%</Badge>,'140K','342/400','31/12/26',<Badge variant="success">Đang bán</Badge>],
+            ['Mua 2 tặng 1 bắp','Ăn uống',<Badge variant="error">−50%</Badge>,'45K','218/300','30/06/26',<Badge variant="success">Đang bán</Badge>],
+            ['Family Set −25%','Ăn uống',<Badge variant="warning">−25%</Badge>,'150K','167/200','31/12/26',<Badge variant="warning">Tạm dừng</Badge>],
+            ['Trà sữa Miễn phí','Đồ uống',<Badge variant="primary">−100%</Badge>,'0đ','94/100','28/02/26',<Badge variant="error">Hết hạn</Badge>],
+          ]}
+          actions
+        />
+      </Card>
+      )}
+      <Pagination/>
+    </div>
+  </DashLayout>
+  );
+};
+
+const S17=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  return(
+  <DashLayout nav={PARTNER_NAV} active={2} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Tạo Voucher mới" subtitle="Điền thông tin để phát hành voucher cho thương hiệu của bạn"
+        breadcrumb={['Dashboard','Voucher của tôi','Tạo Voucher mới']}/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20]}}>Thông tin cơ bản</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[18]}}>
+              <Input label="Tên Voucher" placeholder="VD: Giảm 30% tất cả combo bữa tại Lotteria"/>
+              <div style={{display:'flex',gap:T.sp[14]}}><Select label="Danh mục" options={['Ăn uống','Đồ uống','Tráng miệng','Combo']} width="50%" required/><Select label="Loại giảm giá" options={['Phần trăm (%)','Số tiền cố định (đ)']} width="50%" required/></div>
+              <div style={{display:'flex',gap:T.sp[14]}}><Input label="Giá trị giảm" placeholder="30" prefix="%" width="50%"/><Input label="Giá bán voucher" placeholder="140.000" prefix="đ" width="50%"/></div>
+              <div style={{display:'flex',gap:T.sp[14]}}><Input label="Số lượng phát hành" placeholder="400" type="number" width="50%"/><Input label="Đơn tối thiểu" placeholder="100.000" prefix="đ" width="50%"/></div>
+              <div style={{display:'flex',gap:T.sp[14]}}><Input label="Ngày bắt đầu" type="date" width="50%"/><Input label="Ngày hết hạn" type="date" width="50%"/></div>
+              <Textarea label="Mô tả và điều kiện sử dụng" placeholder="Mô tả chi tiết về voucher, điều kiện áp dụng và các lưu ý quan trọng cho khách hàng..." rows={4}/>
+            </div>
+          </Card>
+          <div style={{display:'flex',gap:T.sp[10],justifyContent:'flex-end'}}>
+            <Btn variant="ghost" size="md">Lưu nháp</Btn>
+            <Btn variant="primary" size="md" icon={<Ico n="upload" size={13}/>} onClick={()=>{toast('Voucher đã được gửi lên để xét duyệt. Thường duyệt trong 24 giờ.','success','Gửi duyệt thành công');nav('s16');}}>Đăng voucher ngay</Btn>
+          </div>
+        </div>
+        <div style={{width:300,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+          <Card elevation="sm" style={{background:`linear-gradient(135deg,${T.primaryLight},${T.accentLight})`,borderColor:T.primary+'30'}}>
+            <p style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:T.sp[14]}}>Xem trước voucher</p>
+            <div style={{background:T.white,borderRadius:T.r[12],overflow:'hidden',boxShadow:T.shadowMd}}>
+              <div style={{height:100,background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+                <Ico n="ticket" size={40} color="rgba(255,255,255,.7)"/>
+                <div style={{position:'absolute',top:8,left:8,background:T.accent,color:T.white,fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:T.r.full}}>-30%</div>
+              </div>
+              <div style={{padding:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:T.primary,textTransform:'uppercase',letterSpacing:'.06em'}}>LOTTERIA</div>
+                <div style={{fontSize:13,fontWeight:700,color:T.gray900,margin:'4px 0 8px',lineHeight:1.3}}>Giảm 30% tất cả combo bữa</div>
+                <div style={{fontSize:18,fontWeight:800,color:T.accent,letterSpacing:'-0.5px'}}>140K</div>
+                <div style={{fontSize:10,color:T.gray400,textDecoration:'line-through'}}>200.000đ</div>
+              </div>
+            </div>
+          </Card>
+          <Card elevation="sm">
+            <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray900,marginBottom:T.sp[14]}}>Cài đặt nâng cao</h4>
+            <Toggle on={true} label="Giới hạn 1 voucher/người"/>
+            <Toggle on={false} label="Hiển thị trang chủ (Featured)"/>
+            <Toggle on={true} label="Cho phép đặt nhiều số lượng"/>
+            <Toggle on={false} label="Yêu cầu mã xác nhận OTP"/>
+          </Card>
+        </div>
+      </div>
+    </div>
+  </DashLayout>
+  );
+};
+
+const S18=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  return(
+  <DashLayout nav={PARTNER_NAV} active={1} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Chỉnh sửa Voucher" subtitle="Cập nhật thông tin cho voucher đang hoạt động"
+        breadcrumb={['Dashboard','Voucher của tôi','Chỉnh sửa']}/>
+      <div style={{background:T.warningMuted,border:`1px solid ${T.warning}50`,borderRadius:T.r[10],padding:`${T.sp[12]}px ${T.sp[16]}px`,marginBottom:T.sp[24],display:'flex',gap:T.sp[10],alignItems:'center'}}>
+        <Ico n="warning" size={16} color={T.warning}/>
+        <span style={{fontSize:T.text.sm,color:T.warning,fontWeight:500}}>Voucher này đang có <strong>342 lượt mua</strong>. Thay đổi sẽ chỉ áp dụng cho lần mua mới.</span>
+      </div>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <Card style={{flex:1}} elevation="sm">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20]}}>Thông tin Voucher</h3>
+          <div style={{display:'flex',flexDirection:'column',gap:T.sp[18]}}>
+            <Input label="Tên Voucher" defaultValue="Giảm 30% tất cả combo bữa tại Lotteria"/>
+            <div style={{display:'flex',gap:T.sp[14]}}><Input label="Giá trị giảm (%)" placeholder="30" defaultValue="30" prefix="%" width="50%"/><Input label="Giá bán" placeholder="140.000" defaultValue="140.000" prefix="đ" width="50%"/></div>
+            <div style={{display:'flex',gap:T.sp[14]}}><Input label="Số lượng còn lại" placeholder="58" defaultValue="58" type="number" width="50%"/><Input label="Ngày hết hạn" type="date" width="50%"/></div>
+            <Textarea label="Mô tả" rows={3}/>
+          </div>
+          <div style={{display:'flex',gap:T.sp[10],justifyContent:'flex-end',marginTop:T.sp[24]}}>
+            <Btn variant="danger" size="sm">Xoá Voucher</Btn>
+            <Btn variant="ghost" size="sm">Tạm dừng</Btn>
+            <Btn variant="primary" size="sm" icon={<Ico n="check" size={14}/>} onClick={()=>{toast('Thông tin voucher đã được cập nhật thành công.','success','Lưu thành công');nav('s16');}}>Lưu thay đổi</Btn>
+          </div>
+        </Card>
+        <div style={{width:280,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+          <Card elevation="sm">
+            <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray900,marginBottom:T.sp[16]}}>Thống kê hiện tại</h4>
+            {[['Đã bán','342 / 400'],['Tỷ lệ đã bán','85.5%'],['Còn lại','58 lượt'],['Doanh thu','47.88M đ'],['Đánh giá TB','4.8 ★ (234)']].map(([l,v])=>(
+              <div key={l} style={{display:'flex',justifyContent:'space-between',padding:`${T.sp[10]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+                <span style={{fontSize:T.text.xs,color:T.gray500}}>{l}</span>
+                <span style={{fontSize:T.text.xs,fontWeight:700,color:T.gray900}}>{v}</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      </div>
+    </div>
+  </DashLayout>
+  );
+};
+
+const S19=()=>(
+  <DashLayout nav={PARTNER_NAV} active={4} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Hồ sơ Partner" subtitle="Thông tin thương hiệu được hiển thị công khai trên ECVoucher"/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <Card style={{flex:1}} elevation="sm">
+          <div style={{display:'flex',gap:T.sp[20],alignItems:'flex-start',marginBottom:T.sp[24],paddingBottom:T.sp[24],borderBottom:`1px solid ${T.gray100}`}}>
+            <div style={{width:88,height:88,background:`linear-gradient(135deg,${T.accentLight},${T.primaryLight})`,borderRadius:T.r[16],display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:`1px solid ${T.gray200}`,boxShadow:T.shadowMd}}><Ico n="building" size={42} color={T.accent}/></div>
+            <div style={{flex:1}}>
+              <div style={{display:'flex',gap:T.sp[10],alignItems:'center',flexWrap:'wrap',marginBottom:T.sp[8]}}>
+                <h2 style={{fontSize:T.text.h3,fontWeight:800,color:T.gray900,letterSpacing:'-.4px'}}>Lotteria Vietnam</h2>
+                <Badge variant="success"><span style={{display:'inline-flex',alignItems:'center',gap:3}}><Ico n="check" size={11} color="currentColor"/>Đã xác minh</span></Badge>
+                <Badge variant="primary"><span style={{display:'inline-flex',alignItems:'center',gap:3}}><Ico n="star" size={11} color="currentColor"/>Nổi bật</span></Badge>
+              </div>
+              <p style={{fontSize:T.text.sm,color:T.gray500}}>Thành viên từ 01/01/2020 · 4.8★ (1,234 đánh giá)</p>
+            </div>
+            <Btn variant="outlined" size="sm" icon={<Ico n="edit" size={14}/>}>Chỉnh sửa</Btn>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:`${T.sp[18]}px ${T.sp[14]}px`}}>
+            <Input label="Tên thương hiệu" defaultValue="Lotteria Vietnam"/>
+            <Input label="Lĩnh vực" defaultValue="Ăn uống · FastFood"/>
+            <Input label="Email liên hệ" type="email" defaultValue="partner@lotteria.vn"/>
+            <Input label="Hotline" defaultValue="1800-5678"/>
+            <Input label="Website" defaultValue="https://lotteria.vn" required={false}/>
+            <Select label="Loại hình kinh doanh" options={['Chuỗi cửa hàng','Online','Kết hợp']}/>
+            <div style={{gridColumn:'1/-1'}}>
+              <Textarea label="Mô tả thương hiệu" rows={3} defaultValue="Lotteria Vietnam — chuỗi nhà hàng thức ăn nhanh hàng đầu với hơn 240 chi nhánh trên toàn quốc. Chuyên phục vụ các món gà rán, burger và combo giá trị, phục vụ từ 6:00–22:00 mỗi ngày."/>
+            </div>
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',marginTop:T.sp[20]}}>
+            <Btn variant="primary" icon={<Ico n="check" size={14}/>}>Lưu hồ sơ</Btn>
+          </div>
+        </Card>
+        <Card style={{width:300,flexShrink:0}} elevation="sm">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[18]}}>Tài liệu xác minh</h3>
+          {[{n:'Giấy phép kinh doanh',s:'Đã xác minh',v:'success',d:'12/2027'},{n:'MST doanh nghiệp',s:'Đã xác minh',v:'success',d:'Vĩnh viễn'},{n:'Hợp đồng hợp tác ECVoucher',s:'Chờ ký duyệt',v:'warning',d:'—'}].map(d=>(
+            <div key={d.n} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:`${T.sp[12]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+              <div>
+                <div style={{fontSize:T.text.sm,fontWeight:600,color:T.gray800}}>{d.n}</div>
+                <div style={{fontSize:T.text.xs,color:T.gray400,marginTop:2}}>Hiệu lực: {d.d}</div>
+              </div>
+              <Badge variant={d.v}>{d.s}</Badge>
+            </div>
+          ))}
+          <Btn variant="ghost" full style={{marginTop:T.sp[16]}} icon={<Ico n="upload" size={13}/>}>Upload tài liệu mới</Btn>
+        </Card>
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S20=()=>(
+  <DashLayout nav={PARTNER_NAV} active={5} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Báo cáo & Thống kê" subtitle="Phân tích hiệu suất kinh doanh voucher"
+        actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất Excel</Btn><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất PDF</Btn></>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        <StatCard label="Doanh thu tháng này" value="89.4M" change="+18%" icon={<Ico n="money" size={18} color={T.success}/>} color={T.success} sub="so với tháng 6: 75.8M đ"/>
+        <StatCard label="Voucher đã bán" value="1,284" change="+23%" icon={<Ico n="ticket" size={18} color={T.primary}/>} color={T.primary}/>
+        <StatCard label="Lượt đổi voucher" value="987" change="+15%" icon={<Ico n="check" size={18} color={T.accent}/>} color={T.accent}/>
+        <StatCard label="Tỷ lệ chuyển đổi" value="76.8%" change="+3.2%" icon={<Ico n="trending" size={18} color={T.info}/>} color={T.info}/>
+      </div>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[16]}}>
+        <Card style={{flex:3}} elevation="sm">
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[16]}}>
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>Doanh thu theo tuần</h3>
+            <select style={{padding:'5px 10px',border:`1px solid ${T.gray200}`,borderRadius:T.r[6],fontSize:T.text.xs,fontFamily:T.font,color:T.gray600}}>
+              <option>4 tuần gần nhất</option>
+            </select>
+          </div>
+          <Chart label="Doanh thu tuần 1–4 tháng 7/2026" type="bar" h={200} color={T.primary}/>
+        </Card>
+        <Card style={{flex:2}} elevation="sm">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[16]}}>Phân phối danh mục</h3>
+          <Chart label="Tỷ lệ voucher theo danh mục" type="pie" h={200} color={T.accent}/>
+        </Card>
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S21=()=>(
+  <DashLayout nav={PARTNER_NAV} active={6} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Thông báo" subtitle="Cập nhật từ ECVoucher về voucher và hoạt động tài khoản"
+        actions={<Btn variant="ghost" size="sm">Đánh dấu tất cả đã đọc</Btn>}/>
+      <div style={{display:'flex',flexDirection:'column',gap:T.sp[10]}}>
+        {[
+          {icon:'check',t:'Voucher "Giảm 30% combo" đã được duyệt',b:'Voucher của bạn đang hoạt động và hiển thị cho 1.2M người dùng.',time:'1 giờ trước',v:'success',unread:true},
+          {icon:'warning',t:'Voucher "Mua 2 tặng 1" sắp hết hàng',b:'Chỉ còn 5 lượt. Hãy tăng số lượng hoặc tạo voucher mới ngay.',time:'3 giờ trước',v:'warning',unread:true},
+          {icon:'money',t:'Thanh toán tháng 06/2026 đã được xử lý',b:'ECVoucher đã chuyển 45.6M đ vào tài khoản ngân hàng của bạn.',time:'2 ngày trước',v:'success',unread:false},
+          {icon:'file',t:'Yêu cầu bổ sung tài liệu hợp đồng',b:'Vui lòng upload Hợp đồng hợp tác đã ký trong vòng 3 ngày.',time:'3 ngày trước',v:'error',unread:false},
+        ].map((n,i)=>(
+          <div key={i} className="notif-item" style={{display:'flex',gap:T.sp[14],alignItems:'flex-start',padding:`${T.sp[16]}px ${T.sp[20]}px`,background:n.unread?T.primaryMuted:T.white,border:`1px solid ${n.unread?T.primary+'30':T.gray200}`,borderRadius:T.r[12],cursor:'pointer'}}>
+            <div style={{width:42,height:42,borderRadius:T.r[10],background:n.v==='success'?T.successMuted:n.v==='warning'?T.warningMuted:T.errorMuted,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ico n={n.icon} size={18} color={n.v==='success'?T.success:n.v==='warning'?T.warning:T.error}/></div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:n.unread?700:600,color:T.gray900,fontSize:T.text.sm,marginBottom:4}}>{n.t}</div>
+              <div style={{fontSize:T.text.xs,color:T.gray500,lineHeight:1.5}}>{n.b}</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
+              <span style={{fontSize:T.text.xs,color:T.gray400}}>{n.time}</span>
+              {n.unread&&<div style={{width:8,height:8,borderRadius:'50%',background:T.primary}}/>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S22=()=>(
+  <DashLayout nav={PARTNER_NAV} active={7} brand="Lotteria Vietnam">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Cài đặt tài khoản" subtitle="Quản lý thông tin thanh toán và tùy chọn thông báo"/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20],display:'flex',gap:8,alignItems:'center'}}><Ico n="bank" size={16} color={T.primary}/> Thông tin thanh toán</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+              <Select label="Ngân hàng" options={['Vietcombank','VietinBank','Agribank','Techcombank','MB Bank']}/>
+              <Input label="Số tài khoản" placeholder="Nhập số tài khoản ngân hàng"/>
+              <Input label="Tên chủ tài khoản" placeholder="VD: NGUYEN VAN AN"/>
+              <Input label="Chi nhánh" placeholder="VD: HCM — Quận 1" required={false}/>
+              <Btn variant="primary" icon={<Ico n="check" size={14}/>} style={{alignSelf:'flex-start'}}>Cập nhật thông tin</Btn>
+            </div>
+          </Card>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[6],display:'flex',gap:8,alignItems:'center'}}><Ico n="bell" size={16} color={T.primary}/> Tùy chọn thông báo</h3>
+            <p style={{fontSize:T.text.xs,color:T.gray500,marginBottom:T.sp[14]}}>Chọn kênh và loại thông báo bạn muốn nhận.</p>
+            <Toggle on={true} label="Email — Voucher mới được duyệt"/>
+            <Toggle on={true} label="Email — Báo cáo doanh thu tuần"/>
+            <Toggle on={true} label="Email — Cảnh báo tồn kho thấp"/>
+            <Toggle on={false} label="SMS — Xác nhận thanh toán"/>
+          </Card>
+        </div>
+        <Card style={{width:300,flexShrink:0}} elevation="sm">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[18],display:'flex',gap:8,alignItems:'center'}}><Ico n="bank" size={16} color={T.primary}/> Chu kỳ thanh toán</h3>
+          {[['Hình thức','Chuyển khoản ngân hàng'],['Chu kỳ','Hàng tháng (ngày 15)'],['Hoa hồng ECVoucher','8% / giao dịch'],['Ngưỡng thanh toán tối thiểu','1.000.000đ'],['Kỳ tiếp theo','15/08/2026'],['Số tiền dự kiến','~52.4M đ']].map(([l,v])=>(
+            <div key={l} style={{display:'flex',justifyContent:'space-between',padding:`${T.sp[12]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+              <span style={{fontSize:T.text.xs,color:T.gray500,lineHeight:1.5}}>{l}</span>
+              <span style={{fontSize:T.text.xs,fontWeight:700,color:T.gray900,textAlign:'right',maxWidth:140}}>{v}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  </DashLayout>
+);
+
+
+// ═════════════════════════════════════════════════════════════════
+// SCREENS S23–S31 — Admin Dashboard
+// ═════════════════════════════════════════════════════════════════
+
+const S23=()=>(
+  <DashLayout nav={ADMIN_NAV} active={0} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Admin Dashboard" subtitle="ECVoucher Platform — Tổng quan hệ thống ngày 15/07/2026"
+        actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất báo cáo</Btn><Btn variant="primary" size="sm" icon="+">Thêm nhanh</Btn></>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        <StatCard label="Tổng người dùng" value="128.5K" change="+8.2%" icon={<Ico n="users" size={18} color={T.info}/>} color={T.info} sub="Hoạt động: 94.2K"/>
+        <StatCard label="Partners đang hoạt động" value="284" change="+12" icon={<Ico n="building" size={18} color={T.primary}/>} color={T.primary}/>
+        <StatCard label="Voucher đang bán" value="4,829" change="+234" icon={<Ico n="ticket" size={18} color={T.accent}/>} color={T.accent}/>
+        <StatCard label="GMV tháng 7" value="2.4 Tỷ" change="+22%" icon={<Ico n="money" size={18} color={T.success}/>} color={T.success}/>
+      </div>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[20]}}>
+        <Card style={{flex:3}} elevation="sm">
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:T.sp[18]}}>
+            <div><h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>GMV theo tháng</h3><p style={{fontSize:T.text.xs,color:T.gray400,marginTop:3}}>H1 năm 2026</p></div>
+            <div style={{display:'flex',gap:T.sp[6]}}>
+              {['7 ngày','30 ngày','6 tháng'].map((p,i)=><div key={p} style={{padding:'5px 12px',borderRadius:T.r[6],background:i===2?T.primary:T.white,color:i===2?T.white:T.gray500,fontSize:T.text.xs,fontWeight:500,cursor:'pointer',border:`1px solid ${i===2?T.primary:T.gray200}`}}>{p}</div>)}
+            </div>
+          </div>
+          <Chart label="GMV tháng 1–6/2026" type="bar" h={200} color={T.primary}/>
+        </Card>
+        <Card style={{flex:2}} elevation="sm">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[16]}}>Phân bổ danh mục</h3>
+          <Chart label="Phân phối voucher theo ngành hàng" type="pie" h={200} color={T.accent}/>
+        </Card>
+      </div>
+      <Card elevation="sm">
+        <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[18]}}>Cảnh báo cần xử lý</h3>
+        <div style={{display:'flex',flexDirection:'column',gap:T.sp[10]}}>
+          {[{c:'error',icon:'ban',t:'Phát hiện gian lận — Voucher #V005',b:'50 lượt mua trong 60 giây — đã tự động khoá. Cần xem xét.'},
+            {c:'warning',icon:'users',t:'Partner mới chờ xét duyệt',b:'NewCo Partner đã nộp đủ hồ sơ, chờ admin phê duyệt hợp đồng.'},
+            {c:'success',icon:'check',t:'Backup hệ thống hoàn tất lúc 03:00',b:'1.2TB dữ liệu đã được sao lưu thành công vào server dự phòng.'}].map((a,i)=>(
+            <div key={i} style={{display:'flex',gap:T.sp[14],alignItems:'center',padding:`${T.sp[12]}px ${T.sp[16]}px`,background:a.c==='error'?T.errorMuted:a.c==='warning'?T.warningMuted:T.successMuted,borderRadius:T.r[10],border:`1px solid ${a.c==='error'?T.error+'30':a.c==='warning'?T.warning+'30':T.success+'30'}`}}>
+              <Ico n={a.icon} size={18} color={a.c==='error'?T.error:a.c==='warning'?T.warning:T.success}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:T.text.sm,fontWeight:700,color:T.gray900}}>{a.t}</div>
+                <div style={{fontSize:T.text.xs,color:T.gray500,marginTop:2}}>{a.b}</div>
+              </div>
+              <Btn variant="ghost" size="xs">Xem chi tiết</Btn>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  </DashLayout>
+);
+
+const S24=()=>(
+  <DashLayout nav={ADMIN_NAV} active={1} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Quản lý Người dùng" subtitle="128,450 tài khoản đã đăng ký — 94,200 đang hoạt động"
+        actions={<Btn variant="primary" size="sm" icon={<Ico n="download" size={14}/>}>Xuất danh sách</Btn>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[20]}}>
+        <StatCard label="Tổng" value="128.5K" icon={<Ico n="users" size={18} color={T.info}/>} color={T.info}/>
+        <StatCard label="Hoạt động" value="94.2K" icon={<Ico n="check" size={18} color={T.success}/>} color={T.success}/>
+        <StatCard label="Tạm khoá" value="2,840" icon={<Ico n="pause" size={18} color={T.warning}/>} color={T.warning}/>
+        <StatCard label="Bị cấm" value="410" icon={<Ico n="ban" size={18} color={T.error}/>} color={T.error}/>
+      </div>
+      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Hoạt động','Tạm khoá','Bị cấm']},{label:'Tháng này',options:['Tháng này','3 tháng','6 tháng']}]} onExport={()=>{}}/>
+      <Card elevation="sm">
+        <DataTable
+          cols={['ID','Người dùng','Email','SĐT','Ngày đăng ký','Vouchers','Trạng thái']}
+          rows={[
+            ['#U1001',<div style={{display:'flex',gap:8,alignItems:'center'}}><Avatar size={26} initials="NV" color={T.primary}/><span>Nguyễn Văn An</span></div>,'nguyenvana@email.com','0901234567','10/01/2024','24',<Badge variant="success">Hoạt động</Badge>],
+            ['#U1002',<div style={{display:'flex',gap:8,alignItems:'center'}}><Avatar size={26} initials="TB" color={T.accent}/><span>Trần Thị Bình</span></div>,'tranthib@email.com','0912345678','15/01/2024','18',<Badge variant="success">Hoạt động</Badge>],
+            ['#U1003',<div style={{display:'flex',gap:8,alignItems:'center'}}><Avatar size={26} initials="LC" color={T.success}/><span>Lê Văn Cường</span></div>,'levanc@email.com','0923456789','20/01/2024','3',<Badge variant="warning">Tạm khoá</Badge>],
+            ['#U1004',<div style={{display:'flex',gap:8,alignItems:'center'}}><Avatar size={26} initials="PD" color={T.gray400}/><span>Phạm Thị Dung</span></div>,'phamthid@email.com','0934567890','25/01/2024','0',<Badge variant="error">Bị cấm</Badge>],
+            ['#U1005',<div style={{display:'flex',gap:8,alignItems:'center'}}><Avatar size={26} initials="HE" color={T.info}/><span>Hoàng Văn Đức</span></div>,'hoangvand@email.com','0945678901','30/01/2024','31',<Badge variant="success">Hoạt động</Badge>],
+          ]}
+          actions
+        />
+      </Card>
+      <Pagination total={6}/>
+    </div>
+  </DashLayout>
+);
+
+const S25=()=>(
+  <DashLayout nav={ADMIN_NAV} active={2} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Quản lý Partners" subtitle="342 đối tác đang hợp tác trên nền tảng ECVoucher"/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[20]}}>
+        <StatCard label="Đang hoạt động" value="284" icon={<Ico n="check" size={18} color={T.success}/>} color={T.success}/>
+        <StatCard label="Chờ xét duyệt" value="18" icon={<Ico n="history" size={18} color={T.warning}/>} color={T.warning}/>
+        <StatCard label="Tạm dừng" value="40" icon={<Ico n="pause" size={18} color={T.gray500}/>} color={T.gray500}/>
+      </div>
+      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Hoạt động','Chờ duyệt','Tạm dừng']},{label:'Tất cả ngành',options:['Ăn uống','Giải trí','Du lịch','Mua sắm']}]} onCreate={()=>{}} createLabel="Thêm Partner"/>
+      <Card elevation="sm">
+        <DataTable
+          cols={['Partner','Ngành nghề','Vouchers','Doanh thu','Rating','Hoa hồng','Trạng thái']}
+          rows={[
+            [<div style={{display:'flex',gap:10,alignItems:'center'}}><div style={{width:28,height:28,borderRadius:T.r[6],background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="building" size={14} color={T.accent}/></div><div><div style={{fontWeight:700,color:T.gray900}}>Lotteria Vietnam</div><div style={{fontSize:11,color:T.gray400}}>partner@lotteria.vn</div></div></div>,'Ăn uống','48','89.4M đ','4.8 ★','8%',<Badge variant="success">Hoạt động</Badge>],
+            [<div style={{display:'flex',gap:10,alignItems:'center'}}><div style={{width:28,height:28,borderRadius:T.r[6],background:T.infoLight,display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="star" size={14} color={T.info}/></div><div><div style={{fontWeight:700,color:T.gray900}}>CGV Cinemas</div><div style={{fontSize:11,color:T.gray400}}>partner@cgv.vn</div></div></div>,'Giải trí','24','56.2M đ','4.9 ★','8%',<Badge variant="success">Hoạt động</Badge>],
+            [<div style={{display:'flex',gap:10,alignItems:'center'}}><div style={{width:28,height:28,borderRadius:T.r[6],background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="ticket" size={14} color={T.accent}/></div><div><div style={{fontWeight:700,color:T.gray900}}>Pizza Hut Vietnam</div><div style={{fontSize:11,color:T.gray400}}>partner@pizzahut.vn</div></div></div>,'Ăn uống','36','72.1M đ','4.7 ★','8%',<Badge variant="success">Hoạt động</Badge>],
+            [<div style={{display:'flex',gap:10,alignItems:'center'}}><div style={{width:28,height:28,borderRadius:T.r[6],background:T.gray100,display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="package" size={14} color={T.gray500}/></div><div><div style={{fontWeight:700,color:T.gray900}}>NewCo Partner</div><div style={{fontSize:11,color:T.gray400}}>info@newco.vn</div></div></div>,'Mua sắm','0','0đ','—','—',<Badge variant="warning">Chờ duyệt</Badge>],
+          ]}
+          actions
+        />
+      </Card>
+      <Pagination/>
+    </div>
+  </DashLayout>
+);
+
+const S26=()=>(
+  <DashLayout nav={ADMIN_NAV} active={3} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Quản lý Vouchers" subtitle="4,829 voucher đang hoạt động trong hệ thống"/>
+      <Toolbar search filter filters={[{label:'Tất cả Partner'},{label:'Tất cả danh mục'},{label:'Tất cả trạng thái'}]} onExport={()=>{}}/>
+      <Card elevation="sm">
+        <DataTable
+          cols={['ID','Tên Voucher','Partner','Danh mục','Giá','Đã bán','Rating','Trạng thái']}
+          rows={[
+            ['#V001','Giảm 30% combo bữa','Lotteria','Ăn uống','140K','342/400','4.8 ★',<Badge variant="success">Hoạt động</Badge>],
+            ['#V002','Mua 1 tặng 1 bắp','CGV','Giải trí','50K','218/300','4.9 ★',<Badge variant="success">Hoạt động</Badge>],
+            ['#V003','Freeship Grab ×5','Grab','Vận chuyển','0đ','1024/2000','4.6 ★',<Badge variant="success">Hoạt động</Badge>],
+            ['#V004','Giảm 55% thời trang','Sendo','Mua sắm','45K','189/500','—',<Badge variant="warning">Chờ duyệt</Badge>],
+            ['#V005','[SPAM] Voucher giả mạo','???','???','1đ','50/∞','—',<Badge variant="error">Đã khoá</Badge>],
+          ]}
+          actions
+        />
+      </Card>
+      <Pagination total={8}/>
+    </div>
+  </DashLayout>
+);
+
+const S27=()=>(
+  <DashLayout nav={ADMIN_NAV} active={4} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Quản lý Danh mục" subtitle="Phân loại và sắp xếp voucher trên toàn hệ thống"
+        actions={<Btn variant="primary" icon="+" size="sm">Thêm danh mục</Btn>}/>
+      <div style={{display:'flex',flexWrap:'wrap',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        {[{e:'ticket',n:'Ăn uống',c:1284,color:T.accent},{e:'package',n:'Mua sắm',c:987,color:T.primary},{e:'trending',n:'Du lịch',c:456,color:T.info},{e:'star',n:'Làm đẹp',c:387,color:'#ec4899'},{e:'play',n:'Giải trí',c:342,color:T.error},{e:'shield',n:'Sức khoẻ',c:213,color:T.success},{e:'home',n:'Di chuyển',c:178,color:T.warning},{e:'settings',n:'Gaming',c:89,color:'#8b5cf6'}].map(cat=>(
+          <Card key={cat.n} elevation="sm" style={{width:188,textAlign:'center'}} onClick={()=>{}}>
+            <div style={{width:52,height:52,background:cat.color+'18',borderRadius:T.r[12],display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Ico n={cat.e} size={24} color={cat.color}/></div>
+            <div style={{fontWeight:700,color:T.gray900,fontSize:T.text.md,letterSpacing:'-.2px'}}>{cat.n}</div>
+            <div style={{fontSize:T.text.xs,color:T.gray400,margin:'4px 0 14px'}}>{cat.c.toLocaleString()} voucher</div>
+            <div style={{height:4,background:T.gray100,borderRadius:T.r.full,marginBottom:T.sp[14]}}><div style={{height:'100%',width:`${Math.min(cat.c/13,100)}%`,background:cat.color,borderRadius:T.r.full}}/></div>
+            <div style={{display:'flex',gap:T.sp[6],justifyContent:'center'}}>
+              <Btn variant="ghost" size="xs">Sửa</Btn>
+              <Btn variant="danger" size="xs">Xoá</Btn>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S28=()=>(
+  <DashLayout nav={ADMIN_NAV} active={5} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Báo cáo Hệ thống" subtitle="Phân tích toàn diện hiệu suất nền tảng ECVoucher"
+        actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Excel</Btn><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>PDF</Btn></>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        <StatCard label="Tổng GMV H1/2026" value="14.2 Tỷ" change="+34%" icon={<Ico n="money" size={18} color={T.success}/>} color={T.success}/>
+        <StatCard label="Tổng đơn hàng" value="892.5K" change="+28%" icon={<Ico n="package" size={18} color={T.primary}/>} color={T.primary}/>
+        <StatCard label="Tỷ lệ hoàn tiền" value="2.1%" change="-0.4%" icon={<Ico n="repeat" size={18} color={T.warning}/>} color={T.warning}/>
+        <StatCard label="Doanh thu EC (8%)" value="1.14 Tỷ" change="+34%" icon={<Ico n="bank" size={18} color={T.info}/>} color={T.info}/>
+      </div>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[16]}}>
+        <Card style={{flex:3}} elevation="sm">
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[16]}}>
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>GMV & Doanh thu H1/2026</h3>
+            <div style={{display:'flex',gap:T.sp[14],fontSize:T.text.xs,color:T.gray500}}>
+              <div style={{display:'flex',gap:5,alignItems:'center'}}><div style={{width:10,height:3,background:T.primary,borderRadius:T.r.full}}/> GMV</div>
+              <div style={{display:'flex',gap:5,alignItems:'center'}}><div style={{width:10,height:3,background:T.accent,borderRadius:T.r.full}}/> Doanh thu EC</div>
+            </div>
+          </div>
+          <Chart label="Biểu đồ GMV tháng 1–6/2026" type="line" h={200} color={T.primary}/>
+        </Card>
+        <Card style={{flex:2}} elevation="sm">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[18]}}>Top 5 Partners</h3>
+          {[['Grab','124M đ','#1',T.accent],['Shopee','98M đ','#2',T.primary],['Lotteria','89.4M đ','#3',T.primary],['Pizza Hut','72.1M đ','#4',T.gray400],['CGV','56.2M đ','#5',T.gray400]].map(([n,r,rank,c],i)=>(
+            <div key={n} style={{display:'flex',gap:T.sp[12],alignItems:'center',padding:`${T.sp[10]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+              <span style={{fontSize:T.text.xs,fontWeight:800,color:c,width:20,textAlign:'center'}}>{rank}</span>
+              <span style={{flex:1,fontSize:T.text.sm,color:T.gray700,fontWeight:500}}>{n}</span>
+              <span style={{fontSize:T.text.sm,fontWeight:700,color:T.gray900}}>{r}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S29=()=>(
+  <DashLayout nav={ADMIN_NAV} active={6} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Cài đặt Hệ thống" subtitle="Cấu hình hoạt động của nền tảng ECVoucher"/>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20],display:'flex',gap:8,alignItems:'center'}}><Ico n="settings" size={16} color={T.primary}/> Cấu hình chung</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+              <Input label="Tên ứng dụng" defaultValue="ECVoucher Platform"/>
+              <Input label="Email hỗ trợ" defaultValue="support@ecvoucher.vn" type="email"/>
+              <div style={{display:'flex',gap:T.sp[14]}}><Input label="Hoa hồng mặc định (%)" defaultValue="8" prefix="%" width="50%"/><Input label="Giới hạn voucher/user" defaultValue="10" type="number" width="50%"/></div>
+              <Select label="Múi giờ hệ thống" options={['Asia/Ho_Chi_Minh (GMT+7)','UTC','Asia/Bangkok']}/>
+              <Select label="Ngôn ngữ mặc định" options={['Tiếng Việt','English']}/>
+              <Btn variant="primary" icon={<Ico n="check" size={14}/>} style={{alignSelf:'flex-start'}}>Lưu cấu hình</Btn>
+            </div>
+          </Card>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[16],display:'flex',gap:8,alignItems:'center'}}><Ico n="bank" size={16} color={T.primary}/> Cổng thanh toán</h3>
+            {[{n:'VNPay',s:true},{n:'Ví MoMo',s:true},{n:'ZaloPay',s:false},{n:'Thẻ Stripe',s:true},{n:'ATM nội địa',s:true}].map(gw=>(
+              <div key={gw.n} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:`${T.sp[12]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+                <div style={{display:'flex',gap:T.sp[10],alignItems:'center'}}>
+                  <Ico n={gw.s?'check':'ban'} size={14} color={gw.s?T.success:T.error}/>
+                  <span style={{fontSize:T.text.sm,fontWeight:600,color:T.gray800}}>{gw.n}</span>
+                </div>
+                <div style={{display:'flex',gap:T.sp[8],alignItems:'center'}}>
+                  <Badge variant={gw.s?'success':'default'}>{gw.s?'Hoạt động':'Tắt'}</Badge>
+                  <Btn variant="ghost" size="xs">Cấu hình</Btn>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </div>
+        <div style={{width:320,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[6],display:'flex',gap:8,alignItems:'center'}}><Ico n="shield" size={16} color={T.primary}/> Bảo mật hệ thống</h3>
+            <p style={{fontSize:T.text.xs,color:T.gray500,marginBottom:T.sp[14]}}>Các tùy chọn bảo vệ nền tảng và tài khoản.</p>
+            <Toggle on={true} label="Xác thực 2 bước bắt buộc (Admin)"/>
+            <Toggle on={true} label="Giới hạn đăng nhập sai (5 lần)"/>
+            <Toggle on={false} label="Khoá tự động IP đáng ngờ"/>
+            <Toggle on={true} label="Nhật ký audit đầy đủ"/>
+            <Toggle on={true} label="Phát hiện gian lận tự động"/>
+          </Card>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[16],display:'flex',gap:8,alignItems:'center'}}><Ico n="download" size={16} color={T.primary}/> Sao lưu dữ liệu</h3>
+            <div style={{background:T.successMuted,borderRadius:T.r[8],padding:`${T.sp[12]}px ${T.sp[14]}px`,marginBottom:T.sp[14],border:`1px solid ${T.success}30`}}>
+              <div style={{fontSize:T.text.xs,fontWeight:700,color:T.success,display:'flex',gap:5,alignItems:'center'}}><Ico n="check" size={12} color={T.success}/> Backup cuối: Hôm nay 03:00</div>
+              <div style={{fontSize:T.text.xs,color:T.gray500,marginTop:3}}>1.2TB · Thành công · Server dự phòng SG</div>
+            </div>
+            <div style={{fontSize:T.text.xs,color:T.gray500,marginBottom:T.sp[14]}}>Lịch sao lưu: Hàng ngày 03:00 UTC+7</div>
+            <Btn variant="primary" full icon={<Ico n="download" size={14}/>}>Sao lưu ngay</Btn>
+          </Card>
+        </div>
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S30=()=>(
+  <DashLayout nav={ADMIN_NAV} active={7} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Thông báo Admin" subtitle="Sự kiện hệ thống và các vấn đề cần xử lý"
+        actions={<Btn variant="ghost" size="sm">Đánh dấu đã đọc tất cả</Btn>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        {[{l:'Chưa đọc',v:7,c:T.primary},{l:'Ưu tiên cao',v:2,c:T.error},{l:'Cảnh báo',v:3,c:T.warning},{l:'Hôm nay',v:12,c:T.success}].map(s=>(
+          <Card key={s.l} elevation="sm" style={{flex:1,textAlign:'center',cursor:'pointer'}}>
+            <div style={{fontSize:T.text.hero,fontWeight:800,color:s.c,letterSpacing:'-2px'}}>{s.v}</div>
+            <div style={{fontSize:T.text.xs,color:T.gray500,marginTop:4,fontWeight:500}}>{s.l}</div>
+          </Card>
+        ))}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:T.sp[10]}}>
+        {[
+          {icon:'ban',t:'Phát hiện gian lận — Voucher #V005',b:'50 lượt mua trong 60 giây — đã tự động khoá. Cần xem xét và báo cáo.',time:'5 phút trước',c:'error',pri:'Khẩn cấp',unread:true},
+          {icon:'users',t:'Partner mới chờ xét duyệt hợp đồng',b:'NewCo Partner đã nộp đủ 3/3 tài liệu yêu cầu. Sẵn sàng để xem xét.',time:'30 phút trước',c:'warning',pri:'Cao',unread:true},
+          {icon:'trending',t:'GMV ngày 14/07 đạt kỷ lục mới',b:'GMV đạt 89.4M đ — cao nhất trong lịch sử nền tảng. Tăng 42% so với hôm qua.',time:'2 giờ trước',c:'success',pri:'Thông tin',unread:false},
+          {icon:'settings',t:'Lịch bảo trì định kỳ 20/07',b:'Downtime dự kiến 02:00–03:00 ngày 20/07/2026. Thông báo cho đối tác.',time:'1 ngày trước',c:'info',pri:'Thấp',unread:false},
+        ].map((n,i)=>(
+          <div key={i} className="notif-item" style={{display:'flex',gap:T.sp[14],alignItems:'flex-start',padding:`${T.sp[16]}px ${T.sp[20]}px`,background:n.unread?T.primaryMuted:T.white,border:`1px solid ${n.unread?T.primary+'30':T.gray200}`,borderRadius:T.r[12],borderLeft:`4px solid ${n.c==='error'?T.error:n.c==='warning'?T.warning:n.c==='success'?T.success:T.info}`,cursor:'pointer'}}>
+            <div style={{width:42,height:42,borderRadius:T.r[10],background:n.c==='error'?T.errorMuted:n.c==='warning'?T.warningMuted:n.c==='success'?T.successMuted:T.infoMuted,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ico n={n.icon} size={18} color={n.c==='error'?T.error:n.c==='warning'?T.warning:n.c==='success'?T.success:T.info}/></div>
+            <div style={{flex:1}}>
+              <div style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
+                <span style={{fontWeight:700,color:T.gray900,fontSize:T.text.sm}}>{n.t}</span>
+                <Badge variant={n.c==='error'?'error':n.c==='warning'?'warning':n.c==='success'?'success':'primary'}>{n.pri}</Badge>
+              </div>
+              <div style={{fontSize:T.text.xs,color:T.gray500,lineHeight:1.5}}>{n.b}</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
+              <span style={{fontSize:T.text.xs,color:T.gray400,whiteSpace:'nowrap'}}>{n.time}</span>
+              {n.unread&&<div style={{width:8,height:8,borderRadius:'50%',background:T.primary}}/>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </DashLayout>
+);
+
+const S31=()=>(
+  <DashLayout nav={ADMIN_NAV} active={8} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Audit Log" subtitle="Nhật ký đầy đủ mọi hoạt động trên hệ thống ECVoucher"
+        actions={<Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất log</Btn>}/>
+      <div style={{display:'flex',gap:T.sp[10],marginBottom:T.sp[20],flexWrap:'wrap'}}>
+        {['Tất cả','USER','VOUCHER','PARTNER','ADMIN','PAYMENT','SECURITY','SYSTEM'].map((t,i)=>(
+          <div key={t} style={{padding:'5px 14px',borderRadius:T.r.full,background:i===0?T.primary:T.white,color:i===0?T.white:T.gray600,fontSize:T.text.xs,fontWeight:500,cursor:'pointer',border:`1px solid ${i===0?T.primary:T.gray200}`}}>{t}</div>
+        ))}
+      </div>
+      <Toolbar filter filters={[{label:'Tất cả hành động'},{label:'Hôm nay',options:['Hôm nay','7 ngày','30 ngày']}]} onExport={()=>{}}/>
+      <Card elevation="sm">
+        <DataTable
+          cols={['Thời gian','Hành động','Đối tượng','Thực hiện bởi','IP Address','Kết quả']}
+          compact
+          rows={[
+            [<span style={{fontFamily:'monospace',fontSize:11,color:T.gray500}}>15/07 14:32:01</span>,<code style={{background:T.errorMuted,color:T.error,padding:'2px 7px',borderRadius:T.r[4],fontSize:11,fontWeight:700}}>VOUCHER.LOCK</code>,'Voucher #V005','[System Auto]','127.0.0.1',<Badge variant="error">Khoá tự động</Badge>],
+            [<span style={{fontFamily:'monospace',fontSize:11,color:T.gray500}}>15/07 13:15:44</span>,<code style={{background:T.infoMuted,color:T.info,padding:'2px 7px',borderRadius:T.r[4],fontSize:11,fontWeight:700}}>PARTNER.LOGIN</code>,'Lotteria VN','partner@lotteria.vn','203.162.1.x',<Badge variant="success">Thành công</Badge>],
+            [<span style={{fontFamily:'monospace',fontSize:11,color:T.gray500}}>15/07 12:00:00</span>,<code style={{background:T.successMuted,color:T.success,padding:'2px 7px',borderRadius:T.r[4],fontSize:11,fontWeight:700}}>BACKUP.CREATE</code>,'DB Backup (1.2TB)','[System Cron]','localhost',<Badge variant="success">Hoàn tất</Badge>],
+            [<span style={{fontFamily:'monospace',fontSize:11,color:T.gray500}}>15/07 11:45:22</span>,<code style={{background:T.accentLight,color:T.accent,padding:'2px 7px',borderRadius:T.r[4],fontSize:11,fontWeight:700}}>VOUCHER.CREATE</code>,'Giảm 30% combo','partner@lotteria.vn','203.162.1.x',<Badge variant="primary">Chờ duyệt</Badge>],
+            [<span style={{fontFamily:'monospace',fontSize:11,color:T.gray500}}>15/07 10:30:55</span>,<code style={{background:T.errorMuted,color:T.error,padding:'2px 7px',borderRadius:T.r[4],fontSize:11,fontWeight:700}}>USER.BAN</code>,'User #U1004','admin1@ecvoucher.vn','10.0.0.1',<Badge variant="error">Đã thực hiện</Badge>],
+            [<span style={{fontFamily:'monospace',fontSize:11,color:T.gray500}}>15/07 09:22:11</span>,<code style={{background:T.infoMuted,color:T.info,padding:'2px 7px',borderRadius:T.r[4],fontSize:11,fontWeight:700}}>ADMIN.LOGIN</code>,'Admin Dashboard','admin1@ecvoucher.vn','10.0.0.1',<Badge variant="success">Thành công</Badge>],
+            [<span style={{fontFamily:'monospace',fontSize:11,color:T.gray500}}>15/07 03:00:01</span>,<code style={{background:T.successMuted,color:T.success,padding:'2px 7px',borderRadius:T.r[4],fontSize:11,fontWeight:700}}>SYSTEM.BACKUP</code>,'Scheduled Job','[System Cron]','localhost',<Badge variant="success">Hoàn tất</Badge>],
+          ]}
+        />
+      </Card>
+      <Pagination total={10}/>
+    </div>
+  </DashLayout>
+);
+
+// ═════════════════════════════════════════════════════════════════
+// APP — Screen Registry & Navigation
+// ═════════════════════════════════════════════════════════════════
+
+const SCREENS=[
+  {id:'s01',label:'S01 — Trang chủ',g:'Khách & Auth',comp:S01},
+  {id:'s02',label:'S02 — Đăng nhập',g:'Khách & Auth',comp:S02},
+  {id:'s03',label:'S03 — Đăng ký',g:'Khách & Auth',comp:S03},
+  {id:'s04',label:'S04 — Quên mật khẩu',g:'Khách & Auth',comp:S04},
+  {id:'s05',label:'S05 — Duyệt Voucher',g:'Khách & Auth',comp:S05},
+  {id:'s06',label:'S06 — Chi tiết Voucher',g:'Khách & Auth',comp:S06},
+  {id:'s07',label:'S07 — Kết quả tìm kiếm',g:'Khách & Auth',comp:S07},
+  {id:'s08',label:'S08 — Hồ sơ khách hàng',g:'Customer Dashboard',comp:S08},
+  {id:'s09',label:'S09 — Voucher của tôi',g:'Customer Dashboard',comp:S09},
+  {id:'s10',label:'S10 — Dùng Voucher QR',g:'Customer Dashboard',comp:S10},
+  {id:'s11',label:'S11 — Giỏ hàng',g:'Customer Dashboard',comp:S11},
+  {id:'s12',label:'S12 — Lịch sử đơn hàng',g:'Customer Dashboard',comp:S12},
+  {id:'s13',label:'S13 — Thông báo KH',g:'Customer Dashboard',comp:S13},
+  {id:'s14',label:'S14 — Cài đặt KH',g:'Customer Dashboard',comp:S14},
+  {id:'s15',label:'S15 — Partner Dashboard',g:'Partner Portal',comp:S15},
+  {id:'s16',label:'S16 — Quản lý Voucher',g:'Partner Portal',comp:S16},
+  {id:'s17',label:'S17 — Tạo Voucher',g:'Partner Portal',comp:S17},
+  {id:'s18',label:'S18 — Sửa Voucher',g:'Partner Portal',comp:S18},
+  {id:'s19',label:'S19 — Hồ sơ Partner',g:'Partner Portal',comp:S19},
+  {id:'s20',label:'S20 — Báo cáo Partner',g:'Partner Portal',comp:S20},
+  {id:'s21',label:'S21 — Thông báo Partner',g:'Partner Portal',comp:S21},
+  {id:'s22',label:'S22 — Cài đặt Partner',g:'Partner Portal',comp:S22},
+  {id:'s23',label:'S23 — Admin Dashboard',g:'Admin Portal',comp:S23},
+  {id:'s24',label:'S24 — Quản lý Users',g:'Admin Portal',comp:S24},
+  {id:'s25',label:'S25 — Quản lý Partners',g:'Admin Portal',comp:S25},
+  {id:'s26',label:'S26 — Quản lý Vouchers',g:'Admin Portal',comp:S26},
+  {id:'s27',label:'S27 — Danh mục',g:'Admin Portal',comp:S27},
+  {id:'s28',label:'S28 — Báo cáo Admin',g:'Admin Portal',comp:S28},
+  {id:'s29',label:'S29 — Cài đặt Admin',g:'Admin Portal',comp:S29},
+  {id:'s30',label:'S30 — Thông báo Admin',g:'Admin Portal',comp:S30},
+  {id:'s31',label:'S31 — Audit Log',g:'Admin Portal',comp:S31},
+];
+
+const GROUPS=[...new Set(SCREENS.map(s=>s.g))];
+const SCALE=0.70;
+
+const mainViewRef=React.createRef();
+
+function App(){
+  const [active,setActive]=useState('s01');
+  const [toasts,setToasts]=useState([]);
+
+  const cur=SCREENS.find(s=>s.id===active)||SCREENS[0];
+  const Comp=cur.comp;
+
+  const navigate=(id)=>{
+    setActive(id);
+    if(mainViewRef.current) mainViewRef.current.scrollTop=0;
+  };
+
+  const showToast=useCallback((msg,type='success',title='')=>{
+    const id=Date.now();
+    setToasts(p=>[...p,{id,message:msg,type,title}]);
+    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3500);
+  },[]);
+
+  const dismissToast=(id)=>setToasts(p=>p.filter(t=>t.id!==id));
+
+  useEffect(()=>{
+    const onKey=e=>{
+      if(e.key==='ArrowRight'||e.key==='ArrowDown'){
+        const i=SCREENS.findIndex(s=>s.id===active);
+        if(i<SCREENS.length-1)navigate(SCREENS[i+1].id);
+      }
+      if(e.key==='ArrowLeft'||e.key==='ArrowUp'){
+        const i=SCREENS.findIndex(s=>s.id===active);
+        if(i>0)navigate(SCREENS[i-1].id);
+      }
+    };
+    window.addEventListener('keydown',onKey);
+    return()=>window.removeEventListener('keydown',onKey);
+  },[active]);
+
+  return(
+    <NavCtx.Provider value={navigate}>
+    <ToastCtx.Provider value={showToast}>
+      {/* Navigation panel */}
+      <nav className="nav-panel">
+        <div className="nav-panel-brand">
+          <div className="nav-panel-brand-icon">EC</div>
+          <div>
+            <div className="nav-panel-brand-name">ECVoucher UI</div>
+            <div style={{color:'#475569',fontSize:9,letterSpacing:'.04em',marginTop:1}}>31 SCREENS · HK3 2526</div>
+          </div>
+        </div>
+        <div style={{padding:'8px 6px 4px',borderBottom:'1px solid #1e293b',marginBottom:4}}>
+          <div style={{background:'#1e293b',borderRadius:6,padding:'5px 8px',display:'flex',alignItems:'center',gap:6}}>
+            <Ico n="search" size={12} color="#475569"/>
+            <span style={{color:'#475569',fontSize:11}}>← → phím điều hướng</span>
+          </div>
+        </div>
+        {GROUPS.map(g=>(
+          <div key={g}>
+            <div className="nav-group-label">{g}</div>
+            {SCREENS.filter(s=>s.g===g).map(s=>(
+              <a key={s.id} className={'nav-link'+(s.id===active?' active':'')} onClick={()=>navigate(s.id)}>
+                <span className="nav-link-dot"/>
+                <span>{s.label}</span>
+              </a>
+            ))}
+          </div>
+        ))}
+        <div style={{padding:'12px 14px',borderTop:'1px solid #1e293b',marginTop:'auto'}}>
+          <div style={{color:'#1e293b',fontSize:10,background:'#1e293b',borderRadius:4,padding:'6px 10px',textAlign:'center'}}>
+            <div style={{color:'#475569',fontSize:10,fontWeight:600}}>EC Voucher System</div>
+            <div style={{color:'#334155',fontSize:9,marginTop:2}}>HCMUS · HK3 2025–2026</div>
+          </div>
+        </div>
+      </nav>
+      {/* Main content */}
+      <div className="main-view" ref={mainViewRef}>
+        <div style={{transform:`scale(${SCALE})`,transformOrigin:'top left',width:`${100/SCALE}%`,minHeight:`${100/SCALE}vh`}}>
+          <div className="screen-frame">
+            <Comp/>
+          </div>
+        </div>
+        <ToastContainer toasts={toasts} onDismiss={dismissToast}/>
+      </div>
+    </ToastCtx.Provider>
+    </NavCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
