@@ -30,6 +30,7 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#111827;-webkit-
 .screen-frame{width:1440px;min-height:900px;background:#f8fafc;overflow:hidden;position:relative}
 @keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
 @keyframes skelShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes screenFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 /* Phase 3 — hover & interaction polish */
 button:active,a[style*="cursor:pointer"]:active{transform:scale(.97);transition:transform .1s}
 .data-row-hover:hover{background:#f8fafc !important;cursor:pointer}
@@ -44,6 +45,7 @@ button:active,a[style*="cursor:pointer"]:active{transform:scale(.97);transition:
 const {useState,useEffect,useRef,useCallback,useContext,createContext}=React;
 const NavCtx=createContext(()=>{});
 const ToastCtx=createContext(()=>{});
+const SearchCtx=createContext(['',()=>{}]);
 
 // ── DESIGN TOKENS ─────────────────────────────────────────────────────────
 const T={
@@ -116,6 +118,8 @@ const _P={
   logOut:'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9',
   play:'M5 3l14 9-14 9V3z',
   heart:'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
+  close:'M18 6L6 18M6 6l12 12',
+  phone:'M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013 5.18a2 2 0 012-2.18h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L9.09 10.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z',
 };
 const Ico=({n,size=16,color='currentColor',style:sx={}})=>(
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:'block',flexShrink:0,...sx}}>
@@ -301,6 +305,9 @@ const LogoMark=({size=32,variant='default'})=>(
 // TopNav for public pages
 const TopNav=({loggedIn=false,transparent=false})=>{
   const nav=useContext(NavCtx);
+  const [,setSearchQ]=useContext(SearchCtx);
+  const [sq,setSq]=useState('');
+  const doSearch=()=>{if(sq.trim()){setSearchQ(sq);nav('s07');}};
   const NAV_LINKS=[
     {l:'Khám phá',to:'s05'},
     {l:'Danh mục',to:'s05'},
@@ -316,17 +323,27 @@ const TopNav=({loggedIn=false,transparent=false})=>{
     {NAV_LINKS.map(({l,to})=>(
       <a key={l} onClick={()=>nav(to)} style={{fontSize:T.text.base,fontWeight:500,color:T.gray600,cursor:'pointer',textDecoration:'none',letterSpacing:'-.01em',transition:'color .15s'}} onMouseEnter={e=>e.currentTarget.style.color=T.primary} onMouseLeave={e=>e.currentTarget.style.color=T.gray600}>{l}</a>
     ))}
-    <div style={{display:'flex',gap:T.sp[12],alignItems:'center',marginLeft:T.sp[16]}}>
+    {/* Search bar */}
+    <div style={{display:'flex',alignItems:'center',gap:8,background:T.gray50,borderRadius:T.r.full,padding:'0 14px',height:38,flex:'0 1 240px',border:`1.5px solid ${T.gray200}`,transition:'border-color .15s,background .15s'}}>
+      <Ico n="search" size={14} color={T.gray400}/>
+      <input value={sq} onChange={e=>setSq(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doSearch()}
+        placeholder="Tìm voucher…"
+        style={{border:'none',outline:'none',background:'transparent',fontSize:T.text.sm,color:T.gray700,flex:1,fontFamily:T.font,minWidth:0}}
+        onFocus={e=>{e.target.parentElement.style.borderColor=T.primary;e.target.parentElement.style.background=T.white;}}
+        onBlur={e=>{e.target.parentElement.style.borderColor=T.gray200;e.target.parentElement.style.background=T.gray50;}}/>
+    </div>
+    <div style={{display:'flex',gap:T.sp[12],alignItems:'center',marginLeft:T.sp[4]}}>
       {loggedIn?(
         <>
-          <div style={{position:'relative',cursor:'pointer',width:40,height:40,background:T.gray100,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',transition:'background .15s'}} onClick={()=>nav('s13')} onMouseEnter={e=>e.currentTarget.style.background=T.gray200} onMouseLeave={e=>e.currentTarget.style.background=T.gray100}>
+          <div style={{position:'relative',cursor:'pointer',width:40,height:40,background:T.gray100,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',transition:'background .15s'}} onClick={()=>nav('s14')} onMouseEnter={e=>e.currentTarget.style.background=T.gray200} onMouseLeave={e=>e.currentTarget.style.background=T.gray100}>
             <Ico n="bell" size={18} color={T.gray600}/>
             <div style={{position:'absolute',top:7,right:7,width:8,height:8,background:T.error,borderRadius:'50%',border:`2px solid ${T.white}`}}/>
           </div>
-          <div style={{width:40,height:40,background:T.gray100,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background .15s'}} onClick={()=>nav('s11')} onMouseEnter={e=>e.currentTarget.style.background=T.gray200} onMouseLeave={e=>e.currentTarget.style.background=T.gray100}>
+          <div style={{position:'relative',width:40,height:40,background:T.gray100,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background .15s'}} onClick={()=>nav('s08')} onMouseEnter={e=>e.currentTarget.style.background=T.gray200} onMouseLeave={e=>e.currentTarget.style.background=T.gray100}>
             <Ico n="cart" size={18} color={T.gray600}/>
+            <div style={{position:'absolute',top:3,right:3,minWidth:16,height:16,background:T.primary,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:T.white,border:`2px solid ${T.white}`,padding:'0 3px',lineHeight:1}}>3</div>
           </div>
-          <div style={{cursor:'pointer'}} onClick={()=>nav('s08')}><Avatar size={38} initials="NV" status="online"/></div>
+          <div style={{cursor:'pointer'}} onClick={()=>nav('s11')}><Avatar size={38} initials="NV" status="online"/></div>
         </>
       ):(
         <>
@@ -381,10 +398,12 @@ const DashSidebar=({items=[],activeIdx=0,type='partner',brand='Partner'})=>{
 };
 
 // Stat Card — refined
-const StatCard=({label,value,change,icon,color=T.primary,sub})=>{
+const StatCard=({label,value,change,icon,color=T.primary,sub,onClick})=>{
   const pos=change&&change.startsWith('+');
   return(
-    <Card elevation="sm" style={{flex:1,minWidth:180}}>
+    <Card elevation="sm" style={{flex:1,minWidth:180,cursor:onClick?'pointer':'default',transition:'box-shadow .15s,transform .15s'}} onClick={onClick}
+      onMouseEnter={onClick?e=>{e.currentTarget.style.boxShadow='0 8px 24px rgba(79,70,229,.12)';e.currentTarget.style.transform='translateY(-1px)';}:undefined}
+      onMouseLeave={onClick?e=>{e.currentTarget.style.boxShadow='';e.currentTarget.style.transform='';}:undefined}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
         <div style={{width:40,height:40,background:color+'18',borderRadius:T.r[10],display:'flex',alignItems:'center',justifyContent:'center',fontSize:19}}>{icon}</div>
         {change&&<span style={{fontSize:T.text.xs,fontWeight:600,color:pos?T.success:T.error,background:pos?T.successMuted:T.errorMuted,padding:'3px 8px',borderRadius:T.r.full,display:'flex',alignItems:'center',gap:3}}>
@@ -444,7 +463,7 @@ const VCard=({brand='Lotteria',title='Giảm 30%',discount='-30%',price='140K',o
             <span style={{fontSize:T.text.md,fontWeight:800,color:T.accent,letterSpacing:'-.3px'}}>{price}</span>
             <span style={{fontSize:T.text.xs,color:T.gray400,textDecoration:'line-through',marginLeft:5}}>{orig}</span>
           </div>
-          <div style={{width:30,height:30,background:T.primary,borderRadius:T.r[8],display:'flex',alignItems:'center',justifyContent:'center',color:T.white,fontSize:16,fontWeight:700,boxShadow:T.shadowColor}}>+</div>
+          <div onClick={e=>{e.stopPropagation();nav('s08');}} style={{width:30,height:30,background:T.primary,borderRadius:T.r[8],display:'flex',alignItems:'center',justifyContent:'center',color:T.white,fontSize:16,fontWeight:700,boxShadow:T.shadowColor,transition:'transform .12s,box-shadow .12s'}} onMouseEnter={e=>{e.currentTarget.style.transform='scale(1.12)';e.currentTarget.style.boxShadow=T.shadowLg;}} onMouseLeave={e=>{e.currentTarget.style.transform='scale(1)';e.currentTarget.style.boxShadow=T.shadowColor;}}>+</div>
         </div>
       </div>
     </div>
@@ -600,34 +619,37 @@ const DashLayout=({children,nav,active=0,type='partner',brand})=>(
 
 // Navs — using SVG icons + `to` for NavCtx navigation
 const CUST_NAV=[
-  {icon:<Ico n="user" size={14}/>,label:'Hồ sơ của tôi',to:'s08'},
-  {icon:<Ico n="ticket" size={14}/>,label:'Voucher của tôi',to:'s09'},
-  {icon:<Ico n="qr" size={14}/>,label:'Dùng Voucher QR',to:'s10'},
-  {icon:<Ico n="cart" size={14}/>,label:'Giỏ hàng',badge:'3',to:'s11'},
-  {icon:<Ico n="history" size={14}/>,label:'Lịch sử đơn hàng',to:'s12'},
-  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'2',to:'s13'},
-  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s14'},
+  {icon:<Ico n="user" size={14}/>,label:'Hồ sơ của tôi',to:'s11'},
+  {icon:<Ico n="ticket" size={14}/>,label:'Voucher của tôi',to:'s12'},
+  {icon:<Ico n="history" size={14}/>,label:'Lịch sử đơn hàng',to:'s13'},
+  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'2',to:'s14'},
+  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s15'},
 ];
 const PARTNER_NAV=[
-  {icon:<Ico n="chart" size={14}/>,label:'Dashboard',to:'s15'},
-  {icon:<Ico n="ticket" size={14}/>,label:'Voucher của tôi',to:'s16'},
-  {icon:<Ico n="plus" size={14}/>,label:'Tạo Voucher mới',to:'s17'},
-  {icon:<Ico n="edit" size={14}/>,label:'Chỉnh sửa Voucher',to:'s18'},
-  {icon:<Ico n="user" size={14}/>,label:'Hồ sơ Partner',to:'s19'},
-  {icon:<Ico n="trending" size={14}/>,label:'Báo cáo & Thống kê',to:'s20'},
-  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'5',to:'s21'},
-  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s22'},
+  {icon:<Ico n="chart" size={14}/>,label:'Dashboard',to:'s16'},
+  {icon:<Ico n="ticket" size={14}/>,label:'Voucher của tôi',to:'s17'},
+  {icon:<Ico n="plus" size={14}/>,label:'Tạo Voucher mới',to:'s18'},
+  {icon:<Ico n="edit" size={14}/>,label:'Chỉnh sửa Voucher',to:'s19'},
+  {icon:<Ico n="user" size={14}/>,label:'Hồ sơ Partner',to:'s20'},
+  {icon:<Ico n="trending" size={14}/>,label:'Báo cáo & Thống kê',to:'s21'},
+  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'5',to:'s22'},
+  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s23'},
+  {icon:<Ico n="users" size={14}/>,label:'Nhân viên & Chi nhánh',to:'s24'},
+];
+const STAFF_NAV=[
+  {icon:<Ico n="qr" size={14}/>,label:'Dùng Voucher QR',to:'s25'},
 ];
 const ADMIN_NAV=[
-  {icon:<Ico n="chart" size={14}/>,label:'Dashboard',to:'s23'},
-  {icon:<Ico n="users" size={14}/>,label:'Người dùng',to:'s24'},
-  {icon:<Ico n="building" size={14}/>,label:'Partners',to:'s25'},
-  {icon:<Ico n="ticket" size={14}/>,label:'Vouchers',to:'s26'},
-  {icon:<Ico n="grid" size={14}/>,label:'Danh mục',to:'s27'},
-  {icon:<Ico n="trending" size={14}/>,label:'Báo cáo',to:'s28'},
-  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s29'},
-  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'3',to:'s30'},
-  {icon:<Ico n="log" size={14}/>,label:'Audit Log',to:'s31'},
+  {icon:<Ico n="chart" size={14}/>,label:'Dashboard',to:'s26'},
+  {icon:<Ico n="users" size={14}/>,label:'Người dùng',to:'s27'},
+  {icon:<Ico n="building" size={14}/>,label:'Partners',to:'s28'},
+  {icon:<Ico n="check" size={14}/>,label:'Duyệt Voucher',badge:'4',to:'s30'},
+  {icon:<Ico n="ticket" size={14}/>,label:'Vouchers',to:'s31'},
+  {icon:<Ico n="grid" size={14}/>,label:'Danh mục',to:'s32'},
+  {icon:<Ico n="trending" size={14}/>,label:'Báo cáo',to:'s33'},
+  {icon:<Ico n="settings" size={14}/>,label:'Cài đặt',to:'s34'},
+  {icon:<Ico n="bell" size={14}/>,label:'Thông báo',badge:'3',to:'s35'},
+  {icon:<Ico n="log" size={14}/>,label:'Audit Log',to:'s36'},
 ];
 
 // ═════════════════════════════════════════════════════════════════
@@ -701,11 +723,17 @@ const EmptyState=({icon='ticket',title='Chưa có dữ liệu',desc='',action=nu
 );
 
 // ═════════════════════════════════════════════════════════════════
-// SCREENS S01–S07 — Public & Auth
+// GROUP: KHÁCH & AUTH
+// S01 Trang chủ · S02 Đăng nhập · S03 Đăng ký · S04 Quên MK
+// S05 Lọc Voucher · S06 Chi tiết · S07 Tìm kiếm
+// S08 Giỏ hàng · S09 Thanh toán · S10 Xác nhận đơn hàng
 // ═════════════════════════════════════════════════════════════════
 
 const S01=()=>{
   const nav=useContext(NavCtx);
+  const [,setSearchQ]=useContext(SearchCtx);
+  const [sq,setSq]=useState('');
+  const goSearch=()=>{if(sq.trim()){setSearchQ(sq);nav('s07');}};
   return(
   <div style={{width:'100%',minHeight:900,background:T.gray50}}>
     <TopNav/>
@@ -720,9 +748,21 @@ const S01=()=>{
         <h1 style={{fontSize:T.text.hero,fontWeight:800,color:T.gray900,lineHeight:1.08,marginBottom:T.sp[20],letterSpacing:'-2px',textWrap:'balance'}}>
           Ưu đãi chính hãng<br/><span style={{background:`linear-gradient(135deg,${T.primary} 0%,${T.accent} 100%)`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>cho mọi trải nghiệm</span>
         </h1>
-        <p style={{fontSize:T.text.xl,color:T.gray500,marginBottom:T.sp[32],lineHeight:1.65,maxWidth:440,fontWeight:400}}>
+        <p style={{fontSize:T.text.xl,color:T.gray500,marginBottom:T.sp[20],lineHeight:1.65,maxWidth:440,fontWeight:400}}>
           482,000 voucher từ 2,400+ thương hiệu. Mua trong 30 giây, nhận qua email, dùng ngay tại quầy.
         </p>
+        {/* Hero search bar */}
+        <div style={{display:'flex',alignItems:'center',gap:0,background:T.white,borderRadius:T.r[12],boxShadow:T.shadowLg,border:`1.5px solid ${T.gray200}`,marginBottom:T.sp[24],maxWidth:480,overflow:'hidden'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,flex:1,padding:'0 16px'}}>
+            <Ico n="search" size={18} color={T.gray400}/>
+            <input value={sq} onChange={e=>setSq(e.target.value)} onKeyDown={e=>e.key==='Enter'&&goSearch()}
+              placeholder="Tìm voucher, thương hiệu, danh mục…"
+              style={{border:'none',outline:'none',fontSize:T.text.base,color:T.gray800,flex:1,fontFamily:T.font,padding:'14px 0',background:'transparent'}}/>
+          </div>
+          <div style={{padding:6,flexShrink:0}}>
+            <Btn variant="primary" size="md" onClick={goSearch}>Tìm kiếm</Btn>
+          </div>
+        </div>
         <div style={{display:'flex',gap:T.sp[12]}}>
           <Btn variant="primary" size="xl" icon={<Ico n="ticket" size={16} color="white"/>} onClick={()=>nav('s05')}>Khám phá ngay</Btn>
           <Btn variant="ghost" size="xl" onClick={()=>nav('s05')}>Xem cách hoạt động</Btn>
@@ -840,7 +880,7 @@ const S02=()=>{
       toast('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.','error','Đăng nhập thất bại');
     } else {
       toast('Chào mừng bạn quay trở lại ECVoucher!','success','Đăng nhập thành công');
-      nav('s08');
+      nav('s11');
     }
   };
   return(
@@ -956,7 +996,7 @@ const S03=()=>{
           {step<3&&<label style={{display:'flex',gap:T.sp[10],alignItems:'flex-start',fontSize:T.text.xs,color:T.gray600,cursor:'pointer',lineHeight:1.5}}>
             <input type="checkbox" style={{marginTop:2,accentColor:T.primary}}/> Tôi đồng ý với <a style={{color:T.primary}}>Điều khoản dịch vụ</a> và <a style={{color:T.primary}}>Chính sách bảo mật</a>
           </label>}
-          <Btn variant="primary" size="lg" full onClick={()=>step<3?setStep(s=>s+1):(toast('Tài khoản của bạn đã được tạo thành công!','success','Đăng ký thành công'),nav('s08'))}>
+          <Btn variant="primary" size="lg" full onClick={()=>step<3?setStep(s=>s+1):(toast('Tài khoản của bạn đã được tạo thành công!','success','Đăng ký thành công'),nav('s11'))}>
             {step===1?'Tiếp theo →':step===2?'Tạo tài khoản':'Đến trang chủ'}
           </Btn>
           {step>1&&step<3&&<Btn variant="ghost" size="md" full onClick={()=>setStep(s=>s-1)}>← Quay lại</Btn>}
@@ -969,20 +1009,33 @@ const S03=()=>{
 
 const S04=()=>{
   const nav=useContext(NavCtx);
+  const [sent,setSent]=useState(false);
   return(
   <div style={{width:'100%',minHeight:900,background:`linear-gradient(135deg,${T.primaryLight},${T.white} 60%)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
     <TopNav/>
     <Card style={{width:440,margin:'auto',marginTop:T.sp[80]}} elevation="lg">
-      <div style={{textAlign:'center',marginBottom:T.sp[28]}}>
-        <div style={{width:64,height:64,background:T.primaryMuted,borderRadius:T.r[16],display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px'}}><Ico n="lock" size={28} color={T.primary}/></div>
-        <h1 style={{fontSize:T.text.h3,fontWeight:800,color:T.gray900,letterSpacing:'-.4px'}}>Khôi phục mật khẩu</h1>
-        <p style={{fontSize:T.text.sm,color:T.gray500,marginTop:T.sp[8],lineHeight:1.6}}>Nhập email đăng ký và chúng tôi sẽ gửi đường link đặt lại mật khẩu.</p>
-      </div>
-      <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
-        <Input label="Địa chỉ email" placeholder="ten@email.com" type="email" helper="Nhập đúng email đã đăng ký tài khoản"/>
-        <Btn variant="primary" size="lg" full icon={<Ico n="bell" size={15}/>} onClick={()=>nav('s02')}>Gửi link khôi phục</Btn>
-        <a onClick={()=>nav('s02')} style={{fontSize:T.text.sm,color:T.primary,cursor:'pointer',fontWeight:600,textAlign:'center',display:'block',marginTop:T.sp[8]}}>← Quay lại đăng nhập</a>
-      </div>
+      {sent?(
+        <div style={{textAlign:'center',padding:`${T.sp[16]}px 0`}}>
+          <div style={{width:72,height:72,background:'#d1fae5',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}><Ico n="check" size={32} color={T.success}/></div>
+          <h1 style={{fontSize:T.text.h3,fontWeight:800,color:T.gray900,letterSpacing:'-.4px',marginBottom:T.sp[10]}}>Đã gửi email!</h1>
+          <p style={{fontSize:T.text.sm,color:T.gray500,lineHeight:1.7,marginBottom:T.sp[28]}}>Kiểm tra hộp thư của bạn và nhấn vào đường link để đặt lại mật khẩu. Link có hiệu lực trong 15 phút.</p>
+          <Btn variant="primary" size="lg" full onClick={()=>nav('s02')}>Về đăng nhập</Btn>
+          <a onClick={()=>setSent(false)} style={{fontSize:T.text.sm,color:T.gray400,cursor:'pointer',fontWeight:500,textAlign:'center',display:'block',marginTop:T.sp[14]}}>Gửi lại email</a>
+        </div>
+      ):(
+        <>
+          <div style={{textAlign:'center',marginBottom:T.sp[28]}}>
+            <div style={{width:64,height:64,background:T.primaryMuted,borderRadius:T.r[16],display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px'}}><Ico n="lock" size={28} color={T.primary}/></div>
+            <h1 style={{fontSize:T.text.h3,fontWeight:800,color:T.gray900,letterSpacing:'-.4px'}}>Khôi phục mật khẩu</h1>
+            <p style={{fontSize:T.text.sm,color:T.gray500,marginTop:T.sp[8],lineHeight:1.6}}>Nhập email đăng ký và chúng tôi sẽ gửi đường link đặt lại mật khẩu.</p>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+            <Input label="Địa chỉ email" placeholder="ten@email.com" type="email" helper="Nhập đúng email đã đăng ký tài khoản"/>
+            <Btn variant="primary" size="lg" full icon={<Ico n="bell" size={15}/>} onClick={()=>setSent(true)}>Gửi link khôi phục</Btn>
+            <a onClick={()=>nav('s02')} style={{fontSize:T.text.sm,color:T.primary,cursor:'pointer',fontWeight:600,textAlign:'center',display:'block',marginTop:T.sp[8]}}>← Quay lại đăng nhập</a>
+          </div>
+        </>
+      )}
     </Card>
   </div>
   );
@@ -1008,17 +1061,38 @@ const S05_CATS=['Ăn uống','Mua sắm','Du lịch','Làm đẹp','Giải trí'
 const S05=()=>{
   const nav=useContext(NavCtx);
   const [selCats,setSelCats]=useState([]);
+  const [selDisc,setSelDisc]=useState('');
+  const [sortBy,setSortBy]=useState('Phổ biến nhất');
   const toggleCat=(cat)=>setSelCats(p=>p.includes(cat)?p.filter(c=>c!==cat):[...p,cat]);
-  const shown=selCats.length===0?S05_ITEMS:S05_ITEMS.filter(v=>selCats.includes(v.cat));
+  const clearAll=()=>{setSelCats([]);setSelDisc('');};
+  const dv=v=>Math.abs(parseInt(v.d)||0);
+  const matchDisc=v=>{
+    if(!selDisc)return true;
+    const d=dv(v);
+    if(selDisc==='Trên 50%')return d>50;
+    if(selDisc==='30% – 50%')return d>=30&&d<=50;
+    if(selDisc==='10% – 30%')return d>=10&&d<30;
+    if(selDisc==='Dưới 10%')return d<10;
+    return true;
+  };
+  const parseP=p=>p==='Free'?0:parseInt(p)||0;
+  const filtered=(selCats.length===0?S05_ITEMS:S05_ITEMS.filter(v=>selCats.includes(v.cat))).filter(matchDisc);
+  const shown=[...filtered].sort((a,b)=>{
+    if(sortBy==='Phổ biến nhất')return(b.s||0)-(a.s||0);
+    if(sortBy==='Giảm nhiều nhất')return dv(b)-dv(a);
+    if(sortBy==='Giá thấp nhất')return parseP(a.p)-parseP(b.p);
+    return 0;
+  });
+  const activeFilters=[selCats.length>0&&`${selCats.length} danh mục`,selDisc&&`Giảm ${selDisc}`].filter(Boolean);
   return(
   <div style={{width:'100%',minHeight:900,background:T.gray50}}>
     <TopNav loggedIn/>
     <div style={{display:'flex',height:832}}>
       {/* Filter sidebar */}
       <div style={{width:272,background:T.white,borderRight:`1px solid ${T.gray200}`,padding:T.sp[24],overflowY:'auto',flexShrink:0}}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[20]}}>
-          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>Bộ lọc</h3>
-          <a style={{fontSize:T.text.xs,color:T.primary,fontWeight:600,cursor:'pointer'}} onClick={()=>setSelCats([])}>Xoá tất cả</a>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:T.sp[20]}}>
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>Lọc Voucher</h3>
+          {activeFilters.length>0&&<a style={{fontSize:T.text.xs,color:T.primary,fontWeight:600,cursor:'pointer'}} onClick={clearAll}>Xoá tất cả</a>}
         </div>
         <div style={{marginBottom:T.sp[24]}}>
           <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray700,marginBottom:T.sp[12],letterSpacing:'-.01em'}}>Danh mục</h4>
@@ -1033,35 +1107,38 @@ const S05=()=>{
         </div>
         <div style={{marginBottom:T.sp[24]}}>
           <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray700,marginBottom:T.sp[12]}}>Mức giảm</h4>
-          {['Trên 50%','30% – 50%','10% – 30%','Dưới 10%'].map(r=>(
-            <label key={r} style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:T.sp[10],cursor:'pointer',fontSize:T.text.sm,color:T.gray700}}>
-              <input type="radio" name="disc" style={{accentColor:T.primary}}/>{r}
-            </label>
-          ))}
+          {['Trên 50%','30% – 50%','10% – 30%','Dưới 10%'].map(r=>{
+            const cnt=S05_ITEMS.filter(v=>{const d=Math.abs(parseInt(v.d)||0);if(r==='Trên 50%')return d>50;if(r==='30% – 50%')return d>=30&&d<=50;if(r==='10% – 30%')return d>=10&&d<30;return d<10;}).length;
+            return(
+              <label key={r} style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:T.sp[10],cursor:'pointer',fontSize:T.text.sm,color:selDisc===r?T.primary:T.gray700,fontWeight:selDisc===r?600:400}}>
+                <input type="radio" name="disc" checked={selDisc===r} onClick={()=>setSelDisc(s=>s===r?'':r)} onChange={()=>{}} style={{accentColor:T.primary}}/><span style={{flex:1}}>{r}</span><span style={{fontSize:T.text.xs,color:T.gray400}}>({cnt})</span>
+              </label>
+            );
+          })}
         </div>
-        {selCats.length>0&&(
+        {activeFilters.length>0&&(
           <div style={{background:T.primaryMuted,borderRadius:T.r[8],padding:`${T.sp[10]}px ${T.sp[12]}px`,marginBottom:T.sp[16],fontSize:T.text.xs,color:T.primary,fontWeight:600}}>
-            {selCats.length} danh mục đang lọc · {shown.length} kết quả
+            {activeFilters.join(' · ')} · {shown.length} kết quả
           </div>
         )}
-        <Btn variant="primary" full onClick={()=>setSelCats([])}>Xoá bộ lọc</Btn>
+        <Btn variant={activeFilters.length>0?'primary':'ghost'} full onClick={clearAll}>Xoá bộ lọc</Btn>
       </div>
       {/* Results */}
       <div style={{flex:1,padding:`${T.sp[24]}px ${T.sp[32]}px`,overflowY:'auto'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:T.sp[20]}}>
           <div>
             <h2 style={{fontSize:T.text.xl,fontWeight:800,color:T.gray900,letterSpacing:'-.3px'}}>
-              {selCats.length>0?selCats.join(', '):'Tất cả Voucher'}
+              {selCats.length>0?selCats.join(', '):selDisc?`Voucher giảm ${selDisc}`:'Lọc Voucher'}
             </h2>
-            <p style={{fontSize:T.text.sm,color:T.gray400,marginTop:3}}>Hiển thị {shown.length} kết quả</p>
+            <p style={{fontSize:T.text.sm,color:T.gray400,marginTop:3}}>Hiển thị {shown.length} / {S05_ITEMS.length} kết quả</p>
           </div>
-          <select style={{padding:'8px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,color:T.gray600,background:T.white,boxShadow:T.shadowSm}}>
+          <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'8px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,color:T.gray600,background:T.white,boxShadow:T.shadowSm}}>
             <option>Phổ biến nhất</option><option>Giá thấp nhất</option><option>Giảm nhiều nhất</option><option>Mới nhất</option>
           </select>
         </div>
         {shown.length===0?(
           <Card elevation="sm">
-            <EmptyState icon="ticket" title="Không có voucher trong danh mục này" desc="Thử chọn danh mục khác hoặc xoá bộ lọc để xem tất cả." action={<Btn variant="primary" size="sm" onClick={()=>setSelCats([])}>Xem tất cả</Btn>}/>
+            <EmptyState icon="ticket" title="Không có voucher phù hợp" desc="Thử chọn danh mục hoặc mức giảm khác, hoặc xoá bộ lọc để xem tất cả." action={<Btn variant="primary" size="sm" onClick={clearAll}>Xem tất cả</Btn>}/>
           </Card>
         ):(
           <div style={{display:'flex',flexWrap:'wrap',gap:T.sp[16]}}>
@@ -1082,8 +1159,8 @@ const S06=()=>{
     <TopNav loggedIn/>
     <div style={{padding:`${T.sp[24]}px ${T.sp[80]}px`}}>
       <div style={{fontSize:T.text.xs,color:T.gray400,marginBottom:T.sp[20],display:'flex',gap:T.sp[6],alignItems:'center'}}>
-        <a style={{cursor:'pointer',color:T.gray400}}>Trang chủ</a><span>/</span>
-        <a style={{cursor:'pointer',color:T.gray400}}>Ăn uống</a><span>/</span>
+        <a style={{cursor:'pointer',color:T.gray400,transition:'color .15s'}} onClick={()=>nav('s01')} onMouseEnter={e=>e.currentTarget.style.color=T.primary} onMouseLeave={e=>e.currentTarget.style.color=T.gray400}>Trang chủ</a><span>/</span>
+        <a style={{cursor:'pointer',color:T.gray400,transition:'color .15s'}} onClick={()=>nav('s05')} onMouseEnter={e=>e.currentTarget.style.color=T.primary} onMouseLeave={e=>e.currentTarget.style.color=T.gray400}>Ăn uống</a><span>/</span>
         <span style={{color:T.gray700,fontWeight:500}}>Lotteria Giảm 30%</span>
       </div>
       <div style={{display:'flex',gap:T.sp[40],alignItems:'flex-start'}}>
@@ -1146,7 +1223,7 @@ const S06=()=>{
               <span style={{fontSize:T.text.xs,color:T.gray400}}>Còn 58 lượt</span>
             </div>
             <div style={{display:'flex',gap:T.sp[10],marginBottom:T.sp[16]}}>
-              <Btn variant="primary" size="lg" full icon={<Ico n="cart" size={15}/>} onClick={()=>nav('s11')}>Mua ngay</Btn>
+              <Btn variant="primary" size="lg" full icon={<Ico n="cart" size={15}/>} onClick={()=>nav('s08')}>Mua ngay</Btn>
               <button style={{width:44,height:44,border:`1.5px solid ${T.gray200}`,borderRadius:T.r[10],background:T.white,cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n="heart" size={20} color={T.gray400}/></button>
             </div>
             <div style={{background:T.gray50,borderRadius:T.r[8],padding:`${T.sp[12]}px ${T.sp[14]}px`,display:'flex',gap:T.sp[10],alignItems:'center'}}>
@@ -1191,8 +1268,9 @@ const S07_ALL=[
 
 const S07=()=>{
   const nav=useContext(NavCtx);
-  const [query,setQuery]=useState('lotteria');
-  const [inputVal,setInputVal]=useState('lotteria');
+  const [searchQ]=useContext(SearchCtx);
+  const [query,setQuery]=useState(()=>searchQ||'lotteria');
+  const [inputVal,setInputVal]=useState(()=>searchQ||'lotteria');
   const filtered=S07_ALL.filter(v=>
     v.brand.toLowerCase().includes(query.toLowerCase())||
     v.title.toLowerCase().includes(query.toLowerCase())||
@@ -1238,10 +1316,16 @@ const S07=()=>{
 
 
 // ═════════════════════════════════════════════════════════════════
-// SCREENS S08–S14 — Customer Dashboard
+// GROUP: CUSTOMER DASHBOARD
+// S11 Hồ sơ · S12 Voucher của tôi
+// NOTE: S25 Dùng Voucher QR được đặt ở đây vì lý do lịch sử
+//       nhưng thuộc nhóm "Partner — Nhân viên" trong nav panel
+// S13 Lịch sử đơn · S14 Thông báo · S15 Cài đặt
 // ═════════════════════════════════════════════════════════════════
 
-const S08=()=>(
+const S11=()=>{
+  const nav=useContext(NavCtx);
+  return(
   <DashLayout nav={CUST_NAV} active={0} type="partner" brand="Tài khoản của tôi">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Hồ sơ của tôi" subtitle="Quản lý thông tin cá nhân và địa chỉ giao hàng"/>
@@ -1260,6 +1344,8 @@ const S08=()=>(
           </div>
           <Divider my={16}/>
           <div style={{display:'flex',flexDirection:'column',gap:T.sp[8]}}>
+            <Btn variant="subtle" full size="sm" icon={<Ico n="ticket" size={13}/>} onClick={()=>nav('s12')}>Voucher của tôi</Btn>
+            <Btn variant="subtle" full size="sm" icon={<Ico n="history" size={13}/>} onClick={()=>nav('s13')}>Lịch sử đơn hàng</Btn>
             <Btn variant="ghost" full size="sm" icon={<Ico n="camera" size={13}/>}>Đổi ảnh đại diện</Btn>
             <Btn variant="danger" full size="sm">Đăng xuất</Btn>
           </div>
@@ -1290,11 +1376,12 @@ const S08=()=>(
       </div>
     </div>
   </DashLayout>
-);
+);};
 
-const S09=()=>{
+const S12=()=>{
   const nav=useContext(NavCtx);
   const [tab,setTab]=useState(0);
+  const [qrModal,setQrModal]=useState(null);
   const tabs=['Tất cả (24)','Đang dùng (8)','Đã dùng (6)','Hết hạn (10)'];
   const tabStatus=[null,'active','used','expired'];
   const allItems=[
@@ -1339,24 +1426,65 @@ const S09=()=>{
                 </div>
               </div>
               <div style={{display:'flex',gap:T.sp[8],flexShrink:0}}>
-                {v.status==='active'&&<Btn variant="primary" size="sm" icon={<Ico n="qr" size={13}/>} onClick={()=>nav('s10')}>Dùng ngay</Btn>}
+                {v.status==='active'&&<Btn variant="primary" size="sm" icon={<Ico n="qr" size={13}/>} onClick={()=>setQrModal(v)}>Dùng ngay</Btn>}
                 <Btn variant="ghost" size="sm" icon={<Ico n="copy" size={13}/>}>Sao chép mã</Btn>
               </div>
             </Card>
           ))}
         </div>
       </div>
+      {/* QR Modal */}
+      {qrModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setQrModal(null)}>
+          <div style={{background:T.white,borderRadius:T.r[20],padding:T.sp[40],width:380,boxShadow:T.shadowXl,position:'relative'}} onClick={e=>e.stopPropagation()}>
+            <div style={{position:'absolute',top:16,right:16,cursor:'pointer',width:32,height:32,background:T.gray100,borderRadius:T.r.full,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setQrModal(null)}>
+              <Ico n="close" size={14} color={T.gray500}/>
+            </div>
+            <div style={{textAlign:'center',marginBottom:T.sp[20]}}>
+              <Badge variant="primary" size="sm">{qrModal.brand}</Badge>
+              <h3 style={{fontSize:T.text.lg,fontWeight:800,color:T.gray900,marginTop:T.sp[8],marginBottom:4,letterSpacing:'-.3px'}}>{qrModal.title}</h3>
+              <p style={{fontSize:T.text.xs,color:T.gray400}}>HSD: {qrModal.exp}</p>
+            </div>
+            {/* Simulated QR code */}
+            <div style={{display:'flex',justifyContent:'center',marginBottom:T.sp[20]}}>
+              <div style={{width:180,height:180,background:T.gray50,borderRadius:T.r[12],border:`2px solid ${T.gray200}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,position:'relative',overflow:'hidden'}}>
+                {/* QR pattern simulation */}
+                <svg width="140" height="140" viewBox="0 0 140 140">
+                  {/* Corner squares */}
+                  <rect x="4" y="4" width="36" height="36" rx="4" fill="none" stroke={T.gray900} strokeWidth="4"/>
+                  <rect x="10" y="10" width="24" height="24" rx="2" fill={T.gray900}/>
+                  <rect x="100" y="4" width="36" height="36" rx="4" fill="none" stroke={T.gray900} strokeWidth="4"/>
+                  <rect x="106" y="10" width="24" height="24" rx="2" fill={T.gray900}/>
+                  <rect x="4" y="100" width="36" height="36" rx="4" fill="none" stroke={T.gray900} strokeWidth="4"/>
+                  <rect x="10" y="106" width="24" height="24" rx="2" fill={T.gray900}/>
+                  {/* Data dots */}
+                  {[[50,4],[62,4],[74,4],[86,4],[50,16],[74,16],[86,16],[50,28],[62,28],[74,28],[86,28],[50,40],[62,40],[4,50],[16,50],[28,50],[40,50],[62,50],[86,50],[98,50],[110,50],[122,50],[134,50],[4,62],[28,62],[62,62],[74,62],[98,62],[110,62],[4,74],[16,74],[40,74],[62,74],[86,74],[110,74],[134,74],[4,86],[28,86],[50,86],[62,86],[74,86],[86,86],[110,86],[100,100],[112,100],[124,100],[136,100],[100,112],[136,112],[100,124],[112,124],[124,124],[136,124]].map(([x,y],i)=>(
+                    <rect key={i} x={x} y={y} width="8" height="8" rx="1" fill={T.gray900}/>
+                  ))}
+                </svg>
+              </div>
+            </div>
+            <div style={{background:T.gray50,borderRadius:T.r[10],padding:'10px 16px',textAlign:'center',marginBottom:T.sp[20],border:`1px solid ${T.gray200}`}}>
+              <div style={{fontSize:T.text.xs,color:T.gray400,marginBottom:4}}>Mã voucher</div>
+              <div style={{fontFamily:'monospace',fontSize:T.text.md,fontWeight:700,color:T.gray900,letterSpacing:'.1em'}}>{qrModal.code}</div>
+            </div>
+            <p style={{fontSize:T.text.xs,color:T.gray400,textAlign:'center',marginBottom:T.sp[20],lineHeight:1.6}}>Đưa mã này cho nhân viên thu ngân quét hoặc nhập thủ công tại quầy.</p>
+            <Btn variant="ghost" size="md" full onClick={()=>setQrModal(null)}>Đóng</Btn>
+          </div>
+        </div>
+      )}
     </DashLayout>
   );
 };
 
-const S10=()=>{
+// ── S25 — Group: Partner — Nhân viên (đặt ở đây trước S08) ──────
+const S25=()=>{
   const nav=useContext(NavCtx);
   const toast=useContext(ToastCtx);
   return(
-  <DashLayout nav={CUST_NAV} active={2} type="partner" brand="Tài khoản của tôi">
+  <DashLayout nav={STAFF_NAV} active={0} type="partner" brand="Nhân viên Lotteria">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
-      <PageHeader title="Dùng Voucher (QR)" subtitle="Quét mã tại quầy thu ngân để sử dụng voucher"/>
+      <PageHeader title="Dùng Voucher (QR)" subtitle="Quét mã tại quầy thu ngân để xác nhận voucher của khách"/>
       <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
         <Card style={{flex:1}} elevation="sm">
           <h3 style={{fontSize:T.text.lg,fontWeight:700,color:T.gray900,marginBottom:T.sp[6]}}>Quét mã QR</h3>
@@ -1392,7 +1520,7 @@ const S10=()=>{
                 <span style={{fontSize:T.text.xs,fontWeight:700,color:T.gray900}}>{v}</span>
               </div>
             ))}
-            <Btn variant="primary" full style={{marginTop:T.sp[16]}} icon={<Ico n="check" size={14}/>} onClick={()=>{toast('Voucher đã được sử dụng thành công! Chúc bạn ngon miệng.','success','Sử dụng thành công');nav('s12');}}>Xác nhận sử dụng</Btn>
+            <Btn variant="primary" full style={{marginTop:T.sp[16]}} icon={<Ico n="check" size={14}/>} onClick={()=>{toast('Voucher đã được sử dụng thành công! Chúc bạn ngon miệng.','success','Sử dụng thành công');nav('s13');}}>Xác nhận sử dụng</Btn>
           </Card>
           <Card elevation="sm">
             <h4 style={{fontSize:T.text.sm,fontWeight:700,color:T.gray900,marginBottom:T.sp[14]}}>Lịch sử dùng gần đây</h4>
@@ -1413,12 +1541,13 @@ const S10=()=>{
   );
 };
 
-const S11=()=>{
-  const _nav11=useContext(NavCtx);
+const S08=()=>{
+  const nav=useContext(NavCtx);
   const toast=useContext(ToastCtx);
   return(
-  <DashLayout nav={CUST_NAV} active={3} type="partner" brand="Tài khoản của tôi">
-    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+  <div style={{width:'100%',minHeight:900,background:T.gray50}}>
+    <TopNav loggedIn={true}/>
+    <div style={{maxWidth:1100,margin:'0 auto',padding:`${T.sp[40]}px ${T.sp[32]}px`}}>
       <PageHeader title="Giỏ hàng" subtitle="3 voucher đang chờ thanh toán"/>
       <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
         <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[12]}}>
@@ -1457,19 +1586,198 @@ const S11=()=>{
             <input placeholder="Nhập mã ưu đãi" style={{flex:1,padding:'9px 12px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,letterSpacing:'.03em',textTransform:'uppercase'}}/>
             <Btn variant="outlined" size="sm">Áp dụng</Btn>
           </div>
-          <Btn variant="primary" full size="lg" icon={<Ico n="bank" size={15}/>} onClick={()=>{toast('Đặt hàng thành công! Voucher đang được xử lý.','success','Đặt hàng thành công');_nav11('s12');}}>Thanh toán ngay</Btn>
+          <Btn variant="primary" full size="lg" icon={<Ico n="bank" size={15}/>} onClick={()=>nav('s09')}>Tiến hành thanh toán</Btn>
           <div style={{display:'flex',justifyContent:'center',gap:T.sp[12],marginTop:T.sp[16]}}>
             {['Thẻ tín dụng','ATM nội địa','MoMo','VNPay'].map(m=><span key={m} style={{fontSize:T.text.xs,color:T.gray400,background:T.gray100,padding:'2px 7px',borderRadius:4}}>{m}</span>)}
           </div>
         </Card>
       </div>
     </div>
-  </DashLayout>
+  </div>
   );
 };
 
-const S12=()=>(
-  <DashLayout nav={CUST_NAV} active={4} type="partner" brand="Tài khoản của tôi">
+// ── S09 — Thanh toán ────────────────────────────────────────────
+const S09=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  const [method,setMethod]=useState('momo');
+  const [loading,setLoading]=useState(false);
+  const PAY=[
+    {id:'momo',label:'MoMo',icon:<Ico n="phone" size={20} color="#d82c7e"/>,sub:'Ví điện tử MoMo'},
+    {id:'vnpay',label:'VNPay',icon:<Ico n="shield" size={20} color="#e53935"/>,sub:'QR / Thẻ nội địa'},
+    {id:'card',label:'Thẻ tín dụng',icon:<Ico n="bank" size={20} color={T.primary}/>,sub:'Visa / Mastercard'},
+    {id:'cod',label:'Chuyển khoản',icon:<Ico n="money" size={20} color={T.success}/>,sub:'Banking QR'},
+  ];
+  const confirm=()=>{
+    setLoading(true);
+    setTimeout(()=>{
+      setLoading(false);
+      toast('Thanh toán thành công! Voucher đã được ghi vào tài khoản.','success','Thanh toán thành công');
+      nav('s10');
+    },1800);
+  };
+  return(
+  <div style={{width:'100%',minHeight:900,background:T.gray50}}>
+    <TopNav loggedIn={true}/>
+    <div style={{maxWidth:1100,margin:'0 auto',padding:`${T.sp[40]}px ${T.sp[32]}px`}}>
+      <PageHeader title="Thanh toán" subtitle="Hoàn tất đặt mua voucher của bạn"
+        actions={<Btn variant="ghost" size="sm" icon={<Ico n="history" size={13}/>} onClick={()=>nav('s08')}>Quay lại giỏ hàng</Btn>}/>
+      {/* Progress bar */}
+      <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:T.sp[32]}}>
+        {[{n:1,l:'Giỏ hàng',done:true},{n:2,l:'Thanh toán',done:false},{n:3,l:'Xác nhận',done:false}].map((step,i,arr)=>(
+          <React.Fragment key={step.n}>
+            <div style={{display:'flex',alignItems:'center',gap:T.sp[8]}}>
+              <div style={{width:28,height:28,borderRadius:T.r.full,background:step.done?T.success:i===1?T.primary:T.gray200,display:'flex',alignItems:'center',justifyContent:'center',color:T.white,fontSize:T.text.xs,fontWeight:700,flexShrink:0}}>
+                {step.done?<Ico n="check" size={13} color={T.white}/>:step.n}
+              </div>
+              <span style={{fontSize:T.text.sm,fontWeight:i===1?700:500,color:i===1?T.primary:step.done?T.success:T.gray400}}>{step.l}</span>
+            </div>
+            {i<arr.length-1&&<div style={{flex:1,height:2,background:step.done?T.success:T.gray200,margin:`0 ${T.sp[12]}px`}}/>}
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
+        {/* Left: payment methods */}
+        <div style={{flex:1,display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[16],letterSpacing:'-.2px'}}>Phương thức thanh toán</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[10]}}>
+              {PAY.map(p=>(
+                <label key={p.id} onClick={()=>setMethod(p.id)} style={{display:'flex',alignItems:'center',gap:T.sp[14],padding:`${T.sp[14]}px ${T.sp[16]}px`,borderRadius:T.r[10],border:`1.5px solid ${method===p.id?T.primary:T.gray200}`,background:method===p.id?T.primaryMuted:T.white,cursor:'pointer',transition:'all .15s'}}>
+                  <input type="radio" checked={method===p.id} onChange={()=>setMethod(p.id)} style={{accentColor:T.primary}}/>
+                  <span style={{display:'flex',alignItems:'center',flexShrink:0}}>{p.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:T.text.base,fontWeight:600,color:T.gray900}}>{p.label}</div>
+                    <div style={{fontSize:T.text.xs,color:T.gray400,marginTop:1}}>{p.sub}</div>
+                  </div>
+                  {method===p.id&&<Ico n="check" size={16} color={T.primary}/>}
+                </label>
+              ))}
+            </div>
+          </Card>
+          {/* Voucher/Promo code */}
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[14],letterSpacing:'-.2px'}}>Mã ưu đãi bổ sung</h3>
+            <div style={{display:'flex',gap:T.sp[10]}}>
+              <input placeholder="Nhập mã giảm giá…" style={{flex:1,padding:'10px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,letterSpacing:'.04em',textTransform:'uppercase'}}
+                onFocus={e=>{e.target.style.borderColor=T.primary;}} onBlur={e=>{e.target.style.borderColor=T.gray200;}}/>
+              <Btn variant="outlined" size="sm">Áp dụng</Btn>
+            </div>
+          </Card>
+        </div>
+        {/* Right: order summary */}
+        <Card style={{width:300,flexShrink:0}} elevation="md">
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[16],letterSpacing:'-.3px'}}>Xác nhận đơn hàng</h3>
+          {[
+            {brand:'Lotteria',title:'Giảm 30% combo bữa',price:'140.000đ'},
+            {brand:'CGV Cinema',title:'Mua 1 tặng 1 bắp',price:'100.000đ'},
+            {brand:'Grab Food',title:'Freeship ×5',price:'0đ'},
+          ].map(item=>(
+            <div key={item.brand} style={{display:'flex',gap:T.sp[10],alignItems:'center',marginBottom:T.sp[12],paddingBottom:T.sp[12],borderBottom:`1px solid ${T.gray100}`}}>
+              <div style={{width:36,height:36,borderRadius:T.r[8],background:T.primaryMuted,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ico n="ticket" size={16} color={T.primary}/></div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,textTransform:'uppercase'}}>{item.brand}</div>
+                <div style={{fontSize:T.text.xs,color:T.gray600,marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
+              </div>
+              <div style={{fontSize:T.text.sm,fontWeight:700,color:item.price==='0đ'?T.success:T.gray900,whiteSpace:'nowrap'}}>{item.price}</div>
+            </div>
+          ))}
+          <Divider my={12}/>
+          {[['Tạm tính','240.000đ'],['Phí dịch vụ','0đ'],['Giảm giá','−0đ']].map(([l,v])=>(
+            <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[10],fontSize:T.text.sm}}>
+              <span style={{color:T.gray500}}>{l}</span><span style={{fontWeight:600,color:T.gray700}}>{v}</span>
+            </div>
+          ))}
+          <Divider my={12}/>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:T.sp[20],fontWeight:800,fontSize:T.text.lg,letterSpacing:'-.3px'}}>
+            <span>Tổng thanh toán</span><span style={{color:T.accent}}>240.000đ</span>
+          </div>
+          <Btn variant="primary" full size="lg"
+            icon={loading?undefined:<Ico n="check" size={15} color={T.white}/>}
+            onClick={confirm} disabled={loading}>
+            {loading?'Đang xử lý…':'Xác nhận thanh toán'}
+          </Btn>
+          <p style={{fontSize:T.text.xs,color:T.gray400,textAlign:'center',marginTop:T.sp[12],lineHeight:1.5}}>
+            Bằng cách xác nhận, bạn đồng ý với <span style={{color:T.primary,cursor:'pointer'}}>Điều khoản dịch vụ</span> của ECVoucher.
+          </p>
+        </Card>
+      </div>
+    </div>
+  </div>
+  );
+};
+
+// ── S10 — Xác nhận đặt mua ──────────────────────────────────────
+const S10=()=>{
+  const nav=useContext(NavCtx);
+  const orderCode='ECO-'+Math.floor(100000+Math.random()*900000);
+  const ITEMS=[
+    {brand:'Lotteria',title:'Giảm 30% combo bữa',exp:'31/12/2026'},
+    {brand:'CGV Cinema',title:'Mua 1 tặng 1 bắp rang bơ',exp:'30/06/2026'},
+    {brand:'Grab Food',title:'Freeship ×5 Grab Food',exp:'31/03/2026'},
+  ];
+  return(
+  <div style={{width:'100%',minHeight:900,background:T.gray50}}>
+    <TopNav loggedIn={true}/>
+    <div style={{maxWidth:1100,margin:'0 auto',padding:`${T.sp[40]}px ${T.sp[32]}px`,display:'flex',flexDirection:'column',alignItems:'center'}}>
+      {/* Success hero */}
+      <div style={{textAlign:'center',maxWidth:520,marginBottom:T.sp[40]}}>
+        <div style={{width:80,height:80,borderRadius:T.r.full,background:T.successLight,border:`3px solid ${T.success}`,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto',marginBottom:T.sp[20],boxShadow:`0 0 0 8px ${T.successMuted}`}}>
+          <Ico n="check" size={36} color={T.success}/>
+        </div>
+        <h1 style={{fontSize:T.text.h1,fontWeight:800,color:T.gray900,letterSpacing:'-1px',marginBottom:T.sp[10]}}>Đặt mua thành công!</h1>
+        <p style={{fontSize:T.text.base,color:T.gray500,lineHeight:1.6}}>Voucher đã được ghi vào tài khoản của bạn. Bạn có thể sử dụng chúng ngay bây giờ.</p>
+        <div style={{display:'inline-flex',alignItems:'center',gap:T.sp[10],background:T.gray100,padding:`${T.sp[10]}px ${T.sp[20]}px`,borderRadius:T.r[10],marginTop:T.sp[14]}}>
+          <span style={{fontSize:T.text.sm,color:T.gray500}}>Mã đơn hàng:</span>
+          <span style={{fontFamily:T.fontMono,fontSize:T.text.sm,fontWeight:700,color:T.primary,letterSpacing:'.05em'}}>{orderCode}</span>
+        </div>
+      </div>
+      {/* Vouchers received */}
+      <div style={{width:'100%',maxWidth:640,marginBottom:T.sp[32]}}>
+        <h2 style={{fontSize:T.text.md,fontWeight:700,color:T.gray700,marginBottom:T.sp[16],letterSpacing:'-.2px'}}>Voucher đã nhận ({ITEMS.length})</h2>
+        <div style={{display:'flex',flexDirection:'column',gap:T.sp[12]}}>
+          {ITEMS.map((item,i)=>(
+            <Card key={i} elevation="sm" style={{display:'flex',alignItems:'center',gap:T.sp[16]}}>
+              {/* Voucher thumbnail mini */}
+              <div style={{width:56,height:56,borderRadius:T.r[10],background:'#16163a',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,position:'relative',overflow:'hidden'}}>
+                <div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse at 30% 60%,${T.primary}40,transparent 70%)`}}/>
+                <Ico n="ticket" size={22} color="rgba(255,255,255,.8)"/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,textTransform:'uppercase',letterSpacing:'.03em'}}>{item.brand}</div>
+                <div style={{fontSize:T.text.sm,fontWeight:600,color:T.gray900,marginTop:2}}>{item.title}</div>
+                <div style={{fontSize:T.text.xs,color:T.gray400,marginTop:3,display:'flex',alignItems:'center',gap:4}}>
+                  <Ico n="history" size={10} color={T.gray400}/>HSD: {item.exp}
+                </div>
+              </div>
+              <Badge variant="success">Đã nhận</Badge>
+            </Card>
+          ))}
+        </div>
+      </div>
+      {/* QR code preview */}
+      <Card elevation="md" style={{textAlign:'center',marginBottom:T.sp[32],maxWidth:260}}>
+        <p style={{fontSize:T.text.xs,color:T.gray500,marginBottom:T.sp[14]}}>QR xác nhận — quét khi sử dụng</p>
+        <div style={{width:140,height:140,margin:'0 auto',background:'#f1f5f9',borderRadius:T.r[10],display:'flex',alignItems:'center',justifyContent:'center',border:`1px solid ${T.gray200}`}}>
+          <Ico n="qr" size={80} color={T.gray700}/>
+        </div>
+        <p style={{fontSize:T.text.xs,color:T.gray400,marginTop:T.sp[10]}}>{orderCode}</p>
+      </Card>
+      {/* Actions */}
+      <div style={{display:'flex',gap:T.sp[14]}}>
+        <Btn variant="primary" size="lg" icon={<Ico n="ticket" size={15} color={T.white}/>} onClick={()=>nav('s12')}>Xem voucher của tôi</Btn>
+        <Btn variant="ghost" size="lg" icon={<Ico n="home" size={15}/>} onClick={()=>nav('s01')}>Về trang chủ</Btn>
+      </div>
+    </div>
+  </div>
+  );
+};
+
+const S13=()=>{
+  const nav=useContext(NavCtx);
+  return(
+  <DashLayout nav={CUST_NAV} active={2} type="partner" brand="Tài khoản của tôi">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Lịch sử đơn hàng" subtitle="Xem lại toàn bộ giao dịch mua voucher của bạn"/>
       <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Hoàn thành','Đang xử lý','Hoàn tiền']},{label:'Tháng này',options:['Tháng này','Tháng trước','3 tháng']}]}/>
@@ -1477,20 +1785,20 @@ const S12=()=>(
         <DataTable
           cols={['Mã đơn hàng','Ngày mua','Sản phẩm','Tổng tiền','Thanh toán','Trạng thái','']}
           rows={[
-            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-001</span>,'10/07/2026','Lotteria ×1, CGV ×2',<span style={{fontWeight:700}}>240.000đ</span>,'Thẻ Visa',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
-            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-002</span>,'05/07/2026','Grab Freeship ×1',<span style={{fontWeight:700}}>0đ</span>,'Ví MoMo',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
-            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-003</span>,'01/07/2026','Shopee −200K ×1',<span style={{fontWeight:700}}>35.000đ</span>,'VNPay',<Badge variant="warning">Hoàn tiền</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
-            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-004</span>,'25/06/2026','Pizza Hut B1G1 ×2',<span style={{fontWeight:700}}>240.000đ</span>,'Thẻ Visa',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs">Chi tiết</Btn>],
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-001</span>,'10/07/2026','Lotteria ×1, CGV ×2',<span style={{fontWeight:700}}>240.000đ</span>,'Thẻ Visa',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs" onClick={()=>nav('s10')}>Chi tiết</Btn>],
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-002</span>,'05/07/2026','Grab Freeship ×1',<span style={{fontWeight:700}}>0đ</span>,'Ví MoMo',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs" onClick={()=>nav('s10')}>Chi tiết</Btn>],
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-003</span>,'01/07/2026','Shopee −200K ×1',<span style={{fontWeight:700}}>35.000đ</span>,'VNPay',<Badge variant="warning">Hoàn tiền</Badge>,<Btn variant="ghost" size="xs" onClick={()=>nav('s10')}>Chi tiết</Btn>],
+            [<span style={{fontFamily:'monospace',fontSize:T.text.xs,color:T.primary,fontWeight:700}}>ORD-2026-004</span>,'25/06/2026','Pizza Hut B1G1 ×2',<span style={{fontWeight:700}}>240.000đ</span>,'Thẻ Visa',<Badge variant="success">Hoàn thành</Badge>,<Btn variant="ghost" size="xs" onClick={()=>nav('s10')}>Chi tiết</Btn>],
           ]}
         />
       </Card>
       <Pagination/>
     </div>
   </DashLayout>
-);
+);};
 
-const S13=()=>(
-  <DashLayout nav={CUST_NAV} active={5} type="partner" brand="Tài khoản của tôi">
+const S14=()=>(
+  <DashLayout nav={CUST_NAV} active={3} type="partner" brand="Tài khoản của tôi">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Thông báo" subtitle="Cập nhật mới nhất về voucher và đơn hàng của bạn"
         actions={<><Btn variant="ghost" size="sm">Đánh dấu tất cả đã đọc</Btn><Btn variant="subtle" size="sm" icon={<Ico n="settings" size={13}/>}>Cài đặt thông báo</Btn></>}/>
@@ -1536,11 +1844,11 @@ const Toggle=({on=true,label})=>(
   </div>
 );
 
-const S14=()=>{
+const S15=()=>{
   const toast=useContext(ToastCtx);
   const [showDeleteModal,setShowDeleteModal]=useState(false);
   return(
-  <DashLayout nav={CUST_NAV} active={6} type="partner" brand="Tài khoản của tôi">
+  <DashLayout nav={CUST_NAV} active={4} type="partner" brand="Tài khoản của tôi">
     {/* Delete confirmation modal */}
     {showDeleteModal&&(
       <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:9998,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -1603,20 +1911,24 @@ const S14=()=>{
 };
 
 // ═════════════════════════════════════════════════════════════════
-// SCREENS S15–S22 — Partner Dashboard
+// GROUP: PARTNER — QUẢN LÝ
+// S16 Dashboard · S17 Quản lý Voucher · S18 Tạo Voucher
+// S19 Sửa Voucher · S20 Hồ sơ · S21 Báo cáo
+// S22 Thông báo · S23 Cài đặt
+// S24 Nhân viên & Chi nhánh (định nghĩa ở cuối file, trước SCREENS)
 // ═════════════════════════════════════════════════════════════════
 
-const S15=()=>{
+const S16=()=>{
   const nav=useContext(NavCtx);
   return(
   <DashLayout nav={PARTNER_NAV} active={0} brand="Lotteria Vietnam">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Dashboard" subtitle="Xin chào, Lotteria Vietnam! Hôm nay 15 tháng 7, 2026"
-        actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất báo cáo</Btn><Btn variant="primary" size="sm" icon="+" onClick={()=>nav('s17')}>Tạo Voucher mới</Btn></>}/>
+        actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất báo cáo</Btn><Btn variant="primary" size="sm" icon="+" onClick={()=>nav('s18')}>Tạo Voucher mới</Btn></>}/>
       <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
-        <StatCard label="Voucher đang bán" value="48" change="+12%" icon={<Ico n="ticket" size={18} color={T.primary}/>} color={T.primary}/>
-        <StatCard label="Đã bán tháng này" value="1,284" change="+23%" icon={<Ico n="money" size={18} color={T.accent}/>} color={T.accent}/>
-        <StatCard label="Doanh thu tháng" value="89.4M" change="+18%" icon={<Ico n="trending" size={18} color={T.success}/>} color={T.success}/>
+        <StatCard label="Voucher đang bán" value="48" change="+12%" icon={<Ico n="ticket" size={18} color={T.primary}/>} color={T.primary} onClick={()=>nav('s17')}/>
+        <StatCard label="Đã bán tháng này" value="1,284" change="+23%" icon={<Ico n="money" size={18} color={T.accent}/>} color={T.accent} onClick={()=>nav('s17')}/>
+        <StatCard label="Doanh thu tháng" value="89.4M" change="+18%" icon={<Ico n="trending" size={18} color={T.success}/>} color={T.success} onClick={()=>nav('s21')}/>
         <StatCard label="Đánh giá TB" value="4.8★" change="+0.2" icon={<Ico n="star" size={18} color='#f59e0b'/>} color='#f59e0b'/>
       </div>
       <div style={{display:'flex',gap:T.sp[16]}}>
@@ -1651,16 +1963,37 @@ const S15=()=>{
   );
 };
 
-const S16=()=>{
+const S17=()=>{
   const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
   const [loading,setLoading]=useState(true);
   useEffect(()=>{const t=setTimeout(()=>setLoading(false),1200);return()=>clearTimeout(t);},[]);
+  const [vstatus,setVstatus]=useState({0:'Đang bán',1:'Đang bán',2:'Tạm dừng',3:'Hết hạn'});
+  const VOUCHERS=[
+    {name:'Giảm 30% combo bữa',cat:'Ăn uống',disc:<Badge variant="error">−30%</Badge>,price:'140K',sold:'342/400',exp:'31/12/26'},
+    {name:'Mua 2 tặng 1 bắp',cat:'Ăn uống',disc:<Badge variant="error">−50%</Badge>,price:'45K',sold:'218/300',exp:'30/06/26'},
+    {name:'Family Set −25%',cat:'Ăn uống',disc:<Badge variant="warning">−25%</Badge>,price:'150K',sold:'167/200',exp:'31/12/26'},
+    {name:'Trà sữa Miễn phí',cat:'Đồ uống',disc:<Badge variant="primary">−100%</Badge>,price:'0đ',sold:'94/100',exp:'28/02/26'},
+  ];
+  const sendReview=(idx,name)=>{
+    setVstatus(s=>({...s,[idx]:'Chờ duyệt'}));
+    toast(`Voucher "${name}" đã được gửi duyệt. Admin sẽ phản hồi trong 24 giờ.`,'success','Gửi duyệt thành công');
+  };
+  const sBadge=(idx)=>{const s=vstatus[idx];return s==='Đang bán'?<Badge variant="success">Đang bán</Badge>:s==='Chờ duyệt'?<Badge variant="primary">Chờ duyệt</Badge>:s==='Tạm dừng'?<Badge variant="warning">Tạm dừng</Badge>:<Badge variant="error">Hết hạn</Badge>;};
+  const rowActs=(idx,name)=>(
+    <div style={{display:'flex',gap:6,justifyContent:'flex-end',alignItems:'center'}}>
+      {(vstatus[idx]==='Tạm dừng'||vstatus[idx]==='Hết hạn')&&<Btn variant="subtle" size="xs" onClick={()=>sendReview(idx,name)}>Gửi duyệt</Btn>}
+      {vstatus[idx]==='Chờ duyệt'&&<span style={{fontSize:T.text.xs,color:T.primary,fontStyle:'italic',whiteSpace:'nowrap'}}>Đang chờ…</span>}
+      {vstatus[idx]==='Đang bán'&&<Btn variant="ghost" size="xs" onClick={()=>setVstatus(s=>({...s,[idx]:'Tạm dừng'}))}>Tạm dừng</Btn>}
+      <Btn variant="ghost" size="xs" onClick={()=>nav('s19')}>Sửa</Btn>
+    </div>
+  );
   return(
   <DashLayout nav={PARTNER_NAV} active={1} brand="Lotteria Vietnam">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Voucher của tôi" subtitle="Quản lý toàn bộ voucher đang phát hành"
-        actions={<Btn variant="primary" size="sm" icon="+" onClick={()=>nav('s17')}>Tạo Voucher mới</Btn>}/>
-      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Đang bán','Tạm dừng','Hết hạn']},{label:'Tất cả danh mục',options:['Ăn uống','Đồ uống']}]}/>
+        actions={<Btn variant="primary" size="sm" icon="+" onClick={()=>nav('s18')}>Tạo Voucher mới</Btn>}/>
+      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Đang bán','Chờ duyệt','Tạm dừng','Hết hạn']},{label:'Tất cả danh mục',options:['Ăn uống','Đồ uống']}]}/>
       {loading?(
         <div style={{display:'flex',flexDirection:'column',gap:T.sp[12]}}>
           {[1,2,3].map(i=><SkeletonCard key={i}/>)}
@@ -1668,14 +2001,8 @@ const S16=()=>{
       ):(
       <Card elevation="sm">
         <DataTable
-          cols={['Tên Voucher','Danh mục','Giảm giá','Giá bán','Đã bán / Tổng','HSD','Trạng thái']}
-          rows={[
-            ['Giảm 30% combo bữa','Ăn uống',<Badge variant="error">−30%</Badge>,'140K','342/400','31/12/26',<Badge variant="success">Đang bán</Badge>],
-            ['Mua 2 tặng 1 bắp','Ăn uống',<Badge variant="error">−50%</Badge>,'45K','218/300','30/06/26',<Badge variant="success">Đang bán</Badge>],
-            ['Family Set −25%','Ăn uống',<Badge variant="warning">−25%</Badge>,'150K','167/200','31/12/26',<Badge variant="warning">Tạm dừng</Badge>],
-            ['Trà sữa Miễn phí','Đồ uống',<Badge variant="primary">−100%</Badge>,'0đ','94/100','28/02/26',<Badge variant="error">Hết hạn</Badge>],
-          ]}
-          actions
+          cols={['Tên Voucher','Danh mục','Giảm giá','Giá bán','Đã bán / Tổng','HSD','Trạng thái','Thao tác']}
+          rows={VOUCHERS.map((v,i)=>[v.name,v.cat,v.disc,v.price,v.sold,v.exp,sBadge(i),rowActs(i,v.name)])}
         />
       </Card>
       )}
@@ -1685,7 +2012,7 @@ const S16=()=>{
   );
 };
 
-const S17=()=>{
+const S18=()=>{
   const nav=useContext(NavCtx);
   const toast=useContext(ToastCtx);
   return(
@@ -1708,7 +2035,7 @@ const S17=()=>{
           </Card>
           <div style={{display:'flex',gap:T.sp[10],justifyContent:'flex-end'}}>
             <Btn variant="ghost" size="md">Lưu nháp</Btn>
-            <Btn variant="primary" size="md" icon={<Ico n="upload" size={13}/>} onClick={()=>{toast('Voucher đã được gửi lên để xét duyệt. Thường duyệt trong 24 giờ.','success','Gửi duyệt thành công');nav('s16');}}>Đăng voucher ngay</Btn>
+            <Btn variant="primary" size="md" icon={<Ico n="upload" size={13}/>} onClick={()=>{toast('Voucher đã được gửi lên để xét duyệt. Thường duyệt trong 24 giờ.','success','Gửi duyệt thành công');nav('s17');}}>Đăng voucher ngay</Btn>
           </div>
         </div>
         <div style={{width:300,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[16]}}>
@@ -1741,11 +2068,11 @@ const S17=()=>{
   );
 };
 
-const S18=()=>{
+const S19=()=>{
   const nav=useContext(NavCtx);
   const toast=useContext(ToastCtx);
   return(
-  <DashLayout nav={PARTNER_NAV} active={1} brand="Lotteria Vietnam">
+  <DashLayout nav={PARTNER_NAV} active={3} brand="Lotteria Vietnam">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Chỉnh sửa Voucher" subtitle="Cập nhật thông tin cho voucher đang hoạt động"
         breadcrumb={['Dashboard','Voucher của tôi','Chỉnh sửa']}/>
@@ -1765,7 +2092,7 @@ const S18=()=>{
           <div style={{display:'flex',gap:T.sp[10],justifyContent:'flex-end',marginTop:T.sp[24]}}>
             <Btn variant="danger" size="sm">Xoá Voucher</Btn>
             <Btn variant="ghost" size="sm">Tạm dừng</Btn>
-            <Btn variant="primary" size="sm" icon={<Ico n="check" size={14}/>} onClick={()=>{toast('Thông tin voucher đã được cập nhật thành công.','success','Lưu thành công');nav('s16');}}>Lưu thay đổi</Btn>
+            <Btn variant="primary" size="sm" icon={<Ico n="check" size={14}/>} onClick={()=>{toast('Thông tin voucher đã được cập nhật thành công.','success','Lưu thành công');nav('s17');}}>Lưu thay đổi</Btn>
           </div>
         </Card>
         <div style={{width:280,flexShrink:0,display:'flex',flexDirection:'column',gap:T.sp[16]}}>
@@ -1785,7 +2112,7 @@ const S18=()=>{
   );
 };
 
-const S19=()=>(
+const S20=()=>(
   <DashLayout nav={PARTNER_NAV} active={4} brand="Lotteria Vietnam">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Hồ sơ Partner" subtitle="Thông tin thương hiệu được hiển thị công khai trên ECVoucher"/>
@@ -1836,7 +2163,7 @@ const S19=()=>(
   </DashLayout>
 );
 
-const S20=()=>(
+const S21=()=>(
   <DashLayout nav={PARTNER_NAV} active={5} brand="Lotteria Vietnam">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Báo cáo & Thống kê" subtitle="Phân tích hiệu suất kinh doanh voucher"
@@ -1866,7 +2193,7 @@ const S20=()=>(
   </DashLayout>
 );
 
-const S21=()=>(
+const S22=()=>(
   <DashLayout nav={PARTNER_NAV} active={6} brand="Lotteria Vietnam">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Thông báo" subtitle="Cập nhật từ ECVoucher về voucher và hoạt động tài khoản"
@@ -1895,7 +2222,7 @@ const S21=()=>(
   </DashLayout>
 );
 
-const S22=()=>(
+const S23=()=>(
   <DashLayout nav={PARTNER_NAV} active={7} brand="Lotteria Vietnam">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Cài đặt tài khoản" subtitle="Quản lý thông tin thanh toán và tùy chọn thông báo"/>
@@ -1936,19 +2263,25 @@ const S22=()=>(
 
 
 // ═════════════════════════════════════════════════════════════════
-// SCREENS S23–S31 — Admin Dashboard
+// GROUP: ADMIN PORTAL
+// S26 Dashboard · S27 Users · S28 Partners · S29 Thêm Partner
+// S30 Duyệt Voucher · S31 Vouchers · S32 Danh mục · S33 Báo cáo
+// S34 Cài đặt · S35 Thông báo · S36 Audit Log
+// S29 & S30 được định nghĩa ở cuối file, trước SCREENS
 // ═════════════════════════════════════════════════════════════════
 
-const S23=()=>(
+const S26=()=>{
+  const nav=useContext(NavCtx);
+  return(
   <DashLayout nav={ADMIN_NAV} active={0} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Admin Dashboard" subtitle="ECVoucher Platform — Tổng quan hệ thống ngày 15/07/2026"
         actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất báo cáo</Btn><Btn variant="primary" size="sm" icon="+">Thêm nhanh</Btn></>}/>
       <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
-        <StatCard label="Tổng người dùng" value="128.5K" change="+8.2%" icon={<Ico n="users" size={18} color={T.info}/>} color={T.info} sub="Hoạt động: 94.2K"/>
-        <StatCard label="Partners đang hoạt động" value="284" change="+12" icon={<Ico n="building" size={18} color={T.primary}/>} color={T.primary}/>
-        <StatCard label="Voucher đang bán" value="4,829" change="+234" icon={<Ico n="ticket" size={18} color={T.accent}/>} color={T.accent}/>
-        <StatCard label="GMV tháng 7" value="2.4 Tỷ" change="+22%" icon={<Ico n="money" size={18} color={T.success}/>} color={T.success}/>
+        <StatCard label="Tổng người dùng" value="128.5K" change="+8.2%" icon={<Ico n="users" size={18} color={T.info}/>} color={T.info} sub="Hoạt động: 94.2K" onClick={()=>nav('s27')}/>
+        <StatCard label="Partners đang hoạt động" value="284" change="+12" icon={<Ico n="building" size={18} color={T.primary}/>} color={T.primary} onClick={()=>nav('s28')}/>
+        <StatCard label="Voucher đang bán" value="4,829" change="+234" icon={<Ico n="ticket" size={18} color={T.accent}/>} color={T.accent} onClick={()=>nav('s31')}/>
+        <StatCard label="GMV tháng 7" value="2.4 Tỷ" change="+22%" icon={<Ico n="money" size={18} color={T.success}/>} color={T.success} onClick={()=>nav('s33')}/>
       </div>
       <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[20]}}>
         <Card style={{flex:3}} elevation="sm">
@@ -1984,9 +2317,10 @@ const S23=()=>(
       </Card>
     </div>
   </DashLayout>
-);
+  );
+};
 
-const S24=()=>(
+const S27=()=>(
   <DashLayout nav={ADMIN_NAV} active={1} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Quản lý Người dùng" subtitle="128,450 tài khoản đã đăng ký — 94,200 đang hoạt động"
@@ -2016,16 +2350,19 @@ const S24=()=>(
   </DashLayout>
 );
 
-const S25=()=>(
+const S28=()=>{
+  const nav=useContext(NavCtx);
+  return(
   <DashLayout nav={ADMIN_NAV} active={2} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
-      <PageHeader title="Quản lý Partners" subtitle="342 đối tác đang hợp tác trên nền tảng ECVoucher"/>
+      <PageHeader title="Quản lý Partners" subtitle="342 đối tác đang hợp tác trên nền tảng ECVoucher"
+        actions={<Btn variant="primary" size="sm" icon={<Ico n="plus" size={13} color={T.white}/>} onClick={()=>nav('s29')}>Thêm Partner mới</Btn>}/>
       <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[20]}}>
         <StatCard label="Đang hoạt động" value="284" icon={<Ico n="check" size={18} color={T.success}/>} color={T.success}/>
         <StatCard label="Chờ xét duyệt" value="18" icon={<Ico n="history" size={18} color={T.warning}/>} color={T.warning}/>
         <StatCard label="Tạm dừng" value="40" icon={<Ico n="pause" size={18} color={T.gray500}/>} color={T.gray500}/>
       </div>
-      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Hoạt động','Chờ duyệt','Tạm dừng']},{label:'Tất cả ngành',options:['Ăn uống','Giải trí','Du lịch','Mua sắm']}]} onCreate={()=>{}} createLabel="Thêm Partner"/>
+      <Toolbar filter filters={[{label:'Tất cả trạng thái',options:['Hoạt động','Chờ duyệt','Tạm dừng']},{label:'Tất cả ngành',options:['Ăn uống','Giải trí','Du lịch','Mua sắm']}]}/>
       <Card elevation="sm">
         <DataTable
           cols={['Partner','Ngành nghề','Vouchers','Doanh thu','Rating','Hoa hồng','Trạng thái']}
@@ -2041,10 +2378,11 @@ const S25=()=>(
       <Pagination/>
     </div>
   </DashLayout>
-);
+  );
+};
 
-const S26=()=>(
-  <DashLayout nav={ADMIN_NAV} active={3} type="admin" brand="Admin Portal">
+const S31=()=>(
+  <DashLayout nav={ADMIN_NAV} active={4} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Quản lý Vouchers" subtitle="4,829 voucher đang hoạt động trong hệ thống"/>
       <Toolbar search filter filters={[{label:'Tất cả Partner'},{label:'Tất cả danh mục'},{label:'Tất cả trạng thái'}]} onExport={()=>{}}/>
@@ -2066,8 +2404,8 @@ const S26=()=>(
   </DashLayout>
 );
 
-const S27=()=>(
-  <DashLayout nav={ADMIN_NAV} active={4} type="admin" brand="Admin Portal">
+const S32=()=>(
+  <DashLayout nav={ADMIN_NAV} active={5} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Quản lý Danh mục" subtitle="Phân loại và sắp xếp voucher trên toàn hệ thống"
         actions={<Btn variant="primary" icon="+" size="sm">Thêm danh mục</Btn>}/>
@@ -2089,8 +2427,8 @@ const S27=()=>(
   </DashLayout>
 );
 
-const S28=()=>(
-  <DashLayout nav={ADMIN_NAV} active={5} type="admin" brand="Admin Portal">
+const S33=()=>(
+  <DashLayout nav={ADMIN_NAV} active={6} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Báo cáo Hệ thống" subtitle="Phân tích toàn diện hiệu suất nền tảng ECVoucher"
         actions={<><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Excel</Btn><Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>PDF</Btn></>}/>
@@ -2126,8 +2464,8 @@ const S28=()=>(
   </DashLayout>
 );
 
-const S29=()=>(
-  <DashLayout nav={ADMIN_NAV} active={6} type="admin" brand="Admin Portal">
+const S34=()=>(
+  <DashLayout nav={ADMIN_NAV} active={7} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Cài đặt Hệ thống" subtitle="Cấu hình hoạt động của nền tảng ECVoucher"/>
       <div style={{display:'flex',gap:T.sp[24],alignItems:'flex-start'}}>
@@ -2184,8 +2522,8 @@ const S29=()=>(
   </DashLayout>
 );
 
-const S30=()=>(
-  <DashLayout nav={ADMIN_NAV} active={7} type="admin" brand="Admin Portal">
+const S35=()=>(
+  <DashLayout nav={ADMIN_NAV} active={8} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Thông báo Admin" subtitle="Sự kiện hệ thống và các vấn đề cần xử lý"
         actions={<Btn variant="ghost" size="sm">Đánh dấu đã đọc tất cả</Btn>}/>
@@ -2224,8 +2562,8 @@ const S30=()=>(
   </DashLayout>
 );
 
-const S31=()=>(
-  <DashLayout nav={ADMIN_NAV} active={8} type="admin" brand="Admin Portal">
+const S36=()=>(
+  <DashLayout nav={ADMIN_NAV} active={9} type="admin" brand="Admin Portal">
     <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
       <PageHeader title="Audit Log" subtitle="Nhật ký đầy đủ mọi hoạt động trên hệ thống ECVoucher"
         actions={<Btn variant="ghost" size="sm" icon={<Ico n="download" size={14}/>}>Xuất log</Btn>}/>
@@ -2256,6 +2594,312 @@ const S31=()=>(
 );
 
 // ═════════════════════════════════════════════════════════════════
+// GROUP: PARTNER — QUẢN LÝ (tiếp)
+// S24 — Nhân viên & Chi nhánh
+// ═════════════════════════════════════════════════════════════════
+const S24=()=>{
+  const toast=useContext(ToastCtx);
+  const [showModal,setShowModal]=useState(false);
+  const [staff,setStaff]=useState([
+    {id:1,name:'Nguyễn Văn Hùng',email:'hung.nv@lotteria.vn',branch:'CN Quận 1 — 49 Hàm Nghi',status:'active',since:'15/03/2026'},
+    {id:2,name:'Trần Thị Lan',email:'lan.tt@lotteria.vn',branch:'CN Bình Thạnh — 183 Đinh Tiên Hoàng',status:'active',since:'02/04/2026'},
+    {id:3,name:'Phạm Minh Tuấn',email:'tuan.pm@lotteria.vn',branch:'CN Gò Vấp — 168 Nguyễn Kiệm',status:'inactive',since:'10/01/2026'},
+    {id:4,name:'Lê Thu Hằng',email:'hang.lt@lotteria.vn',branch:'CN Tân Bình — 88 Trường Chinh',status:'active',since:'28/05/2026'},
+  ]);
+  const [form,setForm]=useState({name:'',email:'',branch:'CN Quận 1 — 49 Hàm Nghi'});
+  const BRANCHES=['CN Quận 1 — 49 Hàm Nghi','CN Bình Thạnh — 183 Đinh Tiên Hoàng','CN Gò Vấp — 168 Nguyễn Kiệm','CN Tân Bình — 88 Trường Chinh','CN Quận 7 — 234 Nguyễn Thị Thập','CN Thủ Đức — 15 Kha Vạn Cân'];
+  const createStaff=()=>{
+    if(!form.name||!form.email){toast('Vui lòng điền đầy đủ thông tin','error','Thiếu thông tin');return;}
+    setStaff(p=>[...p,{id:Date.now(),name:form.name,email:form.email,branch:form.branch,status:'active',since:new Date().toLocaleDateString('vi-VN')}]);
+    setShowModal(false);
+    setForm({name:'',email:'',branch:'CN Quận 1 — 49 Hàm Nghi'});
+    toast(`Đã tạo tài khoản cho ${form.name}. Email kích hoạt đã gửi về ${form.email}.`,'success','Tạo nhân viên thành công');
+  };
+  return(
+  <DashLayout nav={PARTNER_NAV} active={8} brand="Lotteria Vietnam">
+    {showModal&&(
+      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:9998,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{background:T.white,borderRadius:T.r[16],padding:T.sp[32],width:460,boxShadow:'0 24px 64px rgba(0,0,0,.18)',animation:'toastIn .2s ease'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:T.sp[20]}}>
+            <div>
+              <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>Tạo tài khoản Nhân viên</h3>
+              <p style={{fontSize:T.text.xs,color:T.gray400,marginTop:4}}>Nhân viên chỉ có quyền truy cập màn hình Dùng Voucher QR tại chi nhánh được gán.</p>
+            </div>
+            <Btn variant="ghost" size="xs" onClick={()=>setShowModal(false)}>✕</Btn>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:T.sp[14]}}>
+            <div>
+              <label style={{fontSize:T.text.sm,fontWeight:600,color:T.gray700,display:'block',marginBottom:5}}>Họ và tên <span style={{color:T.error}}>*</span></label>
+              <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="VD: Nguyễn Văn An" style={{width:'100%',padding:'10px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.base,fontFamily:T.font,outline:'none',boxSizing:'border-box'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:T.text.sm,fontWeight:600,color:T.gray700,display:'block',marginBottom:5}}>Email công ty <span style={{color:T.error}}>*</span></label>
+              <input value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="VD: ten@lotteria.vn" type="email" style={{width:'100%',padding:'10px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.base,fontFamily:T.font,outline:'none',boxSizing:'border-box'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:T.text.sm,fontWeight:600,color:T.gray700,display:'block',marginBottom:5}}>Chi nhánh phụ trách</label>
+              <select value={form.branch} onChange={e=>setForm(f=>({...f,branch:e.target.value}))} style={{width:'100%',padding:'10px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.sm,fontFamily:T.font,outline:'none',background:T.white,cursor:'pointer'}}>
+                {BRANCHES.map(b=><option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div style={{background:T.primaryMuted,borderRadius:T.r[8],padding:`${T.sp[12]}px ${T.sp[14]}px`}}>
+              <p style={{fontSize:T.text.xs,fontWeight:700,color:T.primary,marginBottom:6}}>Quyền được gán tự động:</p>
+              <p style={{fontSize:T.text.xs,color:T.primary}}>✓ Màn hình Dùng Voucher QR (quét & xác nhận voucher tại quầy)</p>
+              <p style={{fontSize:T.text.xs,color:T.gray400,marginTop:4}}>✗ Không bao gồm: tạo voucher, báo cáo, cài đặt hệ thống</p>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:T.sp[10],marginTop:T.sp[24]}}>
+            <Btn variant="ghost" full onClick={()=>setShowModal(false)}>Huỷ</Btn>
+            <Btn variant="primary" full onClick={createStaff}>Tạo tài khoản & Gửi email</Btn>
+          </div>
+        </div>
+      </div>
+    )}
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Nhân viên & Chi nhánh" subtitle="Tạo & phân quyền tài khoản nhân viên cửa hàng"
+        actions={<Btn variant="primary" size="sm" icon={<Ico n="plus" size={13} color={T.white}/>} onClick={()=>setShowModal(true)}>Thêm nhân viên</Btn>}/>
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[24]}}>
+        {[{label:'Tổng nhân viên',val:staff.length,icon:'users',c:T.primary,bg:T.primaryMuted},{label:'Đang hoạt động',val:staff.filter(s=>s.status==='active').length,icon:'check',c:T.success,bg:T.successLight},{label:'Chi nhánh phủ sóng',val:[...new Set(staff.map(s=>s.branch))].length,icon:'building',c:T.info,bg:T.infoLight},{label:'Tạm ngưng',val:staff.filter(s=>s.status==='inactive').length,icon:'warning',c:T.warning,bg:T.warningLight}].map(st=>(
+          <Card key={st.label} style={{flex:1,padding:T.sp[18]}}>
+            <div style={{display:'flex',alignItems:'center',gap:T.sp[12]}}>
+              <div style={{width:40,height:40,borderRadius:T.r[10],background:st.bg,display:'flex',alignItems:'center',justifyContent:'center'}}><Ico n={st.icon} size={18} color={st.c}/></div>
+              <div><p style={{fontSize:T.text.xl,fontWeight:800,color:T.gray900}}>{st.val}</p><p style={{fontSize:T.text.xs,color:T.gray400}}>{st.label}</p></div>
+            </div>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <div style={{borderBottom:`1px solid ${T.gray100}`,padding:`${T.sp[14]}px ${T.sp[20]}px`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h3 style={{fontSize:T.text.base,fontWeight:700,color:T.gray900}}>Danh sách nhân viên</h3>
+          <Badge variant="primary">{staff.filter(s=>s.status==='active').length} đang hoạt động</Badge>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1.2fr 1.5fr 2fr 0.8fr 1fr',padding:`${T.sp[10]}px ${T.sp[20]}px`,background:T.gray50,borderBottom:`1px solid ${T.gray100}`,fontSize:T.text.xs,fontWeight:700,color:T.gray400,letterSpacing:'.04em'}}>
+          <span>NHÂN VIÊN</span><span>EMAIL</span><span>CHI NHÁNH</span><span>TRẠNG THÁI</span><span style={{textAlign:'right'}}>THAO TÁC</span>
+        </div>
+        {staff.map((s,i)=>(
+          <div key={s.id} style={{display:'grid',gridTemplateColumns:'1.2fr 1.5fr 2fr 0.8fr 1fr',padding:`${T.sp[14]}px ${T.sp[20]}px`,borderBottom:i<staff.length-1?`1px solid ${T.gray100}`:'none',alignItems:'center',gap:T.sp[12]}}>
+            <div style={{display:'flex',alignItems:'center',gap:T.sp[10]}}>
+              <div style={{width:32,height:32,borderRadius:'50%',background:T.primaryMuted,display:'flex',alignItems:'center',justifyContent:'center',fontSize:T.text.xs,fontWeight:700,color:T.primary,flexShrink:0}}>{s.name.split(' ').pop()[0]}</div>
+              <div><p style={{fontSize:T.text.sm,fontWeight:600,color:T.gray900,lineHeight:1.2}}>{s.name}</p><p style={{fontSize:T.text.xs,color:T.gray400}}>Từ {s.since}</p></div>
+            </div>
+            <span style={{fontSize:T.text.xs,color:T.gray500}}>{s.email}</span>
+            <span style={{fontSize:T.text.xs,color:T.gray600}}>{s.branch}</span>
+            <Badge variant={s.status==='active'?'success':'default'}>{s.status==='active'?'Hoạt động':'Tạm ngưng'}</Badge>
+            <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+              <Btn variant="ghost" size="xs" onClick={()=>setStaff(p=>p.map(x=>x.id===s.id?{...x,status:x.status==='active'?'inactive':'active'}:x))}>{s.status==='active'?'Ngưng':'Kích hoạt'}</Btn>
+            </div>
+          </div>
+        ))}
+        <div style={{padding:`${T.sp[12]}px ${T.sp[20]}px`,background:T.gray50,borderTop:`1px solid ${T.gray100}`,fontSize:T.text.xs,color:T.gray400}}>
+          Quyền mặc định mọi nhân viên: <strong style={{color:T.primary}}>Dùng Voucher QR</strong> tại chi nhánh được gán · Không truy cập chức năng quản lý
+        </div>
+      </Card>
+    </div>
+  </DashLayout>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════
+// GROUP: ADMIN PORTAL (tiếp)
+// S29 — Thêm Partner mới
+// ═════════════════════════════════════════════════════════════════
+const S29=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  const [step,setStep]=useState(1);
+  const [form,setForm]=useState({brand:'',email:'',phone:'',taxid:'',industry:'Ăn uống',website:'',desc:'',branch1:''});
+  const upd=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const submit=()=>{
+    if(!form.brand||!form.email){toast('Vui lòng điền đầy đủ thông tin bắt buộc','error','Thiếu thông tin');return;}
+    toast(`Partner "${form.brand}" đã được thêm. Email xác nhận đã gửi tới ${form.email}.`,'success','Thêm partner thành công');
+    nav('s28');
+  };
+  const iStyle={width:'100%',padding:'10px 14px',border:`1.5px solid ${T.gray200}`,borderRadius:T.r[8],fontSize:T.text.base,fontFamily:T.font,outline:'none',boxSizing:'border-box'};
+  const lStyle={fontSize:T.text.sm,fontWeight:600,color:T.gray700,display:'block',marginBottom:5};
+  return(
+  <DashLayout nav={ADMIN_NAV} active={2} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`,maxWidth:840,margin:'0 auto'}}>
+      <PageHeader title="Thêm Partner mới" subtitle="Đăng ký đối tác mới lên nền tảng ECVoucher"
+        breadcrumb={['Admin','Quản lý Partners','Thêm Partner mới']}
+        actions={<Btn variant="ghost" size="sm" onClick={()=>nav('s28')}>← Quay lại</Btn>}/>
+      {/* Step indicator */}
+      <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:T.sp[32]}}>
+        {[{n:1,l:'Thông tin cơ bản'},{n:2,l:'Chi nhánh & Hợp đồng'},{n:3,l:'Xác nhận'}].map((s,i,arr)=>(
+          <React.Fragment key={s.n}>
+            <div style={{display:'flex',alignItems:'center',gap:T.sp[8]}}>
+              <div style={{width:28,height:28,borderRadius:'50%',background:step>=s.n?T.primary:T.gray200,color:step>=s.n?T.white:T.gray400,display:'flex',alignItems:'center',justifyContent:'center',fontSize:T.text.xs,fontWeight:700,flexShrink:0}}>{step>s.n?'✓':s.n}</div>
+              <span style={{fontSize:T.text.sm,fontWeight:step===s.n?700:400,color:step>=s.n?T.gray900:T.gray400,whiteSpace:'nowrap'}}>{s.l}</span>
+            </div>
+            {i<arr.length-1&&<div style={{flex:1,height:1,background:step>s.n?T.primary:T.gray200,margin:`0 ${T.sp[12]}px`,minWidth:32}}/>}
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:T.sp[20]}}>
+        {step===1&&(
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20]}}>Thông tin thương hiệu</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+              <div style={{display:'flex',gap:T.sp[14]}}>
+                <div style={{flex:1}}><label style={lStyle}>Tên thương hiệu <span style={{color:T.error}}>*</span></label><input value={form.brand} onChange={e=>upd('brand',e.target.value)} placeholder="VD: Lotteria Vietnam" style={iStyle}/></div>
+                <div style={{flex:1}}><label style={lStyle}>Ngành nghề</label><select value={form.industry} onChange={e=>upd('industry',e.target.value)} style={{...iStyle,background:T.white,cursor:'pointer'}}>{'Ăn uống,Giải trí,Du lịch,Mua sắm,Làm đẹp,Sức khoẻ'.split(',').map(o=><option key={o}>{o}</option>)}</select></div>
+              </div>
+              <div style={{display:'flex',gap:T.sp[14]}}>
+                <div style={{flex:1}}><label style={lStyle}>Email liên hệ <span style={{color:T.error}}>*</span></label><input value={form.email} onChange={e=>upd('email',e.target.value)} type="email" placeholder="VD: partner@brand.vn" style={iStyle}/></div>
+                <div style={{flex:1}}><label style={lStyle}>Số điện thoại</label><input value={form.phone} onChange={e=>upd('phone',e.target.value)} placeholder="VD: 028 xxxx xxxx" style={iStyle}/></div>
+              </div>
+              <div style={{display:'flex',gap:T.sp[14]}}>
+                <div style={{flex:1}}><label style={lStyle}>Mã số thuế</label><input value={form.taxid} onChange={e=>upd('taxid',e.target.value)} placeholder="VD: 0303747443" style={iStyle}/></div>
+                <div style={{flex:1}}><label style={lStyle}>Website</label><input value={form.website} onChange={e=>upd('website',e.target.value)} placeholder="VD: https://lotteria.vn" style={iStyle}/></div>
+              </div>
+              <div><label style={lStyle}>Mô tả thương hiệu</label><textarea value={form.desc} onChange={e=>upd('desc',e.target.value)} rows={3} placeholder="Mô tả ngắn về thương hiệu, sản phẩm/dịch vụ cung cấp..." style={{...iStyle,resize:'vertical',lineHeight:1.6}}/></div>
+            </div>
+          </Card>
+        )}
+        {step===2&&(
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20]}}>Chi nhánh & Điều khoản hợp tác</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[16]}}>
+              <div><label style={lStyle}>Chi nhánh đầu tiên <span style={{color:T.error}}>*</span></label><input value={form.branch1} onChange={e=>upd('branch1',e.target.value)} placeholder="VD: 49 Hàm Nghi, Quận 1, TP.HCM" style={iStyle}/></div>
+              <div style={{display:'flex',gap:T.sp[14]}}>
+                <div style={{flex:1}}><label style={lStyle}>Hoa hồng nền tảng (%)</label><input type="number" defaultValue="8" style={iStyle}/></div>
+                <div style={{flex:1}}><label style={lStyle}>Hạn mức voucher/tháng</label><input type="number" defaultValue="500" style={iStyle}/></div>
+              </div>
+              <div style={{background:T.infoLight,borderRadius:T.r[8],padding:`${T.sp[14]}px ${T.sp[16]}px`}}>
+                <p style={{fontSize:T.text.xs,fontWeight:700,color:T.info,marginBottom:6}}>Điều khoản mặc định sẽ áp dụng:</p>
+                <p style={{fontSize:T.text.xs,color:T.gray600,lineHeight:1.6}}>• Hoa hồng 8% trên mỗi giao dịch thành công qua nền tảng<br/>• Thanh toán vào ngày 15 hàng tháng<br/>• Voucher phải qua kiểm duyệt trước khi đăng (24 giờ)<br/>• Cam kết không huỷ voucher đã phát hành trong 48 giờ đầu</p>
+              </div>
+            </div>
+          </Card>
+        )}
+        {step===3&&(
+          <Card elevation="sm">
+            <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900,marginBottom:T.sp[20]}}>Xác nhận thông tin</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:T.sp[12]}}>
+              {[['Thương hiệu',form.brand||'—'],['Ngành',form.industry],['Email',form.email||'—'],['SĐT',form.phone||'—'],['MST',form.taxid||'—'],['Chi nhánh đầu tiên',form.branch1||'—']].map(([l,v])=>(
+                <div key={l} style={{display:'flex',justifyContent:'space-between',padding:`${T.sp[10]}px 0`,borderBottom:`1px solid ${T.gray100}`}}>
+                  <span style={{fontSize:T.text.sm,color:T.gray500}}>{l}</span>
+                  <span style={{fontSize:T.text.sm,fontWeight:600,color:T.gray900,textAlign:'right',maxWidth:'60%'}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{background:T.successLight,borderRadius:T.r[8],padding:`${T.sp[12]}px ${T.sp[14]}px`,marginTop:T.sp[16]}}>
+              <p style={{fontSize:T.text.xs,color:T.success,fontWeight:600}}>Sau khi tạo, hệ thống sẽ:</p>
+              <p style={{fontSize:T.text.xs,color:T.gray600,marginTop:4}}>Gửi email xác nhận + tài khoản đăng nhập Partner Portal tới {form.email||'email đã nhập'}</p>
+            </div>
+          </Card>
+        )}
+        <div style={{display:'flex',justifyContent:'space-between'}}>
+          <div>{step>1&&<Btn variant="ghost" onClick={()=>setStep(s=>s-1)}>← Quay lại</Btn>}</div>
+          <div style={{display:'flex',gap:T.sp[10]}}>
+            <Btn variant="ghost" onClick={()=>nav('s28')}>Huỷ</Btn>
+            {step<3?<Btn variant="primary" onClick={()=>setStep(s=>s+1)}>Tiếp theo →</Btn>:<Btn variant="primary" onClick={submit}>Tạo Partner & Gửi email</Btn>}
+          </div>
+        </div>
+      </div>
+    </div>
+  </DashLayout>
+  );
+};
+
+// ── S30 — Duyệt Voucher (Admin) ─────────────────────────────────
+const S30=()=>{
+  const nav=useContext(NavCtx);
+  const toast=useContext(ToastCtx);
+  const [items,setItems]=useState([
+    {partner:'Lotteria Vietnam',name:'Giảm 30% combo bữa',cat:'Ăn uống',disc:'-30%',price:'140K',exp:'31/12/26',submitted:'16/07/26',status:'pending'},
+    {partner:'CGV Cinema',name:'Mua 1 tặng 1 bắp rang bơ',cat:'Giải trí',disc:'-50%',price:'45K',exp:'30/06/26',submitted:'15/07/26',status:'pending'},
+    {partner:'The Coffee House',name:'Mua 2 tặng 1 Iced Latte',cat:'Đồ uống',disc:'-33%',price:'55K',exp:'31/08/26',submitted:'14/07/26',status:'pending'},
+    {partner:'Grab Food',name:'Freeship ×5 cho mọi đơn',cat:'Giao đồ ăn',disc:'-100%',price:'0đ',exp:'31/03/26',submitted:'13/07/26',status:'pending'},
+  ]);
+  const act=(idx,action)=>{
+    const item=items[idx];
+    setItems(p=>p.map((it,i)=>i===idx?{...it,status:action}:it));
+    if(action==='approved') toast(`Voucher "${item.name}" của ${item.partner} đã được phê duyệt.`,'success','Phê duyệt thành công');
+    else toast(`Voucher "${item.name}" đã bị từ chối. Partner sẽ nhận thông báo.`,'warning','Đã từ chối');
+  };
+  const pending=items.filter(i=>i.status==='pending').length;
+  return(
+  <DashLayout nav={ADMIN_NAV} active={3} type="admin" brand="Admin Portal">
+    <div style={{padding:`${T.sp[32]}px ${T.sp[40]}px`}}>
+      <PageHeader title="Duyệt Voucher" subtitle={`${pending} voucher đang chờ phê duyệt từ các partner`}
+        actions={
+          <div style={{display:'flex',gap:T.sp[10]}}>
+            <Btn variant="ghost" size="sm" icon={<Ico n="check" size={13} color={T.gray600}/>} onClick={()=>{items.forEach((_,i)=>act(i,'approved'));}}>Duyệt tất cả</Btn>
+            <Btn variant="ghost" size="sm" onClick={()=>nav('s31')}>Xem tất cả Voucher</Btn>
+          </div>
+        }/>
+      {/* Stats row */}
+      <div style={{display:'flex',gap:T.sp[16],marginBottom:T.sp[28]}}>
+        {[
+          {label:'Chờ duyệt',value:pending,color:T.warning,icon:'⏳'},
+          {label:'Đã duyệt hôm nay',value:items.filter(i=>i.status==='approved').length,color:T.success,icon:'✅'},
+          {label:'Đã từ chối',value:items.filter(i=>i.status==='rejected').length,color:T.error,icon:'❌'},
+          {label:'Tổng nhận được',value:items.length,color:T.primary,icon:'📋'},
+        ].map(s=>(
+          <Card key={s.label} elevation="sm" style={{flex:1}}>
+            <div style={{display:'flex',alignItems:'center',gap:T.sp[12]}}>
+              <span style={{fontSize:24}}>{s.icon}</span>
+              <div>
+                <div style={{fontSize:T.text.h3,fontWeight:800,color:s.color,letterSpacing:'-1px',lineHeight:1}}>{s.value}</div>
+                <div style={{fontSize:T.text.xs,color:T.gray500,marginTop:2}}>{s.label}</div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+      {/* Review list */}
+      <Card elevation="sm" p={0}>
+        <div style={{padding:`${T.sp[16]}px ${T.sp[20]}px`,borderBottom:`1px solid ${T.gray100}`}}>
+          <h3 style={{fontSize:T.text.md,fontWeight:700,color:T.gray900}}>Danh sách cần duyệt</h3>
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:T.text.sm}}>
+            <thead>
+              <tr style={{borderBottom:`1px solid ${T.gray200}`}}>
+                {['Partner','Tên Voucher','Danh mục','Giảm giá','Giá','HSD','Ngày gửi','Trạng thái','Thao tác'].map(h=>(
+                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:T.gray500,fontSize:T.text.xs,letterSpacing:'.04em',textTransform:'uppercase',background:T.gray50,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item,i)=>(
+                <tr key={i} style={{borderBottom:`1px solid ${T.gray100}`,transition:'background .1s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.gray50}
+                  onMouseLeave={e=>e.currentTarget.style.background=T.white}>
+                  <td style={{padding:'12px 14px',fontWeight:600,color:T.gray900}}>{item.partner}</td>
+                  <td style={{padding:'12px 14px',color:T.gray700,maxWidth:200}}><div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div></td>
+                  <td style={{padding:'12px 14px'}}><Badge variant="default">{item.cat}</Badge></td>
+                  <td style={{padding:'12px 14px'}}><Badge variant="error">{item.disc}</Badge></td>
+                  <td style={{padding:'12px 14px',fontWeight:700,color:T.accent}}>{item.price}</td>
+                  <td style={{padding:'12px 14px',color:T.gray500,whiteSpace:'nowrap'}}>{item.exp}</td>
+                  <td style={{padding:'12px 14px',color:T.gray400,whiteSpace:'nowrap'}}>{item.submitted}</td>
+                  <td style={{padding:'12px 14px'}}>
+                    {item.status==='pending'&&<Badge variant="warning">Chờ duyệt</Badge>}
+                    {item.status==='approved'&&<Badge variant="success">Đã duyệt</Badge>}
+                    {item.status==='rejected'&&<Badge variant="error">Từ chối</Badge>}
+                  </td>
+                  <td style={{padding:'12px 14px'}}>
+                    {item.status==='pending'?(
+                      <div style={{display:'flex',gap:6}}>
+                        <Btn variant="success" size="xs" onClick={()=>act(i,'approved')} icon={<Ico n="check" size={11} color={T.white}/>}>Duyệt</Btn>
+                        <Btn variant="danger" size="xs" onClick={()=>act(i,'rejected')} icon={<Ico n="close" size={11} color={T.white}/>}>Từ chối</Btn>
+                      </div>
+                    ):(
+                      <span style={{fontSize:T.text.xs,color:T.gray400,fontStyle:'italic'}}>Đã xử lý</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  </DashLayout>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════
 // APP — Screen Registry & Navigation
 // ═════════════════════════════════════════════════════════════════
 
@@ -2264,36 +2908,41 @@ const SCREENS=[
   {id:'s02',label:'S02 — Đăng nhập',g:'Khách & Auth',comp:S02},
   {id:'s03',label:'S03 — Đăng ký',g:'Khách & Auth',comp:S03},
   {id:'s04',label:'S04 — Quên mật khẩu',g:'Khách & Auth',comp:S04},
-  {id:'s05',label:'S05 — Duyệt Voucher',g:'Khách & Auth',comp:S05},
+  {id:'s05',label:'S05 — Lọc Voucher',g:'Khách & Auth',comp:S05},
   {id:'s06',label:'S06 — Chi tiết Voucher',g:'Khách & Auth',comp:S06},
   {id:'s07',label:'S07 — Kết quả tìm kiếm',g:'Khách & Auth',comp:S07},
-  {id:'s08',label:'S08 — Hồ sơ khách hàng',g:'Customer Dashboard',comp:S08},
-  {id:'s09',label:'S09 — Voucher của tôi',g:'Customer Dashboard',comp:S09},
-  {id:'s10',label:'S10 — Dùng Voucher QR',g:'Customer Dashboard',comp:S10},
-  {id:'s11',label:'S11 — Giỏ hàng',g:'Customer Dashboard',comp:S11},
-  {id:'s12',label:'S12 — Lịch sử đơn hàng',g:'Customer Dashboard',comp:S12},
-  {id:'s13',label:'S13 — Thông báo KH',g:'Customer Dashboard',comp:S13},
-  {id:'s14',label:'S14 — Cài đặt KH',g:'Customer Dashboard',comp:S14},
-  {id:'s15',label:'S15 — Partner Dashboard',g:'Partner Portal',comp:S15},
-  {id:'s16',label:'S16 — Quản lý Voucher',g:'Partner Portal',comp:S16},
-  {id:'s17',label:'S17 — Tạo Voucher',g:'Partner Portal',comp:S17},
-  {id:'s18',label:'S18 — Sửa Voucher',g:'Partner Portal',comp:S18},
-  {id:'s19',label:'S19 — Hồ sơ Partner',g:'Partner Portal',comp:S19},
-  {id:'s20',label:'S20 — Báo cáo Partner',g:'Partner Portal',comp:S20},
-  {id:'s21',label:'S21 — Thông báo Partner',g:'Partner Portal',comp:S21},
-  {id:'s22',label:'S22 — Cài đặt Partner',g:'Partner Portal',comp:S22},
-  {id:'s23',label:'S23 — Admin Dashboard',g:'Admin Portal',comp:S23},
-  {id:'s24',label:'S24 — Quản lý Users',g:'Admin Portal',comp:S24},
-  {id:'s25',label:'S25 — Quản lý Partners',g:'Admin Portal',comp:S25},
-  {id:'s26',label:'S26 — Quản lý Vouchers',g:'Admin Portal',comp:S26},
-  {id:'s27',label:'S27 — Danh mục',g:'Admin Portal',comp:S27},
-  {id:'s28',label:'S28 — Báo cáo Admin',g:'Admin Portal',comp:S28},
-  {id:'s29',label:'S29 — Cài đặt Admin',g:'Admin Portal',comp:S29},
-  {id:'s30',label:'S30 — Thông báo Admin',g:'Admin Portal',comp:S30},
-  {id:'s31',label:'S31 — Audit Log',g:'Admin Portal',comp:S31},
+  {id:'s08',label:'S08 — Giỏ hàng',g:'Khách & Auth',comp:S08},
+  {id:'s09',label:'S09 — Thanh toán',g:'Khách & Auth',comp:S09},
+  {id:'s10',label:'S10 — Xác nhận đơn hàng',g:'Khách & Auth',comp:S10},
+  {id:'s11',label:'S11 — Hồ sơ khách hàng',g:'Customer Dashboard',comp:S11},
+  {id:'s12',label:'S12 — Voucher của tôi',g:'Customer Dashboard',comp:S12},
+  {id:'s13',label:'S13 — Lịch sử đơn hàng',g:'Customer Dashboard',comp:S13},
+  {id:'s14',label:'S14 — Thông báo KH',g:'Customer Dashboard',comp:S14},
+  {id:'s15',label:'S15 — Cài đặt KH',g:'Customer Dashboard',comp:S15},
+  {id:'s16',label:'S16 — Partner Dashboard',g:'Partner — Quản lý',comp:S16},
+  {id:'s17',label:'S17 — Quản lý Voucher',g:'Partner — Quản lý',comp:S17},
+  {id:'s18',label:'S18 — Tạo Voucher',g:'Partner — Quản lý',comp:S18},
+  {id:'s19',label:'S19 — Sửa Voucher',g:'Partner — Quản lý',comp:S19},
+  {id:'s20',label:'S20 — Hồ sơ Partner',g:'Partner — Quản lý',comp:S20},
+  {id:'s21',label:'S21 — Báo cáo Partner',g:'Partner — Quản lý',comp:S21},
+  {id:'s22',label:'S22 — Thông báo Partner',g:'Partner — Quản lý',comp:S22},
+  {id:'s23',label:'S23 — Cài đặt Partner',g:'Partner — Quản lý',comp:S23},
+  {id:'s24',label:'S24 — Nhân viên & Chi nhánh',g:'Partner — Quản lý',comp:S24},
+  {id:'s25',label:'S25 — Dùng Voucher QR',g:'Partner — Nhân viên',comp:S25},
+  {id:'s26',label:'S26 — Admin Dashboard',g:'Admin Portal',comp:S26},
+  {id:'s27',label:'S27 — Quản lý Users',g:'Admin Portal',comp:S27},
+  {id:'s28',label:'S28 — Quản lý Partners',g:'Admin Portal',comp:S28},
+  {id:'s29',label:'S29 — Thêm Partner mới',g:'Admin Portal',comp:S29},
+  {id:'s30',label:'S30 — Duyệt Voucher',g:'Admin Portal',comp:S30},
+  {id:'s31',label:'S31 — Quản lý Vouchers',g:'Admin Portal',comp:S31},
+  {id:'s32',label:'S32 — Danh mục',g:'Admin Portal',comp:S32},
+  {id:'s33',label:'S33 — Báo cáo Admin',g:'Admin Portal',comp:S33},
+  {id:'s34',label:'S34 — Cài đặt Admin',g:'Admin Portal',comp:S34},
+  {id:'s35',label:'S35 — Thông báo Admin',g:'Admin Portal',comp:S35},
+  {id:'s36',label:'S36 — Audit Log',g:'Admin Portal',comp:S36},
 ];
 
-const GROUPS=[...new Set(SCREENS.map(s=>s.g))];
+const GROUPS=['Khách & Auth','Customer Dashboard','Partner — Quản lý','Partner — Nhân viên','Admin Portal'];
 const SCALE=0.70;
 
 const mainViewRef=React.createRef();
@@ -2301,6 +2950,7 @@ const mainViewRef=React.createRef();
 function App(){
   const [active,setActive]=useState('s01');
   const [toasts,setToasts]=useState([]);
+  const [searchQ,setSearchQ]=useState('');
 
   const cur=SCREENS.find(s=>s.id===active)||SCREENS[0];
   const Comp=cur.comp;
@@ -2336,13 +2986,14 @@ function App(){
   return(
     <NavCtx.Provider value={navigate}>
     <ToastCtx.Provider value={showToast}>
+    <SearchCtx.Provider value={[searchQ,setSearchQ]}>
       {/* Navigation panel */}
       <nav className="nav-panel">
         <div className="nav-panel-brand">
           <div className="nav-panel-brand-icon">EC</div>
           <div>
             <div className="nav-panel-brand-name">ECVoucher UI</div>
-            <div style={{color:'#475569',fontSize:9,letterSpacing:'.04em',marginTop:1}}>31 SCREENS · HK3 2526</div>
+            <div style={{color:'#475569',fontSize:9,letterSpacing:'.04em',marginTop:1}}>{SCREENS.length} SCREENS · HK3 2526</div>
           </div>
         </div>
         <div style={{padding:'8px 6px 4px',borderBottom:'1px solid #1e293b',marginBottom:4}}>
@@ -2354,6 +3005,8 @@ function App(){
         {GROUPS.map(g=>(
           <div key={g}>
             <div className="nav-group-label">{g}</div>
+            {g==='Partner — Quản lý'&&<div style={{fontSize:9,color:'#334155',padding:'2px 14px 6px',lineHeight:1.4,letterSpacing:'.02em'}}>Tạo voucher · Báo cáo · Quản lý nhân viên</div>}
+            {g==='Partner — Nhân viên'&&<div style={{fontSize:9,color:'#334155',padding:'2px 14px 6px',lineHeight:1.4,letterSpacing:'.02em'}}>Chỉ xác nhận voucher QR tại quầy</div>}
             {SCREENS.filter(s=>s.g===g).map(s=>(
               <a key={s.id} className={'nav-link'+(s.id===active?' active':'')} onClick={()=>navigate(s.id)}>
                 <span className="nav-link-dot"/>
@@ -2372,12 +3025,13 @@ function App(){
       {/* Main content */}
       <div className="main-view" ref={mainViewRef}>
         <div style={{transform:`scale(${SCALE})`,transformOrigin:'top left',width:`${100/SCALE}%`,minHeight:`${100/SCALE}vh`}}>
-          <div className="screen-frame">
+          <div className="screen-frame" key={active} style={{animation:'screenFadeIn .18s ease'}}>
             <Comp/>
           </div>
         </div>
         <ToastContainer toasts={toasts} onDismiss={dismissToast}/>
       </div>
+    </SearchCtx.Provider>
     </ToastCtx.Provider>
     </NavCtx.Provider>
   );
