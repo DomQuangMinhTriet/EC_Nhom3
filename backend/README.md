@@ -28,6 +28,8 @@ This will install:
 
 - **Express 5.2.1** - Web framework
 - **Dotenv 17.4.2** - Environment variable management
+- **Sequelize 6** - ORM for relational database models
+- **mysql2** - MySQL driver used by Sequelize
 - **Nodemon 3.1.14** - Development auto-reload tool
 
 3. Create a `.env` file in the backend root directory:
@@ -51,6 +53,34 @@ npm run dev
 ```
 
 The server will run at `http://localhost:5000` (or the PORT specified in .env)
+
+### ORM / Database Setup
+
+The backend is configured with Sequelize for PostgreSQL/Supabase. The connection is defined in `config/database.js` and reads either `DATABASE_URL` or the `DB_*` variables from `.env`.
+
+When `DB_SYNC=true`, Sequelize automatically creates missing tables from the models during backend startup. Keep `DB_SYNC_ALTER=false` unless you intentionally want Sequelize to try updating existing tables to match model changes.
+
+Run these commands yourself after pulling the changes:
+
+```bash
+cd backend
+npm install
+npm run db:check
+```
+
+If you want the current demo route (`GET /api/test/users`) to return data from MySQL, create the database and seed the demo table:
+
+```sql
+CREATE DATABASE IF NOT EXISTS voucher_db;
+USE voucher_db;
+SOURCE db/test_users.sql;
+```
+
+For Windows MySQL CLI, run it from the `backend` folder:
+
+```bash
+mysql -u root -p voucher_db < db/test_users.sql
+```
 
 ### Production Server
 

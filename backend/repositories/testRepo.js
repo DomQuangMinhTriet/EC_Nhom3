@@ -1,17 +1,18 @@
-// repositories/testRepo.js
-
-const users = [
-  { id: 1, name: "John" },
-  { id: 2, name: "Jane" },
-];
+import db from "../models/index.js";
 
 class TestRepo {
   async getAllUsers() {
-    return users;
+    return db.TestUser.findAll({
+      attributes: ["id", "name"],
+      raw: true,
+    });
   }
 
   async getUserById(id) {
-    return users.find((user) => user.id === Number(id));
+    return db.TestUser.findByPk(id, {
+      attributes: ["id", "name"],
+      raw: true,
+    });
   }
 }
 
