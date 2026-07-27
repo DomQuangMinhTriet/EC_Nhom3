@@ -19,12 +19,12 @@ class OrderItem extends Model {
           primaryKey: true,
           allowNull: false,
         },
-        voucherProductId: {
+        voucherCodeId: {
           type: DataTypes.UUID,
           allowNull: false,
           references: {
-            model: "voucher_products",
-            key: "voucherProductId",
+            model: "voucher_codes",
+            key: "voucherCodeId",
           },
         },
         quantity: {
@@ -60,9 +60,9 @@ class OrderItem extends Model {
       foreignKey: "orderId",
       as: "order",
     });
-    OrderItem.belongsTo(models.VoucherProduct, {
-      foreignKey: "voucherProductId",
-      as: "voucherProduct",
+    OrderItem.belongsTo(models.VoucherCode, {
+      foreignKey: "voucherCodeId",
+      as: "voucherCode",
     });
   }
 }

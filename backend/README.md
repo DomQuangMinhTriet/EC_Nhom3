@@ -114,7 +114,7 @@ backend/
 │   └── testRepo.js       # Repository for database queries
 │
 ├── models/                # Database models/schemas
-│   └── testModel.js      # Data model definition
+│   └── *.js              # Data model definitions
 │
 ├── middlewares/           # Express middleware
 │   └── testMiddleware.js # Custom middleware (auth, validation, etc.)

@@ -45,6 +45,15 @@ class Review extends Model {
           allowNull: false,
           defaultValue: "active",
         },
+        isEdited: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+        },
+        editedAt: {
+          type: DataTypes.DATE,
+          allowNull: true,
+        },
       },
       {
         sequelize,

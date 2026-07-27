@@ -9,15 +9,17 @@ import Order from "./orderModel.js";
 import OrderItem from "./orderItemModel.js";
 import PartnerProfile from "./partnerProfileModel.js";
 import Payment from "./paymentModel.js";
+import Profile from "./profileModel.js";
 import Review from "./reviewModel.js";
 import Role from "./roleModel.js";
-import TestUser from "./testModel.js";
 import User from "./userModel.js";
 import VoucherCode from "./voucherCodeModel.js";
 import VoucherProduct from "./voucherProductModel.js";
+import Notification from "./notificationModel.js";
 
 Role.initModel(sequelize);
 User.initModel(sequelize);
+Profile.initModel(sequelize);
 CustomerProfile.initModel(sequelize);
 PartnerProfile.initModel(sequelize);
 BranchProfile.initModel(sequelize);
@@ -31,7 +33,7 @@ Order.initModel(sequelize);
 OrderItem.initModel(sequelize);
 Payment.initModel(sequelize);
 Review.initModel(sequelize);
-TestUser.initModel(sequelize);
+Notification.initModel(sequelize);
 
 const db = {
   sequelize,
@@ -45,12 +47,13 @@ const db = {
   OrderItem,
   PartnerProfile,
   Payment,
+  Profile,
   Review,
   Role,
-  TestUser,
   User,
   VoucherCode,
   VoucherProduct,
+  Notification,
 };
 
 Object.values(db).forEach((model) => {

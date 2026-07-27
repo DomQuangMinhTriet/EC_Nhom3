@@ -26,9 +26,8 @@ class VoucherCode extends Model {
             key: "customerProfileId",
           },
         },
-        voucherCode: {
-          type: DataTypes.UUID,
-          defaultValue: DataTypes.UUIDV4,
+        code: {
+          type: DataTypes.TEXT,
           allowNull: false,
           unique: true,
         },
@@ -46,20 +45,21 @@ class VoucherCode extends Model {
           allowNull: false,
           defaultValue: "available",
         },
-        usedAtBranch: {
-          type: DataTypes.UUID,
+        usedAt: {
+          type: DataTypes.DATE,
           allowNull: true,
-          references: {
-            model: "branch_profiles",
-            key: "branchProfileCode",
-          },
+        },
+        createdAt: {
+          type: DataTypes.DATE,
+          allowNull: false,
+          defaultValue: DataTypes.NOW,
         },
       },
       {
         sequelize,
         modelName: "VoucherCode",
         tableName: "voucher_codes",
-        timestamps: true,
+        timestamps: false,
       },
     );
 
@@ -75,9 +75,9 @@ class VoucherCode extends Model {
       foreignKey: "customerProfileId",
       as: "customer",
     });
-    VoucherCode.belongsTo(models.BranchProfile, {
-      foreignKey: "usedAtBranch",
-      as: "usedBranch",
+    VoucherCode.hasMany(models.OrderItem, {
+      foreignKey: "voucherCodeId",
+      as: "orderItems",
     });
   }
 }

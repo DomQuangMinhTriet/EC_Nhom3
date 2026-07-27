@@ -4,13 +4,13 @@ class BranchVoucherProduct extends Model {
   static initModel(sequelize) {
     BranchVoucherProduct.init(
       {
-        branchId: {
+        branchProfileId: {
           type: DataTypes.UUID,
           primaryKey: true,
           allowNull: false,
           references: {
             model: "branch_profiles",
-            key: "branchProfileCode",
+            key: "branchProfileId",
           },
         },
         voucherProductId: {

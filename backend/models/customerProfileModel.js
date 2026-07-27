@@ -15,7 +15,7 @@ class CustomerProfile extends Model {
           allowNull: false,
           unique: true,
           references: {
-            model: "users",
+            model: "profiles",
             key: "userId",
           },
         },
@@ -28,7 +28,7 @@ class CustomerProfile extends Model {
           allowNull: false,
           defaultValue: "",
         },
-        birthdate: {
+        birthDate: {
           type: DataTypes.DATEONLY,
           allowNull: true,
           validate: {
@@ -36,7 +36,7 @@ class CustomerProfile extends Model {
           },
         },
         gender: {
-          type: DataTypes.ENUM("Nam", "Nu"),
+          type: DataTypes.ENUM("Nam", "Nữ"),
           allowNull: true,
         },
         avatarUrl: {
@@ -69,9 +69,10 @@ class CustomerProfile extends Model {
   }
 
   static associate(models) {
-    CustomerProfile.belongsTo(models.User, {
+    CustomerProfile.belongsTo(models.Profile, {
       foreignKey: "userId",
-      as: "user",
+      targetKey: "userId",
+      as: "profile",
     });
     CustomerProfile.hasOne(models.Cart, {
       foreignKey: "customerProfileId",
@@ -88,6 +89,10 @@ class CustomerProfile extends Model {
     CustomerProfile.hasMany(models.Review, {
       foreignKey: "customerProfileId",
       as: "reviews",
+    });
+    CustomerProfile.hasMany(models.Notification, {
+      foreignKey: "customerProfileId",
+      as: "notifications",
     });
   }
 }

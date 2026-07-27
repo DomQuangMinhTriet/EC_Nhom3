@@ -18,12 +18,12 @@ class VoucherProduct extends Model {
             key: "categoryId",
           },
         },
-        partnerCode: {
+        partnerProfileId: {
           type: DataTypes.UUID,
           allowNull: false,
           references: {
             model: "partner_profiles",
-            key: "partnerCode",
+            key: "partnerProfileId",
           },
         },
         title: {
@@ -63,12 +63,38 @@ class VoucherProduct extends Model {
           type: DataTypes.DATE,
           allowNull: false,
         },
-        validDuration: {
+        validDurationDays: {
           type: DataTypes.INTEGER,
           allowNull: false,
           defaultValue: 0,
           validate: {
             min: 0,
+          },
+        },
+        minLimit: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 1,
+          validate: {
+            min: 1,
+          },
+        },
+        maxLimit: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+          validate: {
+            min: 1,
+          },
+        },
+        imageUrl: {
+          type: DataTypes.TEXT,
+          allowNull: true,
+          validate: {
+            isUrlOrEmpty(value) {
+              if (value && !/^https?:\/\//i.test(value)) {
+                throw new Error("imageUrl must be a valid URL");
+              }
+            },
           },
         },
         status: {
@@ -93,6 +119,13 @@ class VoucherProduct extends Model {
         modelName: "VoucherProduct",
         tableName: "voucher_products",
         timestamps: true,
+        validate: {
+          maxLimitAtLeastMinLimit() {
+            if (this.maxLimit !== null && this.maxLimit < this.minLimit) {
+              throw new Error("maxLimit must be greater than or equal to minLimit");
+            }
+          },
+        },
       },
     );
 
@@ -105,13 +138,13 @@ class VoucherProduct extends Model {
       as: "category",
     });
     VoucherProduct.belongsTo(models.PartnerProfile, {
-      foreignKey: "partnerCode",
+      foreignKey: "partnerProfileId",
       as: "partner",
     });
     VoucherProduct.belongsToMany(models.BranchProfile, {
       through: models.BranchVoucherProduct,
       foreignKey: "voucherProductId",
-      otherKey: "branchId",
+      otherKey: "branchProfileId",
       as: "branches",
     });
     VoucherProduct.hasMany(models.VoucherCode, {
@@ -121,10 +154,6 @@ class VoucherProduct extends Model {
     VoucherProduct.hasMany(models.CartItem, {
       foreignKey: "voucherProductId",
       as: "cartItems",
-    });
-    VoucherProduct.hasMany(models.OrderItem, {
-      foreignKey: "voucherProductId",
-      as: "orderItems",
     });
     VoucherProduct.hasMany(models.Review, {
       foreignKey: "voucherProductId",

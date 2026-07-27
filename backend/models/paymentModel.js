@@ -35,11 +35,16 @@ class Payment extends Model {
             min: 0,
           },
         },
+        currency: {
+          type: DataTypes.TEXT,
+          allowNull: false,
+          defaultValue: "VND",
+        },
         status: {
           type: DataTypes.ENUM("success", "failed"),
           allowNull: false,
         },
-        failedReason: {
+        reason: {
           type: DataTypes.TEXT,
           allowNull: true,
         },

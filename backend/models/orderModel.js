@@ -51,12 +51,12 @@ class Order extends Model {
             min: 0,
           },
         },
-        orderStatus: {
+        status: {
           type: DataTypes.ENUM("pending_payment", "completed", "failed"),
           allowNull: false,
           defaultValue: "pending_payment",
         },
-        failedReason: {
+        reason: {
           type: DataTypes.TEXT,
           allowNull: true,
         },

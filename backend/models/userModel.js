@@ -64,17 +64,9 @@ class User extends Model {
       targetKey: "roleCode",
       as: "role",
     });
-    User.hasOne(models.CustomerProfile, {
+    User.hasOne(models.Profile, {
       foreignKey: "userId",
-      as: "customerProfile",
-    });
-    User.hasOne(models.PartnerProfile, {
-      foreignKey: "userId",
-      as: "partnerProfile",
-    });
-    User.hasOne(models.BranchProfile, {
-      foreignKey: "userId",
-      as: "branchProfile",
+      as: "profile",
     });
   }
 }

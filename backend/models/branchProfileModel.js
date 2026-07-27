@@ -4,28 +4,33 @@ class BranchProfile extends Model {
   static initModel(sequelize) {
     BranchProfile.init(
       {
-        branchProfileCode: {
+        branchProfileId: {
           type: DataTypes.UUID,
           defaultValue: DataTypes.UUIDV4,
           primaryKey: true,
           allowNull: false,
-        },
-        partnerCode: {
-          type: DataTypes.UUID,
-          allowNull: false,
-          references: {
-            model: "partner_profiles",
-            key: "partnerCode",
-          },
         },
         userId: {
           type: DataTypes.UUID,
           allowNull: false,
           unique: true,
           references: {
-            model: "users",
+            model: "profiles",
             key: "userId",
           },
+        },
+        partnerProfileId: {
+          type: DataTypes.UUID,
+          allowNull: false,
+          references: {
+            model: "partner_profiles",
+            key: "partnerProfileId",
+          },
+        },
+        branchProfileCode: {
+          type: DataTypes.TEXT,
+          allowNull: false,
+          unique: true,
         },
         branchName: {
           type: DataTypes.TEXT,
@@ -77,23 +82,20 @@ class BranchProfile extends Model {
   }
 
   static associate(models) {
-    BranchProfile.belongsTo(models.User, {
+    BranchProfile.belongsTo(models.Profile, {
       foreignKey: "userId",
-      as: "user",
+      targetKey: "userId",
+      as: "profile",
     });
     BranchProfile.belongsTo(models.PartnerProfile, {
-      foreignKey: "partnerCode",
+      foreignKey: "partnerProfileId",
       as: "partner",
     });
     BranchProfile.belongsToMany(models.VoucherProduct, {
       through: models.BranchVoucherProduct,
-      foreignKey: "branchId",
+      foreignKey: "branchProfileId",
       otherKey: "voucherProductId",
       as: "voucherProducts",
-    });
-    BranchProfile.hasMany(models.VoucherCode, {
-      foreignKey: "usedAtBranch",
-      as: "usedVoucherCodes",
     });
   }
 }

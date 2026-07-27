@@ -4,7 +4,7 @@ class PartnerProfile extends Model {
   static initModel(sequelize) {
     PartnerProfile.init(
       {
-        partnerCode: {
+        partnerProfileId: {
           type: DataTypes.UUID,
           defaultValue: DataTypes.UUIDV4,
           primaryKey: true,
@@ -15,9 +15,14 @@ class PartnerProfile extends Model {
           allowNull: false,
           unique: true,
           references: {
-            model: "users",
+            model: "profiles",
             key: "userId",
           },
+        },
+        partnerProfileCode: {
+          type: DataTypes.TEXT,
+          allowNull: false,
+          unique: true,
         },
         partnerName: {
           type: DataTypes.TEXT,
@@ -60,16 +65,17 @@ class PartnerProfile extends Model {
   }
 
   static associate(models) {
-    PartnerProfile.belongsTo(models.User, {
+    PartnerProfile.belongsTo(models.Profile, {
       foreignKey: "userId",
-      as: "user",
+      targetKey: "userId",
+      as: "profile",
     });
     PartnerProfile.hasMany(models.BranchProfile, {
-      foreignKey: "partnerCode",
+      foreignKey: "partnerProfileId",
       as: "branches",
     });
     PartnerProfile.hasMany(models.VoucherProduct, {
-      foreignKey: "partnerCode",
+      foreignKey: "partnerProfileId",
       as: "voucherProducts",
     });
   }

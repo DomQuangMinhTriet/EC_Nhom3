@@ -31,14 +31,6 @@ class Role extends Model {
           allowNull: false,
           defaultValue: "",
         },
-        count: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-          defaultValue: 0,
-          validate: {
-            min: 0,
-          },
-        },
       },
       {
         sequelize,
