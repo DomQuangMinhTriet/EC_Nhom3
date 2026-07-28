@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
+    "db:check": "node scripts/checkDb.js",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
@@ -14,7 +15,9 @@
   "description": "",
   "dependencies": {
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "pg": "^8.13.1",
+    "sequelize": "^6.37.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
