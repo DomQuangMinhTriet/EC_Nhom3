@@ -1,6 +1,6 @@
 # Online Voucher Discount E-Commerce Platform
 
-A comprehensive full-stack e-commerce platform for buying and redeeming discount vouchers online. Built with modern web technologies (React, Express.js, Node.js) and designed for academic coursework in E-Commerce.
+A comprehensive full-stack e-commerce platform for buying and redeeming discount vouchers online. Built with Next.js, Express.js, TypeScript, and Supabase, and designed for academic coursework in E-Commerce.
 
 ## 🎯 Project Overview
 
@@ -10,40 +10,38 @@ This platform enables:
 - **Customers** to discover, purchase, and redeem vouchers
 - **Administrators** to approve partners/vouchers and monitor transactions
 
+> **Stack pivot — 28/07/2026.** Per the Implementation Plan, the backend moved
+> from Express + Sequelize (JS) to **Express + TypeScript + Drizzle ORM**, and
+> the frontend from Vite + React (JS) to **Next.js 14 (App Router) +
+> TypeScript**, with **Supabase Auth** for authentication and **Cloudinary**
+> for file storage. The previous scaffolds are kept as
+> `backend/_legacy-sequelize/` and `frontend/_legacy-vite/` for reference only
+> — see each package's README for details.
+
 ## 📂 Project Structure
 
 ```
 EC_Nhom3/
 ├── README.md                    # This file - Project overview
-├── backend/                     # Express.js API server
+├── backend/                     # Express.js + TypeScript API server
 │   ├── README.md               # Backend setup & architecture
-│   ├── index.js                # Server entry point
-│   ├── package.json            # Backend dependencies
-│   ├── routes/                 # API endpoints
-│   ├── controllers/            # Request handlers
-│   ├── services/               # Business logic
-│   ├── repositories/           # Data access layer
-│   ├── models/                 # Database schemas
-│   ├── middlewares/            # Express middleware
-│   ├── dto/                    # Data transfer objects
-│   └── constants/              # App constants
-│
-├── frontend/                    # React + Vite UI
-│   ├── README.md               # Frontend setup & architecture
-│   ├── package.json            # Frontend dependencies
-│   ├── vite.config.js          # Vite configuration
-│   ├── index.html              # HTML entry point
 │   ├── src/
-│   │   ├── main.jsx            # React entry point
-│   │   ├── App.jsx             # Main component
-│   │   ├── components/         # Reusable components
-│   │   ├── pages/              # Page components
-│   │   ├── routes/             # Route definitions
-│   │   ├── services/           # API service layer
-│   │   ├── hooks/              # Custom React hooks
-│   │   ├── api/                # API client
-│   │   └── utils/              # Utility functions
-│   └── public/                 # Static assets
+│   │   ├── index.ts             # Server entry point
+│   │   ├── db/                   # Drizzle client + schema (17 tables)
+│   │   └── lib/                   # Cloudinary, Supabase admin client
+│   ├── drizzle/                 # Generated SQL migrations
+│   ├── package.json
+│   └── _legacy-sequelize/       # Previous Sequelize/JS implementation (reference only)
+│
+├── frontend/                    # Next.js 14 (App Router) + TypeScript UI
+│   ├── README.md               # Frontend setup & architecture
+│   ├── prototype/               # EC-Voucher-UI.html — visual reference for all screens
+│   ├── src/
+│   │   ├── app/                  # Pages, layouts, route handlers
+│   │   ├── providers/             # TanStack Query provider
+│   │   └── lib/supabase/           # Browser + server Supabase clients
+│   ├── package.json
+│   └── _legacy-vite/            # Previous Vite+React/JS implementation (reference only)
 │
 └── docs/                        # Project documentation
     ├── README.md               # Documentation guide
@@ -58,44 +56,32 @@ EC_Nhom3/
 
 ### Prerequisites
 
-- Node.js v16+ ([download](https://nodejs.org/))
-- npm v8+ (comes with Node.js)
+- Node.js v20+ ([download](https://nodejs.org/))
+- npm v10+ (comes with Node.js)
+- A Supabase project (Postgres + Auth) and a Cloudinary account
 - Git
 
 ### Setup Backend
 
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Install dependencies
 npm install
-
-# Create .env file
-echo "PORT=5000" > .env
-echo "NODE_ENV=development" >> .env
-echo "JWT_SECRET=your_secret_key_here" >> .env
-
-# Start development server
+cp .env.example .env   # fill in Supabase + Cloudinary credentials
 npm run dev
 ```
 
-Backend will run at: `http://localhost:5000`
+Backend will run at: `http://localhost:8080`
 
 ### Setup Frontend
 
 ```bash
-# Navigate to frontend directory
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
+cp .env.local.example .env.local   # fill in Supabase URL/anon key, API URL
 npm run dev
 ```
 
-Frontend will run at: `http://localhost:5173`
+Frontend will run at: `http://localhost:3000`
 
 ## 🏗️ Architecture
 
@@ -103,18 +89,18 @@ Frontend will run at: `http://localhost:5173`
 
 ```
 ┌─────────────────────────────────────────────────┐
-│         Frontend (React + Vite)                 │
-│    Customer │ Partner │ Admin Interfaces       │
+│      Frontend (Next.js 14 + TypeScript)          │
+│    Customer │ Partner │ Branch │ Admin UI        │
 └──────────────────┬──────────────────────────────┘
-                  │ HTTP/REST
+                  │ HTTP/REST · Supabase Auth
 ┌──────────────────▼──────────────────────────────┐
-│        Backend (Express.js + Node.js)           │
-│    API Routes → Controllers → Services          │
+│    Backend (Express.js + TypeScript + Drizzle)   │
+│    API Routes → Controllers → Services           │
 └──────────────────┬──────────────────────────────┘
-                  │ Database Queries
+                  │ Drizzle ORM
 ┌──────────────────▼──────────────────────────────┐
-│      Database (MySQL/PostgreSQL)                │
-│ Users │ Partners │ Vouchers │ Orders │ Reports │
+│         Database (Supabase PostgreSQL)           │
+│ Users │ Partners │ Vouchers │ Orders │ Reports  │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -206,21 +192,28 @@ Comprehensive documentation is available in the `docs/` folder:
 
 ### Frontend
 
-- **React 19.2.6** - UI library
-- **Vite 8.0.12** - Fast build tool
-- **React Router DOM 7.17.0** - Client-side routing
-- **ESLint** - Code quality
+- **Next.js 14** (App Router) - UI framework, routing, TypeScript, Server Components
+- **Tailwind CSS + shadcn/ui** - Styling and UI components
+- **TanStack Query** - Data fetching and caching from the backend API
+- **Zustand** - Global client state (cart, UI)
+- **React Hook Form + Zod** - Form handling and type-safe validation
+- **supabase-js (client)** - Auth session, token refresh
 
 ### Backend
 
-- **Node.js** - JavaScript runtime
-- **Express.js 5.2.1** - Web framework
-- **Dotenv 17.4.2** - Environment management
-- **Nodemon 3.1.14** - Development auto-reload
+- **Node.js + Express + TypeScript** - REST API server
+- **Drizzle ORM** - Query builder and migrations, connected to Supabase PostgreSQL
+- **supabase-js (server)** - Verify auth tokens, admin operations
+- **Cloudinary** - Voucher image and avatar storage
 
-### Database
+### Database & Auth
 
-- **MySQL** or **PostgreSQL** - Relational database (to be configured)
+- **Supabase (PostgreSQL 16 + Auth)** - Hosted database and authentication
+
+### Deployment
+
+- **Vercel** - Next.js frontend hosting
+- **Railway** (or Render) - Express backend hosting
 
 ### Development Tools
 
@@ -268,9 +261,11 @@ See [docs/README.md](docs/README.md) for:
 cd backend
 npm install          # Install dependencies
 npm run dev          # Start dev server with auto-reload
-npm start            # Start production server
-npm test             # Run tests
+npm start            # Start production server (after npm run build)
+npm run typecheck    # Type-check
 npm run lint         # Run ESLint
+npm run db:generate  # Generate a migration from the Drizzle schema
+npm run db:push      # Push the schema to the configured database
 ```
 
 ### Frontend
@@ -280,27 +275,46 @@ cd frontend
 npm install          # Install dependencies
 npm run dev          # Start dev server
 npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
+npm start            # Serve the production build
+npm run lint         # Run ESLint (next lint)
+npm run typecheck    # Type-check
 ```
 
 ## 🔐 Environment Variables
 
+See [backend/.env.example](backend/.env.example) and
+[frontend/.env.local.example](frontend/.env.local.example) for the full,
+up-to-date list. Summary:
+
 ### Backend `.env` file
 
 ```env
-PORT=5000
+PORT=8080
 NODE_ENV=development
-DATABASE_URL=mysql://user:password@localhost:3306/voucher_db
-JWT_SECRET=your_super_secret_key_min_32_chars
-JWT_EXPIRE=7d
+DB_HOST=db.your-project-ref.supabase.co
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASS=yourpassword
+DB_SSL=true
+
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_JWT_SECRET=your-supabase-jwt-secret
+
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 ```
 
-### Frontend `.env.local` file (if needed)
+### Frontend `.env.local` file
 
 ```env
-VITE_API_URL=http://localhost:5000/api
-VITE_APP_NAME=Voucher Platform
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
 ```
 
 ## 📈 Project Timeline
