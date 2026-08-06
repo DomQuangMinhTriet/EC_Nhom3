@@ -1,0 +1,3 @@
+export class ApiError extends Error { constructor(message: string, public status: number, public detail?: unknown) { super(message); this.name = "ApiError"; } }
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+export async function apiClient<T>(path: string, init: RequestInit = {}): Promise<T> { if (!apiUrl) throw new ApiError("NEXT_PUBLIC_API_URL chưa được cấu hình", 0); const response = await fetch(`${apiUrl}${path}`, { ...init, headers: { "Content-Type": "application/json", ...init.headers } }); const body: unknown = await response.json().catch(() => undefined); if (!response.ok) throw new ApiError((body as { message?: string } | undefined)?.message ?? "Yêu cầu không thành công", response.status, body); return body as T; }

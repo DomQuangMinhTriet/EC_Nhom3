@@ -1,0 +1,2 @@
+import Link from "next/link";
+export function Logo({ light = false }: { light?: boolean }) { return <Link href="/" className="inline-flex items-center gap-2 font-extrabold tracking-[-.03em]"><span className={`grid h-8 w-8 place-items-center rounded-lg text-xs font-extrabold ${light ? "bg-white/15 text-white" : "bg-gradient-to-br from-indigo-500 to-primary text-white shadow-[0_8px_24px_rgba(79,70,229,.25)]"}`}>EC</span><span className={light ? "text-white" : "text-primary"}>ECVoucher</span></Link>; }

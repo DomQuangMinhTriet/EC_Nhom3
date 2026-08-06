@@ -1,40 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * Placeholder tokens — replace with values converted from
- * frontend/prototype/EC-Voucher-UI.html during Phase 6 "Components tu
- * Prototype" so the app matches the approved design.
- */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 20% 12%;
-    --primary: 217 91% 53%;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
-    --border: 220 13% 91%;
-    --radius: 0.5rem;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --border: 214 32% 91%;
+    --radius: 0.75rem;
   }
 
-  .dark {
-    --background: 222 20% 10%;
-    --foreground: 0 0% 96%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 20% 10%;
-    --muted: 222 14% 18%;
-    --muted-foreground: 220 9% 65%;
-    --border: 222 14% 22%;
-  }
+  * { border-color: hsl(var(--border)); }
+  html { scroll-behavior: smooth; }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+  button, input, textarea, select { font: inherit; }
+  :focus-visible { outline: 2px solid #4F46E5; outline-offset: 2px; }
+  ::selection { background: #c7d2fe; color: #1e1b4b; }
+}
 
-  * {
-    border-color: hsl(var(--border));
-  }
-
-  body {
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-  }
+@layer utilities {
+  .shadow-brand-sm { box-shadow: 0 1px 3px rgba(79,70,229,.05), 0 1px 2px rgba(15,23,42,.06); }
+  .shadow-brand-md { box-shadow: 0 4px 16px rgba(79,70,229,.07), 0 2px 4px rgba(15,23,42,.05); }
+  .shadow-brand-lg { box-shadow: 0 12px 32px rgba(79,70,229,.1), 0 4px 8px rgba(15,23,42,.06); }
 }
