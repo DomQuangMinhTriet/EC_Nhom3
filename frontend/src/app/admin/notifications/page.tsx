@@ -1,0 +1,3 @@
+import { AdminShell } from "@/components/admin/admin-shell";
+import { PageHeader } from "@/components/common/page-header";
+export default function AdminNotificationsPage() { return <AdminShell active="/admin/notifications"><PageHeader title="Thông báo" subtitle="Các sự kiện cần quản trị viên theo dõi."/><div className="space-y-3">{["Có 4 voucher mới chờ xét duyệt.", "Partner An Nhiên Spa vừa hoàn tất hồ sơ đăng ký.", "Báo cáo doanh thu ngày 06/08/2026 đã được tổng hợp."].map((text, index) => <article className={`flex gap-3 rounded-xl border p-4 shadow-brand-sm ${index === 0 ? "border-indigo-100 bg-indigo-50" : "border-slate-200 bg-white"}`} key={text}><span>🔔</span><p className="text-xs leading-5 text-slate-700">{text}</p></article>)}</div></AdminShell>; }
