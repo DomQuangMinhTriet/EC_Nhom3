@@ -16,5 +16,5 @@
     "noUncheckedIndexedAccess": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "_legacy-sequelize"]
+  "exclude": ["node_modules", "dist"]
 }
