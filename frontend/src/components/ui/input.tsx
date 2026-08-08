@@ -1,0 +1,4 @@
+import type { InputHTMLAttributes, ReactNode } from "react";
+export function Input({ label, error, hint, required, className = "", ...props }: InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string; hint?: ReactNode }) {
+  return <label className="flex w-full flex-col gap-1.5 text-xs font-semibold text-slate-700">{label && <span>{label}{required && <span className="ml-1 text-danger">*</span>}{hint && <span className="float-right font-semibold text-primary">{hint}</span>}</span>}<input className={`w-full rounded-lg border-[1.5px] bg-white px-3.5 py-2.5 text-sm font-normal text-slate-900 shadow-brand-sm outline-none transition placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-indigo-100 ${error ? "border-danger bg-red-50" : "border-slate-200"} ${className}`} required={required} {...props}/>{error && <span className="font-normal text-danger">{error}</span>}</label>;
+}

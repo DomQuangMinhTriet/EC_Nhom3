@@ -1,0 +1,5 @@
+import { AdminShell } from "@/components/admin/admin-shell";
+import { PageHeader } from "@/components/common/page-header";
+import { RecordsTable } from "@/components/admin/records-table";
+import { adminUsers } from "@/lib/mocks/admin";
+export default function UsersPage() { return <AdminShell active="/admin/users"><PageHeader title="Quản lý người dùng" subtitle="Tìm kiếm, lọc và kiểm soát tài khoản hệ thống."/><input className="mb-5 w-full max-w-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-brand-sm" placeholder="Tìm người dùng..."/><RecordsTable headers={["Người dùng", "Email", "Vai trò", "Trạng thái", "Thao tác"]} rows={adminUsers.map((user) => [<b key="n">{user.name}</b>, user.email, user.role, <span key="s" className={`rounded-full px-2 py-1 text-[10px] font-bold ${user.status === "Hoạt động" ? "bg-emerald-50 text-success" : "bg-red-50 text-danger"}`}>{user.status}</span>, <button key="a" className="font-semibold text-primary">Xem</button>])}/></AdminShell>; }
