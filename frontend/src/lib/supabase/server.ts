@@ -1,13 +1,13 @@
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { env } from "@/config/env";
 
-/** Use inside Server Components / Route Handlers only. */
 export function createSupabaseServerClient() {
   const cookieStore = cookies();
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    env.supabaseUrl,
+    env.supabasePublishableKey,
     {
       cookies: {
         getAll() {
@@ -21,8 +21,8 @@ export function createSupabaseServerClient() {
               cookieStore.set(name, value, options),
             );
           } catch {
-            // Called from a Server Component with no request context — the
-            // middleware refreshes the session instead, so this is safe to ignore.
+            // Called from a Server Component with no request context; middleware
+            // refreshes the session instead, so this is safe to ignore.
           }
         },
       },

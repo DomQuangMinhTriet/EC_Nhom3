@@ -1,6 +1,5 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
-// Nhom 1: Tai khoan
 export const roleCodeEnum = pgEnum("role_code", [
   "Super_Admin",
   "Operational_Admin",
@@ -14,12 +13,6 @@ export const userStatusEnum = pgEnum("user_status", [
   "pending",
   "active",
   "deactivated",
-]);
-
-export const profileTypeEnum = pgEnum("profile_type", [
-  "customer",
-  "partner",
-  "branch",
 ]);
 
 export const genderEnum = pgEnum("gender", ["Nam", "Nữ"]);
@@ -40,7 +33,6 @@ export const branchStatusEnum = pgEnum("branch_status", [
   "rejected",
 ]);
 
-// Nhom 2: San pham
 export const discountTypeEnum = pgEnum("discount_type", ["direct", "percentage"]);
 
 export const voucherProductStatusEnum = pgEnum("voucher_product_status", [
@@ -59,7 +51,6 @@ export const voucherCodeStatusEnum = pgEnum("voucher_code_status", [
   "available",
 ]);
 
-// Nhom 3: Giao dich
 export const orderStatusEnum = pgEnum("order_status", [
   "pending_payment",
   "completed",
