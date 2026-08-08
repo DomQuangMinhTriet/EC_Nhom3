@@ -19,7 +19,10 @@ export async function apiRequest<TResponse>(
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(payload?.error ?? `API request failed with status ${response.status}`);
   }
 
   return response.json() as Promise<TResponse>;
