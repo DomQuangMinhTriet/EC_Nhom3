@@ -9,7 +9,9 @@ export async function apiRequest<TResponse>(
   options: RequestOptions = {},
 ): Promise<TResponse> {
   const { body, headers, ...requestOptions } = options;
-  const response = await fetch(`${env.apiUrl}${path}`, {
+  const apiPath = path.replace(/^\/api/, "");
+  const baseUrl = typeof window === "undefined" ? env.apiUrl : "/api/backend";
+  const response = await fetch(`${baseUrl}${apiPath}`, {
     ...requestOptions,
     headers: {
       "Content-Type": "application/json",
