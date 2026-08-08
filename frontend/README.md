@@ -64,7 +64,7 @@ frontend/
 |-- next.config.mjs
 |-- package-lock.json
 |-- package.json
-|-- postcss.config.mjs
+|-- postcss.config.js
 |-- tailwind.config.ts
 `-- tsconfig.json
 ```
