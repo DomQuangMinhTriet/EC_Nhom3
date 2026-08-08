@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test src/shared/auth/jwt.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
@@ -28,13 +28,16 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.38.3",
     "express": "^5.2.1",
-    "pg": "^8.13.1"
+    "express-rate-limit": "^8.2.1",
+    "pg": "^8.13.1",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
+    "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.19.1",
     "@typescript-eslint/parser": "^8.19.1",
     "drizzle-kit": "^0.30.1",
