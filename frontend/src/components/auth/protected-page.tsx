@@ -1,9 +1,22 @@
-import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+"use client";
 
-type Role = "customer" | "partner" | "branch" | "admin";
-const destinations: Record<Role, string> = { customer: "/account", partner: "/partner/dashboard", branch: "/branch/redeem", admin: "/admin/dashboard" };
-function configured() { const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; return Boolean(url && key && !url.includes("your-project-ref") && key !== "your-anon-key"); }
-/** Server-side route guard. It intentionally bypasses only local visual development without Supabase credentials. */
-export async function ProtectedPage({ role, children }: { role: Role; children: ReactNode }) { if (!configured()) return <>{children}</>; const supabase = createSupabaseServerClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) redirect("/login"); const actualRole = (user.user_metadata.role ?? "customer") as Role; if (actualRole !== role) redirect(destinations[actualRole] ?? "/"); return <>{children}</>; }
+import { useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { dashboardForRole, roleFromBackend, type UserRole } from "@/features/auth/auth-api";
+import { useAuthSession } from "@/features/auth/auth-session-provider";
+
+export function ProtectedPage({ role, children }: { role: UserRole; children: ReactNode }) {
+  const router = useRouter();
+  const { session, isLoading } = useAuthSession();
+  const actualRole = session ? roleFromBackend(session.user.roleCode) : null;
+
+  useEffect(() => {
+    if (!isLoading && !session) router.replace("/login");
+    if (!isLoading && actualRole && actualRole !== role) {
+      router.replace(dashboardForRole(session?.user.roleCode));
+    }
+  }, [actualRole, isLoading, role, router, session]);
+
+  if (isLoading || !session || actualRole !== role) return null;
+  return <>{children}</>;
+}

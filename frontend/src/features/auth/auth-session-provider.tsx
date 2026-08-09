@@ -1,28 +1,39 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { clearAuthSession, onAuthChange, readAuthSession, type AuthSession } from "./auth-api";
 
-type AuthState = { session: Session | null; isLoading: boolean };
-const AuthSessionContext = createContext<AuthState>({ session: null, isLoading: true });
+type AuthState = {
+  session: AuthSession | null;
+  isLoading: boolean;
+  signOut: () => void;
+};
+
+const AuthSessionContext = createContext<AuthState>({
+  session: null,
+  isLoading: true,
+  signOut: () => undefined,
+});
 
 export function AuthSessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({ session: null, isLoading: true });
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const supabase = createSupabaseBrowserClient();
-      supabase.auth.getSession().then(({ data }) => setState({ session: data.session, isLoading: false }));
-      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setState({ session, isLoading: false }));
-      return () => listener.subscription.unsubscribe();
-    } catch {
-      // Local UI development can run without Supabase credentials.
-      setState({ session: null, isLoading: false });
-    }
+    const syncSession = () => {
+      setSession(readAuthSession());
+      setIsLoading(false);
+    };
+
+    syncSession();
+    return onAuthChange(syncSession);
   }, []);
 
-  return <AuthSessionContext.Provider value={state}>{children}</AuthSessionContext.Provider>;
+  return (
+    <AuthSessionContext.Provider value={{ session, isLoading, signOut: clearAuthSession }}>
+      {children}
+    </AuthSessionContext.Provider>
+  );
 }
 
 export const useAuthSession = () => useContext(AuthSessionContext);
