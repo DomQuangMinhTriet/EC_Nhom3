@@ -12,7 +12,9 @@ const credentialRateLimit = rateLimit({
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: { error: "Too many authentication attempts. Please try again later." },
+  message: {
+    error: "Too many authentication attempts. Please try again later.",
+  },
 });
 
 authRouter.post(
@@ -20,5 +22,9 @@ authRouter.post(
   credentialRateLimit,
   asyncHandler(authController.register),
 );
-authRouter.post("/login", credentialRateLimit, asyncHandler(authController.login));
+authRouter.post(
+  "/login",
+  credentialRateLimit,
+  asyncHandler(authController.login),
+);
 authRouter.post("/refresh", asyncHandler(authController.refresh));
