@@ -111,3 +111,5 @@ exampleRouter.post("/", asyncHandler(exampleController.create));
 - DB timestamp nên có `createdAt`, `updatedAt`; khi update nhớ set `updatedAt: new Date()`.
 - Tên file dùng kebab/lowercase theo module hiện tại: `auth.service.ts`, `auth.routes.ts`.
 - Giữ controller mỏng, service rõ nghiệp vụ, repository gọn DB query.
+
+test test test
