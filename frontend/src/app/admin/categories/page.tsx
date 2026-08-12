@@ -1,0 +1,6 @@
+"use client";
+import { useState } from "react";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { PageHeader } from "@/components/common/page-header";
+import { Button } from "@/components/ui/button";
+export default function CategoriesPage() { const [items, setItems] = useState(["Ăn uống", "Mua sắm", "Du lịch", "Làm đẹp", "Giải trí", "Sức khoẻ"]); const [name, setName] = useState(""); return <AdminShell active="/admin/categories"><PageHeader title="Danh mục" subtitle="Quản lý danh mục voucher trong hệ thống."/><div className="flex gap-2"><input value={name} onChange={(event) => setName(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" placeholder="Tên danh mục"/><Button size="sm" onClick={() => { if (name.trim()) { setItems((all) => [...all, name.trim()]); setName(""); } }}>+ Thêm</Button></div><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{items.map((item) => <div className="flex justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-brand-sm" key={item}><b className="text-sm">{item}</b><button onClick={() => setItems((all) => all.filter((value) => value !== item))} className="text-xs font-semibold text-danger">Xóa</button></div>)}</div></AdminShell>; }

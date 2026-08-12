@@ -1,93 +1,202 @@
-# Backend — Express + TypeScript + Drizzle ORM
+# Backend - Express + TypeScript + Drizzle ORM
 
-REST API server for the EC Voucher System, backed by Supabase PostgreSQL via
-[Drizzle ORM](https://orm.drizzle.team/) and Supabase Auth.
+Backend API cho EC Voucher System. Server dung Express + TypeScript, ket noi
+Supabase PostgreSQL qua Drizzle ORM, Supabase Auth cho xac thuc, va Cloudinary
+cho luu tru hinh anh.
 
-> **Migrated from Sequelize/JavaScript on 28/07/2026.** The previous
-> implementation (models, routes, controllers, services, repositories) is kept
-> at [`_legacy-sequelize/`](_legacy-sequelize/) purely as a field-by-field
-> reference while the Drizzle schema and API layers are rebuilt — it is not
-> run anymore and will be deleted once Phase 5 is complete.
-
-## Setup
+## Quick Start
 
 ```bash
 cd backend
 npm install
-cp .env.example .env   # fill in Supabase + Cloudinary credentials
-npm run dev             # http://localhost:8080
+cp .env.example .env
+npm run dev
+```
+
+Server mac dinh chay tai:
+
+```text
+http://localhost:8080
+```
+
+Chay kieu production:
+
+```bash
+npm start
+```
+
+`npm start` tu dong chay `npm run build` truoc, sau do chay
+`dist/index.js`. Vi vay co the xoa `dist/` bat cu luc nao; no se duoc tao lai
+khi start/build.
+
+Trong luc phat trien, uu tien dung:
+
+```bash
+npm run dev
+```
+
+## Folder Structure
+
+```text
+backend/
+|-- drizzle/
+|   |-- meta/                 # Drizzle migration metadata
+|   `-- *.sql                 # Generated SQL migrations
+|-- src/
+|   |-- modules/
+|   |   `-- health/
+|   |       |-- health.controller.ts
+|   |       |-- health.repository.ts
+|   |       |-- health.routes.ts
+|   |       `-- health.service.ts
+|   |-- routes/
+|   |   `-- index.ts           # Register module routers
+|   |-- shared/
+|   |   |-- errors/
+|   |   |   `-- AppError.ts
+|   |   `-- http/
+|   |       |-- asyncHandler.ts
+|   |       |-- errorHandler.ts
+|   |       `-- notFoundHandler.ts
+|   |-- db/
+|   |   |-- schema/
+|   |   |   |-- account.ts
+|   |   |   |-- enums.ts
+|   |   |   |-- index.ts
+|   |   |   |-- notification.ts
+|   |   |   |-- product.ts
+|   |   |   |-- relations.ts
+|   |   |   `-- transaction.ts
+|   |   |-- client.ts          # Drizzle database client
+|   |   |-- migrate.ts         # Run migrations
+|   |   |-- seed.ts            # Seed data
+|   |   `-- verify.ts          # Verify database connection/schema
+|   |-- lib/
+|   |   |-- cloudinary.ts      # Cloudinary upload helper
+|   |   `-- supabaseAdmin.ts   # Supabase admin client
+|   |-- app.ts                # Express app composition
+|   `-- index.ts              # Express server entry point
+|-- .env.example              # Environment variable template
+|-- .gitignore
+|-- drizzle.config.ts
+|-- eslint.config.ts
+|-- package-lock.json
+|-- package.json
+|-- README.md
+`-- tsconfig.json
+```
+
+Generated/local folders khong nam trong source tree:
+
+```text
+node_modules/   # created by npm install
+dist/           # created by npm run build or npm start
 ```
 
 ## Scripts
 
-| Command             | What it does                                              |
-| -------------------- | ---------------------------------------------------------- |
-| `npm run dev`         | Start the API with hot reload (`tsx watch`)                |
-| `npm run build`       | Bundle `src/` to `dist/` for production (`tsup`)            |
-| `npm start`            | Run the built server (`node dist/index.js`)                 |
-| `npm run typecheck`    | Type-check without emitting                                 |
-| `npm run lint`         | ESLint                                                       |
-| `npm run db:generate`  | Generate a SQL migration from the current Drizzle schema    |
-| `npm run db:push`      | Push the schema straight to the configured database          |
-| `npm run db:studio`    | Open Drizzle Studio against the configured database          |
+| Command               | Purpose                                                 |
+| --------------------- | ------------------------------------------------------- |
+| `npm run dev`         | Start dev server with hot reload via `tsx watch`        |
+| `npm run build`       | Build TypeScript source into `dist/` with `tsup`        |
+| `npm start`           | Build, then run compiled server from `dist/index.js`    |
+| `npm run typecheck`   | Type-check TypeScript without emitting files            |
+| `npm run lint`        | Run ESLint for TypeScript source                        |
+| `npm run test`        | Run TypeScript tests with Node's test runner            |
+| `npm run db:generate` | Generate Drizzle SQL migration files                    |
+| `npm run db:migrate`  | Apply checked-in migrations                             |
+| `npm run db:seed`     | Seed development data                                   |
+| `npm run db:verify`   | Verify database connectivity/schema assumptions         |
+| `npm run db:push`     | Push current schema directly to configured database     |
+| `npm run db:studio`   | Open Drizzle Studio                                     |
 
-## Project structure
+## Architecture
 
-```
-backend/
-├── src/
-│   ├── index.ts              # Express entry point
-│   ├── db/
-│   │   ├── client.ts          # Drizzle client (Supabase Postgres connection)
-│   │   └── schema/            # Table definitions, grouped like the Data Dictionary
-│   │       ├── enums.ts
-│   │       ├── account.ts     # Role, User, Profile, Customer/Partner/BranchProfile
-│   │       ├── product.ts     # Category, VoucherProduct, BranchVoucherProduct, VoucherCode
-│   │       ├── transaction.ts # Cart, CartItem, Order, OrderItem, Payment, Review
-│   │       ├── notification.ts
-│   │       ├── relations.ts   # drizzle `relations()` for the query API
-│   │       └── index.ts       # barrel export
-│   └── lib/
-│       ├── cloudinary.ts      # uploadToCloudinary() helper
-│       └── supabaseAdmin.ts   # server-side Supabase client (service role key)
-├── drizzle/                  # Generated SQL migrations (checked in)
-├── drizzle.config.ts
-├── _legacy-sequelize/        # Reference only — see note above
-└── .env.example
+Backend dang di theo layered architecture de code de test, de thay doi, va
+gan voi SOLID hon:
+
+```text
+HTTP request
+-> routes
+-> controller
+-> service
+-> repository
+-> Drizzle ORM / database
 ```
 
-Routes/controllers/services for each domain land here incrementally across
-Phase 2–5 of the [implementation plan](../docs); this scaffold intentionally
-ships with a single health-check route (`GET /`, `GET /api/health/db`) so the
-next phase starts from a clean, verified base.
+Quy uoc cho moi feature/module:
 
-## Database schema
+```text
+src/modules/<feature>/
+|-- <feature>.routes.ts       # Khai bao endpoint va middleware
+|-- <feature>.controller.ts   # Doc req, goi service, tra res
+|-- <feature>.service.ts      # Business logic / use case
+`-- <feature>.repository.ts   # Truy van database bang Drizzle ORM
+```
 
-The schema in `src/db/schema/` mirrors Data Dictionary v3.1 (17 tables). Two
-deviations from v3.0, decided 28/07/2026:
+Nguyen tac tach lop:
 
-- **`User.passwordHash` was removed.** Supabase Auth (`auth.users`) is the
-  single source of truth for credentials — the app never hashes or checks a
-  password itself.
-- **`User.userId` has no default.** It must be set to the corresponding
-  `auth.users.id` by the `auth.users → public.users` trigger (Phase 1,
-  "Supabase Auth Config"), not auto-generated, so RLS policies can rely on
-  `auth.uid()` matching it directly.
+- Controller khong query database truc tiep.
+- Service khong import Express `Request`/`Response`.
+- Repository la noi lam viec voi Drizzle ORM va `src/db`.
+- Loi ung dung nen nem bang `AppError` de `errorHandler` xu ly thong nhat.
+- Route moi nen duoc dang ky vao `src/routes/index.ts`.
 
-Run `npm run db:generate` after editing schema files, review the SQL under
-`drizzle/`, then `npm run db:push` (or apply the migration via the Supabase
-dashboard) against the real project.
+Vi du module hien tai:
 
-## Auth & storage
+```text
+src/modules/health/
+|-- health.routes.ts
+|-- health.controller.ts
+|-- health.service.ts
+`-- health.repository.ts
+```
 
-- **Auth**: Supabase Auth. The frontend talks to Supabase directly for
-  sign-up/sign-in; this backend verifies the JWT (`SUPABASE_JWT_SECRET`) on
-  protected routes and uses `supabaseAdmin` (service role key) for
-  admin-only operations like approving a Partner or Branch.
-- **File storage**: Cloudinary, via `src/lib/cloudinary.ts`. Used for voucher
-  images and avatars — see `.env.example` for the required credentials.
+`GET /api/health/db` di qua repository de ping database bang Drizzle ORM, nen
+day la mau nho de copy khi them `voucher`, `order`, `partner`, `admin`, ...
 
-## Environment variables
+## Environment Variables
 
-See [`.env.example`](.env.example) for the full list: app port, Supabase
-Postgres connection, Supabase Auth keys, and Cloudinary credentials.
+Copy `.env.example` to `.env`, then fill in real values:
+
+```env
+PORT=8080
+NODE_ENV=development
+
+DB_HOST=
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASS=
+DB_SSL=true
+
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_JWT_SECRET=
+
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+
+`.env` la local-only va khong commit.
+
+## Current API
+
+Hien tai backend moi co cac route kiem tra co ban:
+
+| Method | Path             | Description                  |
+| ------ | ---------------- | ---------------------------- |
+| `GET`  | `/`              | Basic API health response    |
+| `GET`  | `/api/health/db` | Verify database connectivity |
+
+Nhung route nghiep vu nhu voucher, order, partner, admin se duoc them tiep
+theo cau truc `src/`.
+
+## Notes
+
+- Backend hien tai la TypeScript-first. Legacy JavaScript/Sequelize da duoc go.
+- `dist/` khong can commit va co the xoa bat cu luc nao.
+- Neu `npm run dev` bao thieu `tsx`, chay lai `npm install` trong thu muc
+  `backend`.

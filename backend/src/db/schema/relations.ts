@@ -3,7 +3,6 @@ import {
   branchProfile,
   customerProfile,
   partnerProfile,
-  profile,
   role,
   user,
 } from "./account";
@@ -17,38 +16,36 @@ export const roleRelations = relations(role, ({ many }) => ({
 
 export const userRelations = relations(user, ({ one }) => ({
   role: one(role, { fields: [user.roleCode], references: [role.roleCode] }),
-  profile: one(profile, { fields: [user.userId], references: [profile.userId] }),
-}));
-
-export const profileRelations = relations(profile, ({ one }) => ({
-  user: one(user, { fields: [profile.userId], references: [user.userId] }),
   customerProfile: one(customerProfile, {
-    fields: [profile.userId],
+    fields: [user.userId],
     references: [customerProfile.userId],
   }),
   partnerProfile: one(partnerProfile, {
-    fields: [profile.userId],
+    fields: [user.userId],
     references: [partnerProfile.userId],
   }),
   branchProfile: one(branchProfile, {
-    fields: [profile.userId],
+    fields: [user.userId],
     references: [branchProfile.userId],
   }),
 }));
 
-export const customerProfileRelations = relations(customerProfile, ({ many }) => ({
+export const customerProfileRelations = relations(customerProfile, ({ one, many }) => ({
+  user: one(user, { fields: [customerProfile.userId], references: [user.userId] }),
   carts: many(cart),
   voucherCodes: many(voucherCode),
   reviews: many(review),
   notifications: many(notification),
 }));
 
-export const partnerProfileRelations = relations(partnerProfile, ({ many }) => ({
+export const partnerProfileRelations = relations(partnerProfile, ({ one, many }) => ({
+  user: one(user, { fields: [partnerProfile.userId], references: [user.userId] }),
   branches: many(branchProfile),
   voucherProducts: many(voucherProduct),
 }));
 
 export const branchProfileRelations = relations(branchProfile, ({ one, many }) => ({
+  user: one(user, { fields: [branchProfile.userId], references: [user.userId] }),
   partner: one(partnerProfile, {
     fields: [branchProfile.partnerProfileId],
     references: [partnerProfile.partnerProfileId],

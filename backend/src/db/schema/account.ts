@@ -3,7 +3,6 @@ import {
   branchStatusEnum,
   genderEnum,
   partnerStatusEnum,
-  profileTypeEnum,
   roleCodeEnum,
   userStatusEnum,
 } from "./enums";
@@ -31,23 +30,12 @@ export const user = pgTable("users", {
   updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const profile = pgTable("profiles", {
-  profileId: uuid("profileId").defaultRandom().primaryKey(),
-  userId: uuid("userId")
-    .notNull()
-    .unique()
-    .references(() => user.userId),
-  type: profileTypeEnum("type").notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
-});
-
 export const customerProfile = pgTable("customer_profiles", {
   customerProfileId: uuid("customerProfileId").defaultRandom().primaryKey(),
   userId: uuid("userId")
     .notNull()
     .unique()
-    .references(() => profile.userId),
+    .references(() => user.userId),
   fullName: text("fullName").notNull(),
   phone: text("phone").notNull().default(""),
   birthDate: date("birthDate"),
@@ -63,7 +51,7 @@ export const partnerProfile = pgTable("partner_profiles", {
   userId: uuid("userId")
     .notNull()
     .unique()
-    .references(() => profile.userId),
+    .references(() => user.userId),
   partnerProfileCode: text("partnerProfileCode").notNull().unique(),
   partnerName: text("partnerName").notNull(),
   taxCode: text("taxCode").notNull(),
@@ -79,7 +67,7 @@ export const branchProfile = pgTable("branch_profiles", {
   userId: uuid("userId")
     .notNull()
     .unique()
-    .references(() => profile.userId),
+    .references(() => user.userId),
   partnerProfileId: uuid("partnerProfileId")
     .notNull()
     .references(() => partnerProfile.partnerProfileId),

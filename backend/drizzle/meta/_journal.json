@@ -8,6 +8,13 @@
       "when": 1785228945367,
       "tag": "0000_sticky_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785424194989,
+      "tag": "0001_tiny_ikaris",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,7 @@
+"use client";
+import { useState } from "react";
+import { CustomerShell } from "@/components/customer/customer-shell";
+import { PageHeader } from "@/components/common/page-header";
+import { notificationMocks } from "@/lib/mocks/customer";
+export default function NotificationsPage() { return <NotificationsContent/>; }
+function NotificationsContent() { const [read, setRead] = useState<string[]>([]); return <CustomerShell active="/notifications"><PageHeader title="Thông báo" subtitle="Cập nhật về voucher, đơn hàng và ưu đãi mới."/><div className="space-y-3">{notificationMocks.map((notification) => { const unread = notification.unread && !read.includes(notification.id); return <button onClick={() => setRead((items) => [...items, notification.id])} className={`flex w-full gap-4 rounded-xl border p-4 text-left shadow-brand-sm ${unread ? "border-indigo-100 bg-indigo-50/50" : "border-slate-200 bg-white"}`} key={notification.id}><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-indigo-100 text-primary">🔔</span><span className="flex-1"><b className="block text-sm text-slate-900">{notification.title}</b><span className="mt-1 block text-xs leading-5 text-slate-600">{notification.message}</span><span className="mt-2 block text-[11px] text-slate-400">{notification.date}</span></span>{unread && <span className="mt-1 h-2 w-2 rounded-full bg-primary"/>}</button>; })}</div></CustomerShell>; }

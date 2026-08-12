@@ -1,0 +1,6 @@
+"use client";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+type Toast = { id: number; message: string; type: "success" | "error" | "info" };
+const ToastContext = createContext<(message: string, type?: Toast["type"]) => void>(() => undefined);
+export function ToastProvider({ children }: { children: ReactNode }) { const [items, setItems] = useState<Toast[]>([]); const show = useCallback((message: string, type: Toast["type"] = "success") => { const id = Date.now(); setItems((current) => [...current, { id, message, type }]); window.setTimeout(() => setItems((current) => current.filter((item) => item.id !== id)), 4500); }, []); return <ToastContext.Provider value={show}>{children}<div className="fixed right-4 top-4 z-50 flex w-[min(320px,calc(100vw-32px))] flex-col gap-2">{items.map((item) => <div key={item.id} className={`rounded-[10px] border border-l-4 p-3 text-xs font-medium shadow-brand-lg ${item.type === "error" ? "border-red-200 border-l-danger bg-red-50 text-red-800" : item.type === "info" ? "border-indigo-200 border-l-primary bg-indigo-50 text-indigo-900" : "border-emerald-200 border-l-success bg-emerald-50 text-emerald-900"}`}>{item.message}</div>)}</div></ToastContext.Provider>; }
+export const useToast = () => useContext(ToastContext);

@@ -1,35 +1,34 @@
 import "dotenv/config";
-import express from "express";
 import { sql } from "drizzle-orm";
+import { createApp } from "./app";
 import { db } from "./db/client";
 
-// Routes
-import partnerProfileRoutes from "./modules/partnerProfile/partnerProfile.routes";
-import branchProfileRoutes from "./modules/branchProfile/branchProfile.routes";
-import customerProfileRoutes from "./modules/customerProfile/customerProfile.routes";
-
-const app = express();
 const PORT = Number(process.env.PORT ?? 8080);
+const app = createApp();
 
-app.use(express.json());
-
-app.get("/", (_req, res) => {
-  res.json({ status: "ok", service: "EC Voucher API" });
-});
-
-app.get("/api/health/db", async (_req, res) => {
+async function logDatabaseTables() {
   try {
-    await db.execute(sql`select 1`);
-    res.json({ database: "connected" });
+    const tables = await db.execute(
+      sql`select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
+    );
+    const tableNames = tables.rows.map((row) => String(row.table_name));
+
+    console.log(
+      "Database tables (%d): %s",
+      tableNames.length,
+      tableNames.length > 0 ? tableNames.join(", ") : "(none)",
+    );
   } catch (error) {
-    res.status(503).json({ database: "unreachable", error: (error as Error).message });
+    console.error("Failed to log database tables:", error);
   }
-});
+}
+
+void logDatabaseTables();
 
 // Profiles routes
-app.use("/", customerProfileRoutes);
-app.use("/", partnerProfileRoutes);
-app.use("/", branchProfileRoutes);
+// app.use("/", customerProfileRoutes);
+// app.use("/", partnerProfileRoutes);
+// app.use("/", branchProfileRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
