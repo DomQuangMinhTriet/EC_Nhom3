@@ -9,5 +9,7 @@ export const notification = pgTable("notifications", {
   title: text("title").notNull(),
   body: text("body").notNull().default(""),
   isRead: boolean("isRead").notNull().default(false),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

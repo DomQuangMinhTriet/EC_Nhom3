@@ -14,13 +14,32 @@ const appRoles = [
 const isAppRole = (value: string): value is AppRole =>
   appRoles.includes(value as AppRole);
 
-const selfRegisterRoles = ["Customer", "Partner", "Branch"] as const satisfies readonly AppRole[];
+const selfRegisterRoles = [
+  "Customer",
+  "Partner",
+  "Branch",
+] as const satisfies readonly AppRole[];
 
 const isSelfRegisterRole = (value: AppRole) =>
   selfRegisterRoles.includes(value as (typeof selfRegisterRoles)[number]);
 
 export class AuthController {
   constructor(private readonly authService = new AuthService()) {}
+
+  registerSuperAdmin = async (req: Request, res: Response) => {
+    const { email, password } = req.body as {
+      email?: string;
+      password?: string;
+    };
+
+    if (!email || !password) {
+      throw new AppError("email and password are required", 400);
+    }
+
+    res
+      .status(201)
+      .json(await this.authService.registerSuperAdmin({ email, password }));
+  };
 
   register = async (req: Request, res: Response) => {
     const { email, password, roleCode } = req.body as {

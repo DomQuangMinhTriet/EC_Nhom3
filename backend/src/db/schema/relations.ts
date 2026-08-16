@@ -6,8 +6,20 @@ import {
   role,
   user,
 } from "./account";
-import { branchVoucherProduct, category, voucherCode, voucherProduct } from "./product";
-import { cart, cartItem, order, orderItem, payment, review } from "./transaction";
+import {
+  branchVoucherProduct,
+  category,
+  voucherCode,
+  voucherProduct,
+} from "./product";
+import {
+  cart,
+  cartItem,
+  order,
+  orderItem,
+  payment,
+  review,
+} from "./transaction";
 import { notification } from "./notification";
 
 export const roleRelations = relations(role, ({ many }) => ({
@@ -30,56 +42,86 @@ export const userRelations = relations(user, ({ one }) => ({
   }),
 }));
 
-export const customerProfileRelations = relations(customerProfile, ({ one, many }) => ({
-  user: one(user, { fields: [customerProfile.userId], references: [user.userId] }),
-  carts: many(cart),
-  voucherCodes: many(voucherCode),
-  reviews: many(review),
-  notifications: many(notification),
-}));
-
-export const partnerProfileRelations = relations(partnerProfile, ({ one, many }) => ({
-  user: one(user, { fields: [partnerProfile.userId], references: [user.userId] }),
-  branches: many(branchProfile),
-  voucherProducts: many(voucherProduct),
-}));
-
-export const branchProfileRelations = relations(branchProfile, ({ one, many }) => ({
-  user: one(user, { fields: [branchProfile.userId], references: [user.userId] }),
-  partner: one(partnerProfile, {
-    fields: [branchProfile.partnerProfileId],
-    references: [partnerProfile.partnerProfileId],
+export const customerProfileRelations = relations(
+  customerProfile,
+  ({ one, many }) => ({
+    user: one(user, {
+      fields: [customerProfile.userId],
+      references: [user.userId],
+    }),
+    carts: many(cart),
+    voucherCodes: many(voucherCode),
+    reviews: many(review),
+    notifications: many(notification),
   }),
-  branchVoucherProducts: many(branchVoucherProduct),
-}));
+);
+
+export const partnerProfileRelations = relations(
+  partnerProfile,
+  ({ one, many }) => ({
+    user: one(user, {
+      fields: [partnerProfile.userId],
+      references: [user.userId],
+    }),
+    branches: many(branchProfile),
+    voucherProducts: many(voucherProduct),
+  }),
+);
+
+export const branchProfileRelations = relations(
+  branchProfile,
+  ({ one, many }) => ({
+    user: one(user, {
+      fields: [branchProfile.userId],
+      references: [user.userId],
+    }),
+    partner: one(partnerProfile, {
+      fields: [branchProfile.partnerProfileId],
+      references: [partnerProfile.partnerProfileId],
+    }),
+    branchVoucherProducts: many(branchVoucherProduct),
+  }),
+);
 
 export const categoryRelations = relations(category, ({ one, many }) => ({
-  parent: one(category, { fields: [category.parentCategoryId], references: [category.categoryId] }),
+  parent: one(category, {
+    fields: [category.parentCategoryId],
+    references: [category.categoryId],
+  }),
   voucherProducts: many(voucherProduct),
 }));
 
-export const voucherProductRelations = relations(voucherProduct, ({ one, many }) => ({
-  category: one(category, { fields: [voucherProduct.categoryId], references: [category.categoryId] }),
-  partner: one(partnerProfile, {
-    fields: [voucherProduct.partnerProfileId],
-    references: [partnerProfile.partnerProfileId],
+export const voucherProductRelations = relations(
+  voucherProduct,
+  ({ one, many }) => ({
+    category: one(category, {
+      fields: [voucherProduct.categoryId],
+      references: [category.categoryId],
+    }),
+    partner: one(partnerProfile, {
+      fields: [voucherProduct.partnerProfileId],
+      references: [partnerProfile.partnerProfileId],
+    }),
+    branchVoucherProducts: many(branchVoucherProduct),
+    voucherCodes: many(voucherCode),
+    cartItems: many(cartItem),
+    reviews: many(review),
   }),
-  branchVoucherProducts: many(branchVoucherProduct),
-  voucherCodes: many(voucherCode),
-  cartItems: many(cartItem),
-  reviews: many(review),
-}));
+);
 
-export const branchVoucherProductRelations = relations(branchVoucherProduct, ({ one }) => ({
-  branch: one(branchProfile, {
-    fields: [branchVoucherProduct.branchProfileId],
-    references: [branchProfile.branchProfileId],
+export const branchVoucherProductRelations = relations(
+  branchVoucherProduct,
+  ({ one }) => ({
+    branch: one(branchProfile, {
+      fields: [branchVoucherProduct.branchProfileId],
+      references: [branchProfile.branchProfileId],
+    }),
+    voucherProduct: one(voucherProduct, {
+      fields: [branchVoucherProduct.voucherProductId],
+      references: [voucherProduct.voucherProductId],
+    }),
   }),
-  voucherProduct: one(voucherProduct, {
-    fields: [branchVoucherProduct.voucherProductId],
-    references: [voucherProduct.voucherProductId],
-  }),
-}));
+);
 
 export const voucherCodeRelations = relations(voucherCode, ({ one, many }) => ({
   voucherProduct: one(voucherProduct, {
@@ -121,7 +163,10 @@ export const orderRelations = relations(order, ({ one, many }) => ({
 }));
 
 export const orderItemRelations = relations(orderItem, ({ one }) => ({
-  order: one(order, { fields: [orderItem.orderId], references: [order.orderId] }),
+  order: one(order, {
+    fields: [orderItem.orderId],
+    references: [order.orderId],
+  }),
   voucherCode: one(voucherCode, {
     fields: [orderItem.voucherCodeId],
     references: [voucherCode.voucherCodeId],

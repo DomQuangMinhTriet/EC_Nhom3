@@ -22,7 +22,5 @@ test("rejects a token used for the wrong purpose or with a changed signature", (
   const { accessToken } = createTokenPair(user);
 
   assert.throws(() => verifyToken(accessToken, "refresh"));
-  assert.throws(() =>
-    verifyToken(`${accessToken.slice(0, -1)}x`, "access"),
-  );
+  assert.throws(() => verifyToken(`${accessToken.slice(0, -1)}x`, "access"));
 });

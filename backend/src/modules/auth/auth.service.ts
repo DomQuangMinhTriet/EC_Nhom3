@@ -1,4 +1,5 @@
 import { supabaseAuth } from "../../lib/supabaseAuth";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { AppError } from "../../shared/errors/AppError";
 import { createTokenPair, verifyToken } from "../../shared/auth/jwt";
 import type { AppRole } from "../../shared/auth/jwt";
@@ -33,6 +34,39 @@ const authResponse = (user: {
 export class AuthService {
   constructor(private readonly authRepository = new AuthRepository()) {}
 
+  async registerSuperAdmin({ email, password }: LoginInput) {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { roleCode: "Super_Admin" },
+    });
+
+    if (error) {
+      throw new AppError(error.message, 400);
+    }
+
+    if (!data.user?.id || !data.user.email) {
+      throw new AppError("Supabase did not return a registered user", 502);
+    }
+
+    const localUser = await this.authRepository.upsertUser({
+      userId: data.user.id,
+      email: data.user.email,
+      roleCode: "Super_Admin",
+      status: "active",
+    });
+
+    if (!localUser) {
+      throw new AppError("Could not create local user", 500);
+    }
+
+    return {
+      message: "Super Admin registered successfully.",
+      user: localUser,
+    };
+  }
+
   async register({ email, password, roleCode = "Customer" }: RegisterInput) {
     const { data, error } = await supabaseAuth.auth.signUp({
       email,
@@ -54,6 +88,7 @@ export class AuthService {
       userId: data.user.id,
       email: data.user.email,
       roleCode,
+      status: roleCode === "Customer" ? "active" : "pending",
     });
 
     if (!localUser) {
@@ -61,8 +96,7 @@ export class AuthService {
     }
 
     return {
-      message:
-        "Registration successful. Please verify your email before logging in.",
+      message: "Registration successful.",
       user: localUser,
     };
   }

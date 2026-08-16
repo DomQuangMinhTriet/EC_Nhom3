@@ -26,8 +26,12 @@ export const user = pgTable("users", {
     .notNull()
     .references(() => role.roleCode),
   status: userStatusEnum("status").notNull().default("pending"),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const customerProfile = pgTable("customer_profiles", {
@@ -42,8 +46,12 @@ export const customerProfile = pgTable("customer_profiles", {
   gender: genderEnum("gender"),
   avatarUrl: text("avatarUrl"),
   address: text("address").notNull().default(""),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const partnerProfile = pgTable("partner_profiles", {
@@ -58,8 +66,12 @@ export const partnerProfile = pgTable("partner_profiles", {
   representativeName: text("representativeName").notNull(),
   status: partnerStatusEnum("status").notNull().default("pending"),
   rejectionReason: text("rejectionReason").notNull().default(""),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const branchProfile = pgTable("branch_profiles", {
@@ -78,6 +90,10 @@ export const branchProfile = pgTable("branch_profiles", {
   email: text("email"),
   status: branchStatusEnum("status").notNull().default("pending"),
   rejectionReason: text("rejectionReason").notNull().default(""),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
