@@ -12,7 +12,10 @@ type UpsertUserInput = {
 
 export class AuthRepository {
   async findUserById(userId: string) {
-    const [record] = await db.select().from(user).where(eq(user.userId, userId));
+    const [record] = await db
+      .select()
+      .from(user)
+      .where(eq(user.userId, userId));
 
     return record;
   }
@@ -34,7 +37,7 @@ export class AuthRepository {
       .values({ userId, email, roleCode, status })
       .onConflictDoUpdate({
         target: user.userId,
-        set: { email, updatedAt: new Date() },
+        set: { email, roleCode, status, updatedAt: new Date() },
       })
       .returning();
 

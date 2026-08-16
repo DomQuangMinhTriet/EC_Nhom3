@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
+import { authorizeRoles, requireAuth } from "../../shared/auth/auth.middleware";
 import { asyncHandler } from "../../shared/http/asyncHandler";
 import { AuthController } from "./auth.controller";
 
@@ -12,13 +13,44 @@ const credentialRateLimit = rateLimit({
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: { error: "Too many authentication attempts. Please try again later." },
+  message: {
+    error: "Too many authentication attempts. Please try again later.",
+  },
 });
 
 authRouter.post(
-  "/register",
+  "/register/customer",
   credentialRateLimit,
-  asyncHandler(authController.register),
+  asyncHandler(authController.registerCustomer),
 );
-authRouter.post("/login", credentialRateLimit, asyncHandler(authController.login));
+
+authRouter.post(
+  "/register/super-admin",
+  requireAuth,
+  authorizeRoles("Super_Admin"),
+  credentialRateLimit,
+  asyncHandler(authController.registerSuperAdmin),
+);
+
+authRouter.post(
+  "/register/operational-admin",
+  requireAuth,
+  authorizeRoles("Super_Admin"),
+  credentialRateLimit,
+  asyncHandler(authController.registerOperationalAdmin),
+);
+
+authRouter.post(
+  "/register/branch",
+  requireAuth,
+  authorizeRoles("Partner"),
+  credentialRateLimit,
+  asyncHandler(authController.registerBranch),
+);
+
+authRouter.post(
+  "/login",
+  credentialRateLimit,
+  asyncHandler(authController.login),
+);
 authRouter.post("/refresh", asyncHandler(authController.refresh));

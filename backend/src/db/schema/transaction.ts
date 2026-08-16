@@ -24,8 +24,12 @@ export const cart = pgTable("carts", {
     .notNull()
     .unique()
     .references(() => customerProfile.customerProfileId),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const cartItem = pgTable(
@@ -39,9 +43,15 @@ export const cartItem = pgTable(
       .notNull()
       .references(() => voucherProduct.voucherProductId),
     quantity: integer("quantity").notNull().default(1),
-    unitPrice: numeric("unitPrice", { precision: 9, scale: 2 }).notNull().default("0"),
-    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+    unitPrice: numeric("unitPrice", { precision: 9, scale: 2 })
+      .notNull()
+      .default("0"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     primaryKey({ columns: [table.cartId, table.cartItemId] }),
@@ -58,13 +68,23 @@ export const order = pgTable("orders", {
   customerProfileId: uuid("customerProfileId")
     .notNull()
     .references(() => customerProfile.customerProfileId),
-  subtotalAmount: numeric("subtotalAmount", { precision: 15, scale: 2 }).notNull().default("0"),
-  discountAmount: numeric("discountAmount", { precision: 15, scale: 2 }).notNull().default("0"),
-  totalAmount: numeric("totalAmount", { precision: 15, scale: 2 }).notNull().default("0"),
+  subtotalAmount: numeric("subtotalAmount", { precision: 15, scale: 2 })
+    .notNull()
+    .default("0"),
+  discountAmount: numeric("discountAmount", { precision: 15, scale: 2 })
+    .notNull()
+    .default("0"),
+  totalAmount: numeric("totalAmount", { precision: 15, scale: 2 })
+    .notNull()
+    .default("0"),
   status: orderStatusEnum("status").notNull(),
   reason: text("reason"),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const orderItem = pgTable(
@@ -78,9 +98,15 @@ export const orderItem = pgTable(
       .notNull()
       .references(() => voucherCode.voucherCodeId),
     quantity: integer("quantity").notNull().default(1),
-    unitPrice: numeric("unitPrice", { precision: 9, scale: 2 }).notNull().default("0"),
-    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+    unitPrice: numeric("unitPrice", { precision: 9, scale: 2 })
+      .notNull()
+      .default("0"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.orderId, table.orderItemId] })],
 );
@@ -98,8 +124,12 @@ export const payment = pgTable("payments", {
   reason: text("reason"),
   paidAt: timestamp("paidAt", { withTimezone: true }).notNull().defaultNow(),
   refundedAt: timestamp("refundedAt", { withTimezone: true }),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const review = pgTable("reviews", {
@@ -115,6 +145,10 @@ export const review = pgTable("reviews", {
   status: reviewStatusEnum("status").notNull().default("active"),
   isEdited: boolean("isEdited").notNull().default(false),
   editedAt: timestamp("editedAt", { withTimezone: true }),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

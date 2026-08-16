@@ -38,9 +38,13 @@ export const voucherProduct = pgTable("voucher_products", {
     .references(() => partnerProfile.partnerProfileId),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
-  originalPrice: numeric("originalPrice", { precision: 15, scale: 2 }).notNull().default("0"),
+  originalPrice: numeric("originalPrice", { precision: 15, scale: 2 })
+    .notNull()
+    .default("0"),
   discountType: discountTypeEnum("discountType").notNull(),
-  discountValue: numeric("discountValue", { precision: 9, scale: 2 }).notNull().default("0"),
+  discountValue: numeric("discountValue", { precision: 9, scale: 2 })
+    .notNull()
+    .default("0"),
   startDate: timestamp("startDate", { withTimezone: true }).notNull(),
   endDate: timestamp("endDate", { withTimezone: true }).notNull(),
   validDurationDays: integer("validDurationDays").notNull().default(0),
@@ -49,8 +53,12 @@ export const voucherProduct = pgTable("voucher_products", {
   imageUrl: text("imageUrl"),
   status: voucherProductStatusEnum("status").notNull().default("pending"),
   rejectionReason: text("rejectionReason"),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const branchVoucherProduct = pgTable(
@@ -65,7 +73,9 @@ export const branchVoucherProduct = pgTable(
     totalQuantity: integer("totalQuantity").notNull(),
     soldQuantity: integer("soldQuantity").notNull().default(0),
   },
-  (table) => [primaryKey({ columns: [table.branchProfileId, table.voucherProductId] })],
+  (table) => [
+    primaryKey({ columns: [table.branchProfileId, table.voucherProductId] }),
+  ],
 );
 
 export const voucherCode = pgTable("voucher_codes", {
@@ -80,6 +90,8 @@ export const voucherCode = pgTable("voucher_codes", {
   qr: text("qr").notNull().unique(),
   expiredAt: timestamp("expiredAt", { withTimezone: true }).notNull(),
   status: voucherCodeStatusEnum("status").notNull().default("available"),
-  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   usedAt: timestamp("usedAt", { withTimezone: true }),
 });
