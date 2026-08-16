@@ -5,7 +5,11 @@ const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 15 * 60;
 const REFRESH_TOKEN_EXPIRES_IN_SECONDS = 7 * 24 * 60 * 60;
 
 export type AppRole =
-  "Super_Admin" | "Operational_Admin" | "Customer" | "Partner" | "Branch";
+  | "Super_Admin"
+  | "Operational_Admin"
+  | "Customer"
+  | "Partner"
+  | "Branch";
 
 export type UserStatus = "banned" | "pending" | "active" | "deactivated";
 
@@ -43,7 +47,10 @@ const decodeBase64Url = (value: string) =>
 const signPart = (value: string) =>
   createHmac("sha256", getJwtSecret()).update(value).digest("base64url");
 
-const signToken = (payload: AuthTokenPayload, expiresInSeconds: number) => {
+const signToken = (
+  payload: AuthTokenPayload,
+  expiresInSeconds: number,
+) => {
   const now = Math.floor(Date.now() / 1000);
   const header = encodeBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const body = encodeBase64Url(
