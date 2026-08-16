@@ -71,9 +71,12 @@ export class UsersController {
     res.json(await this.usersService.getUsers({ page, limit, role, status }));
   };
 
-  updateStatus = async (req: Request, res: Response) => {
+  updateUser = async (req: Request, res: Response) => {
     const { userId } = req.params;
-    const { status } = req.body as { status?: string };
+    const { status, roleCode } = req.body as {
+      status?: string;
+      roleCode?: string;
+    };
 
     if (typeof userId !== "string" || !userId) {
       throw new AppError("userId is required", 400);
@@ -83,14 +86,29 @@ export class UsersController {
       throw new AppError("Invalid userId", 400);
     }
 
-    if (!status) {
-      throw new AppError("status is required", 400);
+    if (status === undefined && roleCode === undefined) {
+      throw new AppError("status or roleCode is required", 400);
     }
 
-    if (!isUserStatus(status)) {
+    if (status !== undefined && !isUserStatus(status)) {
       throw new AppError("Invalid status", 400);
     }
 
-    res.json(await this.usersService.updateStatus({ userId, status }));
+    if (roleCode !== undefined && !isAppRole(roleCode)) {
+      throw new AppError("Invalid roleCode", 400);
+    }
+
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    res.json(
+      await this.usersService.updateUser({
+        userId,
+        status,
+        roleCode,
+        actorRole: req.user.roleCode,
+      }),
+    );
   };
 }

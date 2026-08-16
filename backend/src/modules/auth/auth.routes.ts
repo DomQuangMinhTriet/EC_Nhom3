@@ -27,10 +27,19 @@ authRouter.post(
 );
 
 authRouter.post(
-  "/register",
+  "/register/operational-admin",
+  requireAuth,
+  authorizeRoles("Super_Admin"),
   credentialRateLimit,
-  asyncHandler(authController.register),
+  asyncHandler(authController.registerOperationalAdmin),
 );
+
+authRouter.post(
+  "/register/customer",
+  credentialRateLimit,
+  asyncHandler(authController.registerCustomer),
+);
+
 authRouter.post(
   "/login",
   credentialRateLimit,

@@ -2,9 +2,11 @@ import type { AppRole, UserStatus } from "../../shared/auth/jwt";
 import { AppError } from "../../shared/errors/AppError";
 import { UsersRepository } from "./users.repository";
 
-type UpdateUserStatusInput = {
+type UpdateUserInput = {
   userId: string;
-  status: UserStatus;
+  status?: UserStatus;
+  roleCode?: AppRole;
+  actorRole: AppRole;
 };
 
 type GetUsersInput = {
@@ -36,15 +38,27 @@ export class UsersService {
     };
   }
 
-  async updateStatus({ userId, status }: UpdateUserStatusInput) {
-    const updatedUser = await this.usersRepository.updateStatus(userId, status);
+  async updateUser({
+    userId,
+    status,
+    roleCode,
+    actorRole,
+  }: UpdateUserInput) {
+    if (roleCode !== undefined && actorRole !== "Super_Admin") {
+      throw new AppError("Only Super Admin can update user roles", 403);
+    }
+
+    const updatedUser = await this.usersRepository.updateUser(userId, {
+      status,
+      roleCode,
+    });
 
     if (!updatedUser) {
       throw new AppError("User not found", 404);
     }
 
     return {
-      message: "User status updated successfully.",
+      message: "User updated successfully.",
       user: updatedUser,
     };
   }

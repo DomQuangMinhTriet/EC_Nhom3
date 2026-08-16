@@ -30,10 +30,13 @@ export class UsersRepository {
     return { users, total: totals[0]?.total ?? 0 };
   }
 
-  async updateStatus(userId: string, status: UserStatus) {
+  async updateUser(
+    userId: string,
+    updates: { status?: UserStatus; roleCode?: AppRole },
+  ) {
     const [record] = await db
       .update(user)
-      .set({ status, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(user.userId, userId))
       .returning();
 

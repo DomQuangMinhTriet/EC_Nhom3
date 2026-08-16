@@ -12,7 +12,4 @@ usersRouter.use(
   authorizeRoles("Super_Admin", "Operational_Admin"),
 );
 usersRouter.get("/", asyncHandler(usersController.getUsers));
-usersRouter.patch(
-  "/:userId/status",
-  asyncHandler(usersController.updateStatus),
-);
+usersRouter.patch("/:userId", asyncHandler(usersController.updateUser));

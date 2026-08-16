@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { UserStatus } from "../../shared/auth/jwt";
+import type { AppRole, UserStatus } from "../../shared/auth/jwt";
 import { AppError } from "../../shared/errors/AppError";
 import type { UsersRepository } from "./users.repository";
 import { UsersService } from "./users.service";
@@ -17,7 +17,7 @@ const existingUser = {
 const createRepository = (overrides: Partial<UsersRepository> = {}) =>
   ({
     findAll: async () => ({ users: [], total: 0 }),
-    updateStatus: async () => undefined,
+    updateUser: async () => undefined,
     ...overrides,
   }) as UsersRepository;
 
@@ -51,31 +51,69 @@ test("returns users with pagination metadata", async () => {
 
 test("updates a user's status", async () => {
   const repository = createRepository({
-    updateStatus: async (userId: string, status: UserStatus) => ({
+    updateUser: async (
+      userId: string,
+      updates: { status?: UserStatus; roleCode?: AppRole },
+    ) => ({
       ...existingUser,
       userId,
-      status,
+      ...updates,
       updatedAt: new Date("2026-02-01T00:00:00.000Z"),
     }),
   });
   const service = new UsersService(repository);
 
-  const result = await service.updateStatus({
+  const result = await service.updateUser({
     userId: existingUser.userId,
     status: "banned",
+    actorRole: "Operational_Admin",
   });
 
-  assert.equal(result.message, "User status updated successfully.");
+  assert.equal(result.message, "User updated successfully.");
   assert.equal(result.user.status, "banned");
+});
+
+test("allows Super Admin to update a user's role", async () => {
+  const repository = createRepository({
+    updateUser: async (userId, updates) => ({
+      ...existingUser,
+      ...updates,
+      userId,
+    }),
+  });
+  const service = new UsersService(repository);
+
+  const result = await service.updateUser({
+    userId: existingUser.userId,
+    roleCode: "Operational_Admin",
+    actorRole: "Super_Admin",
+  });
+
+  assert.equal(result.user.roleCode, "Operational_Admin");
+});
+
+test("prevents Operational Admin from updating user roles", async () => {
+  const service = new UsersService(createRepository());
+
+  await assert.rejects(
+    service.updateUser({
+      userId: existingUser.userId,
+      roleCode: "Super_Admin",
+      actorRole: "Operational_Admin",
+    }),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 403,
+  );
 });
 
 test("throws 404 when updating a missing user", async () => {
   const service = new UsersService(createRepository());
 
   await assert.rejects(
-    service.updateStatus({
+    service.updateUser({
       userId: "00000000-0000-4000-8000-000000000099",
       status: "active",
+      actorRole: "Super_Admin",
     }),
     (error: unknown) =>
       error instanceof AppError &&
