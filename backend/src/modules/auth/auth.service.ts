@@ -1,20 +1,22 @@
-import { supabaseAuth } from "../../lib/supabaseAuth";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { AppError } from "../../shared/errors/AppError";
+import { supabaseAuth } from "../../lib/supabaseAuth";
+import type { AppRole, UserStatus } from "../../shared/auth/jwt";
 import { createTokenPair, verifyToken } from "../../shared/auth/jwt";
-import type { AppRole } from "../../shared/auth/jwt";
+import { AppError } from "../../shared/errors/AppError";
 import { AuthRepository } from "./auth.repository";
 
-type LoginInput = {
+type CredentialsInput = {
   email: string;
   password: string;
 };
+
+type ManagedRole = "Super_Admin" | "Operational_Admin" | "Branch";
 
 const authResponse = (user: {
   userId: string;
   email: string;
   roleCode: AppRole;
-  status: "banned" | "pending" | "active" | "deactivated";
+  status: UserStatus;
 }) => ({
   user,
   ...createTokenPair({
@@ -28,70 +30,7 @@ const authResponse = (user: {
 export class AuthService {
   constructor(private readonly authRepository = new AuthRepository()) {}
 
-  async registerSuperAdmin({ email, password }: LoginInput) {
-    return this.registerAdmin(
-      email,
-      password,
-      "Super_Admin",
-      "Super Admin registered successfully.",
-    );
-  }
-
-  async registerOperationalAdmin({ email, password }: LoginInput) {
-    return this.registerAdmin(
-      email,
-      password,
-      "Operational_Admin",
-      "Operational Admin registered successfully.",
-    );
-  }
-
-  async registerCustomer({ email, password }: LoginInput) {
-    return this.registerSelf({
-      email,
-      password,
-    });
-  }
-
-  private async registerAdmin(
-    email: string,
-    password: string,
-    roleCode: "Super_Admin" | "Operational_Admin",
-    message: string,
-  ) {
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { roleCode },
-    });
-
-    if (error) {
-      throw new AppError(error.message, 400);
-    }
-
-    if (!data.user?.id || !data.user.email) {
-      throw new AppError("Supabase did not return a registered user", 502);
-    }
-
-    const localUser = await this.authRepository.upsertUser({
-      userId: data.user.id,
-      email: data.user.email,
-      roleCode,
-      status: "active",
-    });
-
-    if (!localUser) {
-      throw new AppError("Could not create local user", 500);
-    }
-
-    return {
-      message,
-      user: localUser,
-    };
-  }
-
-  private async registerSelf({ email, password }: LoginInput) {
+  async registerCustomer({ email, password }: CredentialsInput) {
     const { data, error } = await supabaseAuth.auth.signUp({
       email,
       password,
@@ -125,7 +64,74 @@ export class AuthService {
     };
   }
 
-  async login({ email, password }: LoginInput) {
+  async registerSuperAdmin(input: CredentialsInput) {
+    return this.registerManagedAccount({
+      ...input,
+      roleCode: "Super_Admin",
+      status: "active",
+      message: "Super Admin registered successfully.",
+    });
+  }
+
+  async registerOperationalAdmin(input: CredentialsInput) {
+    return this.registerManagedAccount({
+      ...input,
+      roleCode: "Operational_Admin",
+      status: "active",
+      message: "Operational Admin registered successfully.",
+    });
+  }
+
+  async registerBranch(input: CredentialsInput) {
+    return this.registerManagedAccount({
+      ...input,
+      roleCode: "Branch",
+      status: "pending",
+      message: "Branch registered successfully.",
+    });
+  }
+
+  private async registerManagedAccount({
+    email,
+    password,
+    roleCode,
+    status,
+    message,
+  }: CredentialsInput & {
+    roleCode: ManagedRole;
+    status: UserStatus;
+    message: string;
+  }) {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { roleCode },
+    });
+
+    if (error) {
+      throw new AppError(error.message, 400);
+    }
+
+    if (!data.user?.id || !data.user.email) {
+      throw new AppError("Supabase did not return a registered user", 502);
+    }
+
+    const localUser = await this.authRepository.upsertUser({
+      userId: data.user.id,
+      email: data.user.email,
+      roleCode,
+      status,
+    });
+
+    if (!localUser) {
+      throw new AppError("Could not create local user", 500);
+    }
+
+    return { message, user: localUser };
+  }
+
+  async login({ email, password }: CredentialsInput) {
     const { data, error } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,

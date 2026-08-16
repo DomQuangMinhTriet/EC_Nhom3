@@ -5,6 +5,21 @@ import { AuthService } from "./auth.service";
 export class AuthController {
   constructor(private readonly authService = new AuthService()) {}
 
+  registerCustomer = async (req: Request, res: Response) => {
+    const { email, password } = req.body as {
+      email?: string;
+      password?: string;
+    };
+
+    if (!email || !password) {
+      throw new AppError("email and password are required", 400);
+    }
+
+    res
+      .status(201)
+      .json(await this.authService.registerCustomer({ email, password }));
+  };
+
   registerSuperAdmin = async (req: Request, res: Response) => {
     const { email, password } = req.body as {
       email?: string;
@@ -30,12 +45,14 @@ export class AuthController {
       throw new AppError("email and password are required", 400);
     }
 
-    res.status(201).json(
-      await this.authService.registerOperationalAdmin({ email, password }),
-    );
+    res
+      .status(201)
+      .json(
+        await this.authService.registerOperationalAdmin({ email, password }),
+      );
   };
 
-  registerCustomer = async (req: Request, res: Response) => {
+  registerBranch = async (req: Request, res: Response) => {
     const { email, password } = req.body as {
       email?: string;
       password?: string;
@@ -45,9 +62,9 @@ export class AuthController {
       throw new AppError("email and password are required", 400);
     }
 
-    res.status(201).json(
-      await this.authService.registerCustomer({ email, password }),
-    );
+    res
+      .status(201)
+      .json(await this.authService.registerBranch({ email, password }));
   };
 
   login = async (req: Request, res: Response) => {

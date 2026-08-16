@@ -19,6 +19,12 @@ const credentialRateLimit = rateLimit({
 });
 
 authRouter.post(
+  "/register/customer",
+  credentialRateLimit,
+  asyncHandler(authController.registerCustomer),
+);
+
+authRouter.post(
   "/register/super-admin",
   requireAuth,
   authorizeRoles("Super_Admin"),
@@ -35,9 +41,11 @@ authRouter.post(
 );
 
 authRouter.post(
-  "/register/customer",
+  "/register/branch",
+  requireAuth,
+  authorizeRoles("Partner"),
   credentialRateLimit,
-  asyncHandler(authController.registerCustomer),
+  asyncHandler(authController.registerBranch),
 );
 
 authRouter.post(

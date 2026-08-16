@@ -5,63 +5,82 @@ import { AppError } from "../../shared/errors/AppError";
 import { AuthController } from "./auth.controller";
 import type { AuthService } from "./auth.service";
 
-test("registers every public signup as a Customer", async () => {
-  let receivedInput: { email: string; password: string } | undefined;
-  const payload = {
-    message: "Registration successful.",
-    user: {
-      userId: "00000000-0000-4000-8000-000000000001",
-      email: "customer@example.com",
-      roleCode: "Customer" as const,
-      status: "active" as const,
-    },
-  };
-  const authService = {
-    registerCustomer: async (input: { email: string; password: string }) => {
-      receivedInput = input;
-      return payload;
-    },
-  } as unknown as AuthService;
-  const controller = new AuthController(authService);
-  const req = {
-    body: {
-      email: "customer@example.com",
-      password: "password",
-      roleCode: "Partner",
-    },
-  } as Request;
+const credentials = {
+  email: "account@example.com",
+  password: "password",
+};
+
+const createResponse = () => {
   let statusCode: number | undefined;
-  let responseBody: unknown;
-  const res = {
+  let body: unknown;
+  const response = {
     status(code: number) {
       statusCode = code;
       return this;
     },
-    json(body: unknown) {
-      responseBody = body;
+    json(value: unknown) {
+      body = value;
       return this;
     },
   } as Response;
 
-  await controller.registerCustomer(req, res);
+  return {
+    response,
+    result: () => ({ statusCode, body }),
+  };
+};
 
-  assert.deepEqual(receivedInput, {
-    email: "customer@example.com",
-    password: "password",
-  });
-  assert.equal(statusCode, 201);
-  assert.deepEqual(responseBody, payload);
+test("delegates each registration flow to its matching service method", async () => {
+  const calls: string[] = [];
+  const register = (name: string) => async (input: typeof credentials) => {
+    calls.push(name);
+    assert.deepEqual(input, credentials);
+    return { message: name };
+  };
+  const service = {
+    registerCustomer: register("customer"),
+    registerSuperAdmin: register("super-admin"),
+    registerOperationalAdmin: register("operational-admin"),
+    registerBranch: register("branch"),
+  } as unknown as AuthService;
+  const controller = new AuthController(service);
+  const request = { body: credentials } as Request;
+
+  for (const handler of [
+    controller.registerCustomer,
+    controller.registerSuperAdmin,
+    controller.registerOperationalAdmin,
+    controller.registerBranch,
+  ]) {
+    const { response, result } = createResponse();
+    await handler(request, response);
+    assert.equal(result().statusCode, 201);
+  }
+
+  assert.deepEqual(calls, [
+    "customer",
+    "super-admin",
+    "operational-admin",
+    "branch",
+  ]);
 });
 
-test("rejects Customer registration without credentials", async () => {
+test("rejects registration without complete credentials", async () => {
   const controller = new AuthController({} as AuthService);
-  const req = { body: { email: "customer@example.com" } } as Request;
+  const request = { body: { email: "account@example.com" } } as Request;
 
-  await assert.rejects(
-    controller.registerCustomer(req, {} as Response),
-    (error: unknown) =>
-      error instanceof AppError &&
-      error.statusCode === 400 &&
-      error.message === "email and password are required",
-  );
+  for (const handler of [
+    controller.registerCustomer,
+    controller.registerSuperAdmin,
+    controller.registerOperationalAdmin,
+    controller.registerBranch,
+  ]) {
+    await assert.rejects(
+      handler(request, {} as Response),
+      (error: unknown) =>
+        error instanceof AppError &&
+        error.statusCode === 400 &&
+        error.message === "email and password are required",
+    );
+  }
 });
