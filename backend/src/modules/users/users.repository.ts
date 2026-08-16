@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../../db/client";
 import { user } from "../../db/schema";
 import type { AppRole, UserStatus } from "../../shared/auth/jwt";
@@ -7,12 +7,12 @@ export class UsersRepository {
   async findAll(
     page: number,
     limit: number,
-    role?: AppRole,
+    roles?: AppRole[],
     status?: UserStatus,
   ) {
     const offset = (page - 1) * limit;
     const filters = and(
-      role ? eq(user.roleCode, role) : undefined,
+      roles ? inArray(user.roleCode, roles) : undefined,
       status ? eq(user.status, status) : undefined,
     );
 

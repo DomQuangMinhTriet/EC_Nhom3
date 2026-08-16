@@ -68,7 +68,19 @@ export class UsersController {
       throw new AppError("Invalid status", 400);
     }
 
-    res.json(await this.usersService.getUsers({ page, limit, role, status }));
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    res.json(
+      await this.usersService.getUsers({
+        page,
+        limit,
+        role,
+        status,
+        actorRole: req.user.roleCode,
+      }),
+    );
   };
 
   updateUser = async (req: Request, res: Response) => {

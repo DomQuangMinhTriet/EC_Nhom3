@@ -23,10 +23,10 @@ const createRepository = (overrides: Partial<UsersRepository> = {}) =>
 
 test("returns users with pagination metadata", async () => {
   const repository = createRepository({
-    findAll: async (page, limit, role, status) => {
+    findAll: async (page, limit, roles, status) => {
       assert.equal(page, 2);
       assert.equal(limit, 10);
-      assert.equal(role, "Customer");
+      assert.deepEqual(roles, ["Customer"]);
       assert.equal(status, "active");
       return { users: [existingUser], total: 21 };
     },
@@ -38,6 +38,7 @@ test("returns users with pagination metadata", async () => {
     limit: 10,
     role: "Customer",
     status: "active",
+    actorRole: "Super_Admin",
   });
 
   assert.deepEqual(result.users, [existingUser]);
@@ -47,6 +48,37 @@ test("returns users with pagination metadata", async () => {
     total: 21,
     totalPages: 3,
   });
+});
+
+test("limits Operational Admin user listings to Partner and Branch", async () => {
+  const repository = createRepository({
+    findAll: async (_page, _limit, roles) => {
+      assert.deepEqual(roles, ["Partner", "Branch"]);
+      return { users: [], total: 0 };
+    },
+  });
+  const service = new UsersService(repository);
+
+  await service.getUsers({
+    page: 1,
+    limit: 20,
+    actorRole: "Operational_Admin",
+  });
+});
+
+test("rejects an Operational Admin role filter outside their scope", async () => {
+  const service = new UsersService(createRepository());
+
+  await assert.rejects(
+    service.getUsers({
+      page: 1,
+      limit: 20,
+      role: "Customer",
+      actorRole: "Operational_Admin",
+    }),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 403,
+  );
 });
 
 test("updates a user's status", async () => {

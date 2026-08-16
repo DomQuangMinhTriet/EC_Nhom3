@@ -14,16 +14,35 @@ type GetUsersInput = {
   limit: number;
   role?: AppRole;
   status?: UserStatus;
+  actorRole: AppRole;
 };
 
 export class UsersService {
   constructor(private readonly usersRepository = new UsersRepository()) {}
 
-  async getUsers({ page, limit, role, status }: GetUsersInput) {
+  async getUsers({ page, limit, role, status, actorRole }: GetUsersInput) {
+    if (
+      actorRole === "Operational_Admin" &&
+      role !== undefined &&
+      role !== "Partner" &&
+      role !== "Branch"
+    ) {
+      throw new AppError("Operational Admin can only view Partner and Branch users", 403);
+    }
+
+    const roles =
+      actorRole === "Operational_Admin"
+        ? role
+          ? [role]
+          : (["Partner", "Branch"] satisfies AppRole[])
+        : role
+          ? [role]
+          : undefined;
+
     const { users, total } = await this.usersRepository.findAll(
       page,
       limit,
-      role,
+      roles,
       status,
     );
 
