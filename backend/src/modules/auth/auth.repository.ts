@@ -34,7 +34,7 @@ export class AuthRepository {
       .values({ userId, email, roleCode, status })
       .onConflictDoUpdate({
         target: user.userId,
-        set: { email, updatedAt: new Date() },
+        set: { email, roleCode, status, updatedAt: new Date() },
       })
       .returning();
 

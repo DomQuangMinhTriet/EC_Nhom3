@@ -1,4 +1,5 @@
 import { supabaseAuth } from "../../lib/supabaseAuth";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { AppError } from "../../shared/errors/AppError";
 import { createTokenPair, verifyToken } from "../../shared/auth/jwt";
 import type { AppRole } from "../../shared/auth/jwt";
@@ -32,6 +33,39 @@ const authResponse = (user: {
 
 export class AuthService {
   constructor(private readonly authRepository = new AuthRepository()) {}
+
+  async registerBranch({ email, password }: LoginInput) {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { roleCode: "Branch" },
+    });
+
+    if (error) {
+      throw new AppError(error.message, 400);
+    }
+
+    if (!data.user?.id || !data.user.email) {
+      throw new AppError("Supabase did not return a registered user", 502);
+    }
+
+    const localUser = await this.authRepository.upsertUser({
+      userId: data.user.id,
+      email: data.user.email,
+      roleCode: "Branch",
+      status: "pending",
+    });
+
+    if (!localUser) {
+      throw new AppError("Could not create local user", 500);
+    }
+
+    return {
+      message: "Branch registered successfully.",
+      user: localUser,
+    };
+  }
 
   async register({ email, password, roleCode = "Customer" }: RegisterInput) {
     const { data, error } = await supabaseAuth.auth.signUp({
@@ -92,6 +126,10 @@ export class AuthService {
 
     if (!localUser) {
       throw new AppError("Could not load local user", 500);
+    }
+
+    if (localUser.status !== "active") {
+      throw new AppError("Account is not active", 403);
     }
 
     return authResponse(localUser);
