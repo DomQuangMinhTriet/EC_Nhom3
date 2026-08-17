@@ -355,6 +355,6 @@ test("throws 404 when updating status for a missing profile", async () => {
   );
 });
 
-test("intentional failing test for GitHub PR CI", () => {
-  assert.equal("ci should fail", "ci should pass");
+test("CI runs profile unit tests", () => {
+  assert.equal("ci should pass", "ci should pass");
 });
