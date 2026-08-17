@@ -62,5 +62,3 @@ export class CategoryTreeRepository {
         return result[0] || null;
     }
 }
-
-export const categoryTreeRepository = new CategoryTreeRepository();

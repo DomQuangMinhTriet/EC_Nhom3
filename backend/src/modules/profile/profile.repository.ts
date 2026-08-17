@@ -121,13 +121,29 @@ export class ProfileRepository {
     return record;
   }
 
+  async findBranchesByPartnerProfileId(partnerProfileId: string) {
+    return await db
+      .select()
+      .from(branchProfile)
+      .where(eq(branchProfile.partnerProfileId, partnerProfileId));
+  }
+
+  async findAllPartners() {
+    return await db.select().from(partnerProfile);
+  }
+
+  async findAllBranches() {
+    return await db.select().from(branchProfile);
+  }
+
   async updatePartnerProfileStatus(
     partnerProfileId: string,
     status: PartnerProfileStatus,
+    rejectionReason: string = "",
   ) {
     const [record] = await db
       .update(partnerProfile)
-      .set({ status, updatedAt: new Date() })
+      .set({ status, rejectionReason, updatedAt: new Date() })
       .where(eq(partnerProfile.partnerProfileId, partnerProfileId))
       .returning();
 
@@ -137,10 +153,11 @@ export class ProfileRepository {
   async updateBranchProfileStatus(
     branchProfileId: string,
     status: BranchProfileStatus,
+    rejectionReason: string = "",
   ) {
     const [record] = await db
       .update(branchProfile)
-      .set({ status, updatedAt: new Date() })
+      .set({ status, rejectionReason, updatedAt: new Date() })
       .where(eq(branchProfile.branchProfileId, branchProfileId))
       .returning();
 

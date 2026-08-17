@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AppError } from "../../shared/errors/AppError";
+import cloudinary from "../../lib/cloudinary";
 import type { ProfileRepository } from "./profile.repository";
 import { ProfileService } from "./profile.service";
 
@@ -59,8 +60,11 @@ const createRepository = (overrides: Partial<ProfileRepository> = {}) =>
     updateBranchProfile: async () => branchProfile,
     updatePartnerProfileStatus: async () => partnerProfile,
     updateBranchProfileStatus: async () => branchProfile,
+    findAllPartners: async () => [partnerProfile],
+    findAllBranches: async () => [branchProfile],
+    findBranchesByPartnerProfileId: async () => [branchProfile],
     ...overrides,
-  }) as ProfileRepository;
+  }) as unknown as ProfileRepository;
 
 test("creates a customer profile with trimmed strings", async () => {
   const repository = createRepository({
@@ -352,6 +356,144 @@ test("throws 404 when updating status for a missing profile", async () => {
       error instanceof AppError &&
       error.statusCode === 404 &&
       error.message === "Profile not found",
+  );
+});
+
+test("gets profile by user id and role", async () => {
+  const service = new ProfileService(createRepository({
+    findCustomerProfileByUserId: async () => customerProfile,
+    findPartnerProfileByUserId: async () => partnerProfile,
+    findBranchProfileByUserId: async () => branchProfile,
+  }));
+
+  const customerRes = await service.getProfile(customerProfile.userId, "Customer");
+  assert.equal((customerRes.profile as typeof customerProfile).userId, customerProfile.userId);
+
+  const partnerRes = await service.getProfile(partnerProfile.userId, "Partner");
+  assert.equal((partnerRes.profile as typeof partnerProfile).userId, partnerProfile.userId);
+
+  const branchRes = await service.getProfile(branchProfile.userId, "Branch");
+  assert.equal((branchRes.profile as typeof branchProfile).userId, branchProfile.userId);
+});
+
+test("gets all profiles by type", async () => {
+  const service = new ProfileService(createRepository());
+
+  const partnersRes = await service.getAllProfiles("partner");
+  assert.equal(partnersRes.data.length, 1);
+  assert.equal((partnersRes.data[0] as typeof partnerProfile).partnerProfileId, partnerProfile.partnerProfileId);
+
+  const branchesRes = await service.getAllProfiles("branch");
+  assert.equal(branchesRes.data.length, 1);
+  assert.equal((branchesRes.data[0] as typeof branchProfile).branchProfileId, branchProfile.branchProfileId);
+});
+
+test("gets branches for a partner", async () => {
+  const service = new ProfileService(createRepository({
+    findPartnerProfileByUserId: async () => partnerProfile,
+  }));
+
+  const result = await service.getPartnerBranches(partnerProfile.userId);
+  assert.equal(result.data.length, 1);
+  assert.equal((result.data[0] as typeof branchProfile).branchProfileId, branchProfile.branchProfileId);
+});
+
+test("rejects status update if rejected without reason", async () => {
+  const service = new ProfileService(createRepository());
+
+  await assert.rejects(
+    service.updateProfileStatus({
+      profileType: "partner",
+      profileId: partnerProfile.partnerProfileId,
+      status: "rejected",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "Rejection reason is required when rejecting a profile",
+  );
+});
+
+test("updates partner profile status to rejected with reason", async () => {
+  const repository = createRepository({
+    updatePartnerProfileStatus: async (profileId, status, reason) => {
+      assert.equal(profileId, partnerProfile.partnerProfileId);
+      assert.equal(status, "rejected");
+      assert.equal(reason, "Missing documents");
+      return { ...partnerProfile, status, rejectionReason: reason ?? "" };
+    },
+  });
+  const service = new ProfileService(repository);
+
+  const result = await service.updateProfileStatus({
+    profileType: "partner",
+    profileId: partnerProfile.partnerProfileId,
+    status: "rejected",
+    rejectionReason: "Missing documents",
+  });
+
+  assert.equal(result.message, "Profile status updated successfully.");
+  assert.equal(result.profile.status, "rejected");
+  assert.equal(result.profile.rejectionReason, "Missing documents");
+});
+
+test("getProfile throws 404 if not found", async () => {
+  const service = new ProfileService(createRepository());
+  await assert.rejects(
+    service.getProfile(customerProfile.userId, "Customer"),
+    (err: any) => err.statusCode === 404 && err.message === "Customer profile not found"
+  );
+  await assert.rejects(
+    service.getProfile(partnerProfile.userId, "Partner"),
+    (err: any) => err.statusCode === 404 && err.message === "Partner profile not found"
+  );
+  await assert.rejects(
+    service.getProfile(branchProfile.userId, "Branch"),
+    (err: any) => err.statusCode === 404 && err.message === "Branch profile not found"
+  );
+});
+
+test("getProfile throws 403 for unallowed roles", async () => {
+  const service = new ProfileService(createRepository());
+  await assert.rejects(
+    service.getProfile(customerProfile.userId, "Super_Admin"),
+    (err: any) => err.statusCode === 403 && err.message === "Role is not allowed to have a profile"
+  );
+});
+
+test("getPartnerBranches throws 404 if profile not found", async () => {
+  const service = new ProfileService(createRepository());
+  await assert.rejects(
+    service.getPartnerBranches(partnerProfile.userId),
+    (err: any) => err.statusCode === 404 && err.message === "Partner profile not found"
+  );
+});
+
+test("uploads avatar for customer", async (t) => {
+  t.mock.method(cloudinary.uploader, "upload", async () => ({ secure_url: "http://mock.url/avatar.png" }));
+
+  const repository = createRepository({
+    updateCustomerProfile: async (userId, updates) => {
+      assert.equal(userId, customerProfile.userId);
+      assert.equal(updates.avatarUrl, "http://mock.url/avatar.png");
+      return { ...customerProfile, avatarUrl: updates.avatarUrl ?? null };
+    }
+  });
+  const service = new ProfileService(repository);
+
+  const result = await service.uploadAvatar(customerProfile.userId, "base64-string");
+  assert.equal((result.profile as typeof customerProfile).avatarUrl, "http://mock.url/avatar.png");
+});
+
+test("uploadAvatar throws 404 if profile not found", async (t) => {
+  t.mock.method(cloudinary.uploader, "upload", async () => ({ secure_url: "http://mock.url/avatar.png" }));
+
+  const service = new ProfileService(createRepository({
+    updateCustomerProfile: async () => undefined
+  }));
+  await assert.rejects(
+    service.uploadAvatar(customerProfile.userId, "base64-string"),
+    (err: any) => err.statusCode === 404 && err.message === "Customer profile not found"
   );
 });
 

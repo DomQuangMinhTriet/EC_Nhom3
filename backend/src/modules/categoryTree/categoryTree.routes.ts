@@ -1,36 +1,36 @@
 import { Router } from "express";
-import { categoryTreeController } from "./categoryTree.controller";
+import { CategoryTreeController } from "./categoryTree.controller";
 import { asyncHandler } from "../../shared/http/asyncHandler";
 import { requireAuth, authorizeRoles } from "../../shared/auth/auth.middleware";
 
-const router = Router();
+const categoryTreeController = new CategoryTreeController();
+
+export const categoryTreeRouter = Router();
 
 // Public routes
-router.get(
+categoryTreeRouter.get(
     "/categories",
     asyncHandler(categoryTreeController.getAllCategories)
 );
 
 // Admin routes (require auth & roles)
-router.post(
+categoryTreeRouter.post(
     "/admin/categories",
     requireAuth,
     authorizeRoles("Super_Admin", "Operational_Admin"),
     asyncHandler(categoryTreeController.createCategory)
 );
 
-router.put(
+categoryTreeRouter.put(
     "/admin/categories/:id",
     requireAuth,
     authorizeRoles("Super_Admin", "Operational_Admin"),
     asyncHandler(categoryTreeController.updateCategory)
 );
 
-router.delete(
+categoryTreeRouter.delete(
     "/admin/categories/:id",
     requireAuth,
     authorizeRoles("Super_Admin", "Operational_Admin"),
     asyncHandler(categoryTreeController.deleteCategory)
 );
-
-export default router;

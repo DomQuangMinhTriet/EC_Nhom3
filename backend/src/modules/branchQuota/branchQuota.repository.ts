@@ -134,5 +134,3 @@ export class BranchQuotaRepository {
         return result[0] || null;
     }
 }
-
-export const branchQuotaRepository = new BranchQuotaRepository();

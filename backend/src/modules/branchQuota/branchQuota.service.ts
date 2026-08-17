@@ -1,19 +1,21 @@
-import { branchQuotaRepository } from "./branchQuota.repository";
+import { BranchQuotaRepository } from "./branchQuota.repository";
 import { AppError } from "../../shared/errors/AppError";
 
-type BranchAllocationInput = {
+export type BranchAllocationInput = {
     branchProfileId: string;
     totalQuantity: number;
 };
 
 export class BranchQuotaService {
+    constructor(private readonly branchQuotaRepository = new BranchQuotaRepository()) {}
+
     private async verifyOwnership(userId: string, voucherProductId: string) {
-        const partnerProfileId = await branchQuotaRepository.getPartnerProfileIdByUserId(userId);
+        const partnerProfileId = await this.branchQuotaRepository.getPartnerProfileIdByUserId(userId);
         if (!partnerProfileId) {
             throw new AppError("Partner profile not found", 404);
         }
 
-        const voucher = await branchQuotaRepository.getVoucherOwnershipAndStatus(voucherProductId, partnerProfileId);
+        const voucher = await this.branchQuotaRepository.getVoucherOwnershipAndStatus(voucherProductId, partnerProfileId);
         if (!voucher) {
             throw new AppError("Voucher does not exist or does not belong to this partner", 403);
         }
@@ -28,7 +30,7 @@ export class BranchQuotaService {
         }
 
         const branchIds = allocations.map(a => a.branchProfileId);
-        const ownedBranchIds = await branchQuotaRepository.getOwnedBranches(branchIds, partnerProfileId);
+        const ownedBranchIds = await this.branchQuotaRepository.getOwnedBranches(branchIds, partnerProfileId);
         const ownedBranchIdSet = new Set(ownedBranchIds);
 
         // Filter out branches that don't belong to the partner (Fail one, not all)
@@ -44,7 +46,7 @@ export class BranchQuotaService {
             totalQuantity: a.totalQuantity
         }));
 
-        const inserted = await branchQuotaRepository.bulkAllocate(dataToInsert);
+        const inserted = await this.branchQuotaRepository.bulkAllocate(dataToInsert);
 
         const insertedWithRemaining = inserted.map(i => ({
             ...i,
@@ -60,7 +62,7 @@ export class BranchQuotaService {
     async getAllocations(userId: string, voucherProductId: string) {
         await this.verifyOwnership(userId, voucherProductId);
 
-        const allocations = await branchQuotaRepository.findAllocations(voucherProductId);
+        const allocations = await this.branchQuotaRepository.findAllocations(voucherProductId);
         
         return allocations.map(a => ({
             ...a,
@@ -71,7 +73,7 @@ export class BranchQuotaService {
     async updateAllocation(userId: string, voucherProductId: string, branchProfileId: string, totalQuantity: number) {
         await this.verifyOwnership(userId, voucherProductId);
 
-        const existing = await branchQuotaRepository.findAllocation(voucherProductId, branchProfileId);
+        const existing = await this.branchQuotaRepository.findAllocation(voucherProductId, branchProfileId);
         if (!existing) {
             throw new AppError("Allocation not found", 404);
         }
@@ -80,7 +82,7 @@ export class BranchQuotaService {
             throw new AppError(`Total quantity cannot be less than sold quantity (${existing.soldQuantity})`, 400);
         }
 
-        const updated = await branchQuotaRepository.updateAllocation(voucherProductId, branchProfileId, totalQuantity);
+        const updated = await this.branchQuotaRepository.updateAllocation(voucherProductId, branchProfileId, totalQuantity);
         if (!updated) {
             throw new AppError(`Failed to update allocation. It may have been deleted, or the requested quantity is less than the current sold quantity due to concurrent sales.`, 409);
         }
@@ -94,7 +96,7 @@ export class BranchQuotaService {
     async deleteAllocation(userId: string, voucherProductId: string, branchProfileId: string) {
         await this.verifyOwnership(userId, voucherProductId);
 
-        const existing = await branchQuotaRepository.findAllocation(voucherProductId, branchProfileId);
+        const existing = await this.branchQuotaRepository.findAllocation(voucherProductId, branchProfileId);
         if (!existing) {
             throw new AppError("Allocation not found", 404);
         }
@@ -105,14 +107,12 @@ export class BranchQuotaService {
                 return { action: "updated" };
             }
             // Smart Revoke: atomic DB-side update totalQuantity = soldQuantity
-            await branchQuotaRepository.revokeAllocation(voucherProductId, branchProfileId);
+            await this.branchQuotaRepository.revokeAllocation(voucherProductId, branchProfileId);
             return { action: "updated" };
         } else {
             // Can safely hard delete
-            await branchQuotaRepository.deleteAllocation(voucherProductId, branchProfileId);
+            await this.branchQuotaRepository.deleteAllocation(voucherProductId, branchProfileId);
             return { action: "deleted" };
         }
     }
 }
-
-export const branchQuotaService = new BranchQuotaService();

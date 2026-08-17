@@ -1,5 +1,6 @@
 import type { AppRole } from "../../shared/auth/jwt";
 import { AppError } from "../../shared/errors/AppError";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 import { ProfileRepository } from "./profile.repository";
 
 type Gender = "Nam" | "Nữ";
@@ -56,6 +57,7 @@ type UpdateProfileStatusInput = {
   profileType: ProfileType;
   profileId: string;
   status: ProfileStatus;
+  rejectionReason?: string;
 };
 
 const profileResponse = (profile: unknown) => ({ profile });
@@ -76,6 +78,51 @@ const optionalNullableString = (value: string | null | undefined) =>
 
 export class ProfileService {
   constructor(private readonly profileRepository = new ProfileRepository()) {}
+
+  async getProfile(userId: string, roleCode: AppRole) {
+    if (roleCode === "Customer") {
+      const profile = await this.profileRepository.findCustomerProfileByUserId(userId);
+      if (!profile) throw new AppError("Customer profile not found", 404);
+      return profileResponse(profile);
+    }
+    if (roleCode === "Partner") {
+      const profile = await this.profileRepository.findPartnerProfileByUserId(userId);
+      if (!profile) throw new AppError("Partner profile not found", 404);
+      return profileResponse(profile);
+    }
+    if (roleCode === "Branch") {
+      const profile = await this.profileRepository.findBranchProfileByUserId(userId);
+      if (!profile) throw new AppError("Branch profile not found", 404);
+      return profileResponse(profile);
+    }
+    throw new AppError("Role is not allowed to have a profile", 403);
+  }
+
+  async getAllProfiles(type: "partner" | "branch") {
+    if (type === "partner") {
+      return { data: await this.profileRepository.findAllPartners() };
+    }
+    return { data: await this.profileRepository.findAllBranches() };
+  }
+
+  async uploadAvatar(userId: string, base64Image: string) {
+    const avatarUrl = await uploadToCloudinary(base64Image, "avatars");
+    
+    const profile = await this.profileRepository.updateCustomerProfile(userId, { avatarUrl });
+    if (!profile) {
+      throw new AppError("Customer profile not found", 404);
+    }
+    return profileResponse(profile);
+  }
+
+  async getPartnerBranches(userId: string) {
+    const profile = await this.profileRepository.findPartnerProfileByUserId(userId);
+    if (!profile) {
+      throw new AppError("Partner profile not found", 404);
+    }
+    const branches = await this.profileRepository.findBranchesByPartnerProfileId(profile.partnerProfileId);
+    return { data: branches };
+  }
 
   async createProfile({
     userId,
@@ -129,16 +176,23 @@ export class ProfileService {
     profileType,
     profileId,
     status,
+    rejectionReason,
   }: UpdateProfileStatusInput) {
+    if (status === "rejected" && !rejectionReason) {
+      throw new AppError("Rejection reason is required when rejecting a profile", 400);
+    }
+
     const profile =
       profileType === "partner"
         ? await this.profileRepository.updatePartnerProfileStatus(
             profileId,
             status as PartnerProfileStatus,
+            status === "rejected" ? rejectionReason : "",
           )
         : await this.profileRepository.updateBranchProfileStatus(
             profileId,
             status as BranchProfileStatus,
+            status === "rejected" ? rejectionReason : "",
           );
 
     if (!profile) {

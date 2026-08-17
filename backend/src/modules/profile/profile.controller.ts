@@ -66,6 +66,44 @@ const parseGender = (gender: unknown) => {
 export class ProfileController {
   constructor(private readonly profileService = new ProfileService()) {}
 
+  getProfile = async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    res.json(await this.profileService.getProfile(req.user.userId, req.user.roleCode));
+  };
+
+  uploadAvatar = async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const { avatarBase64 } = req.body as { avatarBase64?: string };
+
+    if (!avatarBase64) {
+      throw new AppError("avatarBase64 is required in request body", 400);
+    }
+
+    res.json(await this.profileService.uploadAvatar(req.user.userId, avatarBase64));
+  };
+
+  getBranches = async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    res.json(await this.profileService.getPartnerBranches(req.user.userId));
+  };
+
+  getAllPartners = async (req: Request, res: Response) => {
+    res.json(await this.profileService.getAllProfiles("partner"));
+  };
+
+  getAllBranches = async (req: Request, res: Response) => {
+    res.json(await this.profileService.getAllProfiles("branch"));
+  };
+
   createProfile = async (req: Request, res: Response) => {
     if (!req.user) {
       throw new AppError("Authentication required", 401);
@@ -181,7 +219,7 @@ export class ProfileController {
 
   updateProfileStatus = async (req: Request, res: Response) => {
     const { profileType, profileId } = req.params;
-    const { status } = req.body as { status?: string };
+    const { status, rejectionReason } = req.body as { status?: string; rejectionReason?: string };
 
     if (typeof profileType !== "string" || !isProfileType(profileType)) {
       throw new AppError("Invalid profileType", 400);
@@ -200,6 +238,7 @@ export class ProfileController {
         profileType,
         profileId,
         status,
+        rejectionReason,
       }),
     );
   };

@@ -1,21 +1,27 @@
 import { Request, Response } from "express";
-import { branchQuotaService } from "./branchQuota.service";
+import { BranchQuotaService, type BranchAllocationInput } from "./branchQuota.service";
 import { AppError } from "../../shared/errors/AppError";
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class BranchQuotaController {
-    async allocateVouchers(req: Request, res: Response): Promise<void> {
+    constructor(private readonly branchQuotaService = new BranchQuotaService()) {}
+
+    allocateVouchers = async (req: Request, res: Response) => {
         const userId = req.user!.userId;
         const voucherProductId = req.params.id as string;
-        const allocations = req.body as { branchProfileId: string; totalQuantity: number }[];
+        
+        if (!uuidRegex.test(voucherProductId)) {
+            throw new AppError("Invalid voucher ID", 400);
+        }
+        
+        const allocations = req.body as BranchAllocationInput[];
 
         if (!Array.isArray(allocations)) {
             throw new AppError("Request body must be an array of allocations", 400);
         }
 
-
-
         // Filter out bad payload shapes (Fail one, not all)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const validAllocations = allocations.filter(a => 
             a && 
             typeof a === 'object' &&
@@ -31,49 +37,60 @@ export class BranchQuotaController {
             throw new AppError("No valid allocations provided in request", 400);
         }
 
-        const { inserted, hasConflicts } = await branchQuotaService.allocateVouchers(userId, voucherProductId, validAllocations);
+        const { inserted, hasConflicts } = await this.branchQuotaService.allocateVouchers(userId, voucherProductId, validAllocations);
         
         if (hasConflicts) {
             res.status(409).json({ data: inserted, message: "Some branch allocations already existed and were skipped (Conflict)" });
         } else {
             res.status(201).json({ data: inserted, message: "Allocations created successfully" });
         }
-    }
+    };
 
-    async getAllocations(req: Request, res: Response): Promise<void> {
+    getAllocations = async (req: Request, res: Response) => {
         const userId = req.user!.userId;
         const voucherProductId = req.params.id as string;
+        
+        if (!uuidRegex.test(voucherProductId)) {
+            throw new AppError("Invalid voucher ID", 400);
+        }
 
-        const allocations = await branchQuotaService.getAllocations(userId, voucherProductId);
+        const allocations = await this.branchQuotaService.getAllocations(userId, voucherProductId);
         res.json({ data: allocations });
-    }
+    };
 
-    async updateAllocation(req: Request, res: Response): Promise<void> {
+    updateAllocation = async (req: Request, res: Response) => {
         const userId = req.user!.userId;
         const voucherProductId = req.params.id as string;
         const branchProfileId = req.params.branchId as string;
+        
+        if (!uuidRegex.test(voucherProductId) || !uuidRegex.test(branchProfileId)) {
+            throw new AppError("Invalid voucher ID or branch ID", 400);
+        }
+
         const { totalQuantity } = req.body as { totalQuantity?: number };
 
         if (totalQuantity === undefined || !Number.isInteger(totalQuantity) || totalQuantity < 0) {
             throw new AppError("Valid non-negative integer totalQuantity is required", 400);
         }
 
-        const updated = await branchQuotaService.updateAllocation(userId, voucherProductId, branchProfileId, totalQuantity);
+        const updated = await this.branchQuotaService.updateAllocation(userId, voucherProductId, branchProfileId, totalQuantity);
         res.json({ data: updated, message: "Allocation updated successfully" });
-    }
+    };
 
-    async deleteAllocation(req: Request, res: Response): Promise<void> {
+    deleteAllocation = async (req: Request, res: Response) => {
         const userId = req.user!.userId;
         const voucherProductId = req.params.id as string;
         const branchProfileId = req.params.branchId as string;
+        
+        if (!uuidRegex.test(voucherProductId) || !uuidRegex.test(branchProfileId)) {
+            throw new AppError("Invalid voucher ID or branch ID", 400);
+        }
 
-        const result = await branchQuotaService.deleteAllocation(userId, voucherProductId, branchProfileId);
+        const result = await this.branchQuotaService.deleteAllocation(userId, voucherProductId, branchProfileId);
         if (result.action === "updated") {
             res.json({ message: "Allocation updated (Smart Revoked) to match soldQuantity" });
         } else {
             res.json({ message: "Allocation deleted successfully" });
         }
-    }
+    };
 }
-
-export const branchQuotaController = new BranchQuotaController();
