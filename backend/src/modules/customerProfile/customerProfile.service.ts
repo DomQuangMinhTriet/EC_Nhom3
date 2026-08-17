@@ -1,18 +1,19 @@
 import { customerProfileRepository } from "./customerProfile.repository";
+import { AppError } from "../../shared/errors/AppError";
 import { uploadToCloudinary } from "../../lib/cloudinary";
 
 export class CustomerProfileService {
     async getProfile(userId: string) {
         const profile = await customerProfileRepository.findByUserId(userId);
         if (!profile) {
-            throw new Error("Customer profile not found");
+            throw new AppError("Customer profile not found", 404);
         }
         return profile;
     }
 
-    async updateProfile(userId: string, data: any) {
-        // Only allow updating specific fields
-        const updateData: Record<string, any> = {
+    async updateProfile(userId: string, data: { fullName?: string; phone?: string; birthDate?: string; gender?: "Nam" | "Nữ"; address?: string }) {
+        // Build the update object
+        const updateData: Partial<typeof data> = {
             ...(data.fullName !== undefined && { fullName: data.fullName }),
             ...(data.phone !== undefined && { phone: data.phone }),
             ...(data.birthDate !== undefined && { birthDate: data.birthDate }),
@@ -22,7 +23,7 @@ export class CustomerProfileService {
 
         const updatedProfile = await customerProfileRepository.updateByUserId(userId, updateData);
         if (!updatedProfile) {
-            throw new Error("Customer profile not found or update failed");
+            throw new AppError("Customer profile not found or update failed", 404);
         }
         return updatedProfile;
     }
@@ -34,7 +35,7 @@ export class CustomerProfileService {
         // Update avatarUrl in db
         const updatedProfile = await customerProfileRepository.updateByUserId(userId, { avatarUrl });
         if (!updatedProfile) {
-            throw new Error("Customer profile not found");
+            throw new AppError("Customer profile not found", 404);
         }
         return updatedProfile;
     }

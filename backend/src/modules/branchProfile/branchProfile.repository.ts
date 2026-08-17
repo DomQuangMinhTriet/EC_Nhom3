@@ -26,7 +26,7 @@ export class BranchProfileRepository {
         return result;
     }
 
-    async updateStatusById(id: string, status: "pending" | "approved" | "rejected", rejectionReason: string = "") {
+    async updateStatusById(id: string, status: "pending" | "active" | "suspended" | "closed" | "rejected", rejectionReason: string = "") {
         const result = await db
             .update(branchProfile)
             .set({ status, rejectionReason, updatedAt: new Date() })

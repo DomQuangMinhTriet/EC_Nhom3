@@ -34,7 +34,7 @@ export class PartnerProfileRepository {
         return result;
     }
 
-    async updateStatusById(id: string, status: "pending" | "approved" | "rejected", rejectionReason: string = "") {
+    async updateStatusById(id: string, status: "pending" | "active" | "suspended" | "terminated" | "rejected", rejectionReason: string = "") {
         const result = await db
             .update(partnerProfile)
             .set({ status, rejectionReason, updatedAt: new Date() })

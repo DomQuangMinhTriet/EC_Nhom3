@@ -1,74 +1,52 @@
 import { Request, Response } from "express";
 import { branchProfileService } from "./branchProfile.service";
+import { AppError } from "../../shared/errors/AppError";
+
+type UpdateBranchProfileInput = {
+    branchName?: string;
+    phone?: string;
+    address?: string;
+    email?: string;
+};
+
+type UpdateBranchStatusInput = {
+    status?: "pending" | "active" | "suspended" | "closed" | "rejected";
+    rejectionReason?: string;
+};
 
 export class BranchProfileController {
     // [Client] Get current branch profile
     async getProfile(req: Request, res: Response): Promise<void> {
-        try {
-            const userId = (req as any).user?.id || req.headers["x-user-id"];
-            if (!userId) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-            const profile = await branchProfileService.getProfile(userId as string);
-            res.status(200).json({ data: profile });
-        } catch (error) {
-            res.status(400).json({ error: (error as Error).message });
-        }
+        const userId = req.user!.userId;
+        const profile = await branchProfileService.getProfile(userId);
+        res.json({ data: profile });
     }
 
     // [Client] Update current branch profile
     async updateProfile(req: Request, res: Response): Promise<void> {
-        try {
-            const userId = (req as any).user?.id || req.headers["x-user-id"];
-            if (!userId) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-            const updatedProfile = await branchProfileService.updateProfile(userId as string, req.body);
-            res.status(200).json({ data: updatedProfile, message: "Profile updated successfully" });
-        } catch (error) {
-            res.status(400).json({ error: (error as Error).message });
-        }
+        const userId = req.user!.userId;
+        const body = req.body as UpdateBranchProfileInput;
+        const updatedProfile = await branchProfileService.updateProfile(userId, body);
+        res.json({ data: updatedProfile, message: "Profile updated successfully" });
     }
 
     // [Admin] Get all branches
     async getAllBranches(req: Request, res: Response): Promise<void> {
-        try {
-            // if ((req as any).user?.roleCode !== "admin" && req.headers["x-role-code"] !== "admin") {
-            //     res.status(403).json({ error: "Forbidden: Admins only" });
-            //     return;
-            // }
-
-            const branches = await branchProfileService.getAllBranches();
-            res.status(200).json({ data: branches });
-        } catch (error) {
-            res.status(400).json({ error: (error as Error).message });
-        }
+        const branches = await branchProfileService.getAllBranches();
+        res.json({ data: branches });
     }
 
     // [Admin] Update branch status
     async updateBranchStatus(req: Request, res: Response): Promise<void> {
-        try {
-            // Uncomment the following line when auth middleware is integrated
-            // if ((req as any).user?.roleCode !== "admin" && req.headers["x-role-code"] !== "admin") {
-            //     res.status(403).json({ error: "Forbidden: Admins only" });
-            //     return;
-            // }
+        const id = req.params.id as string;
+        const { status, rejectionReason } = req.body as UpdateBranchStatusInput;
 
-            const { id } = req.params;
-            const { status, rejectionReason } = req.body;
-
-            if (!status || !["pending", "approved", "rejected"].includes(status)) {
-                res.status(400).json({ error: "Invalid status value" });
-                return;
-            }
-
-            const updatedProfile = await branchProfileService.updateBranchStatus(id, status, rejectionReason);
-            res.status(200).json({ data: updatedProfile, message: `Branch status updated to ${status}` });
-        } catch (error) {
-            res.status(400).json({ error: (error as Error).message });
+        if (!status || !["pending", "active", "suspended", "closed", "rejected"].includes(status)) {
+            throw new AppError("Invalid status value", 400);
         }
+
+        const updatedProfile = await branchProfileService.updateBranchStatus(id, status, rejectionReason);
+        res.json({ data: updatedProfile, message: `Branch status updated to ${status}` });
     }
 }
 
