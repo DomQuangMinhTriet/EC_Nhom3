@@ -33,7 +33,10 @@ export const branchStatusEnum = pgEnum("branch_status", [
   "rejected",
 ]);
 
-export const discountTypeEnum = pgEnum("discount_type", ["direct", "percentage"]);
+export const discountTypeEnum = pgEnum("discount_type", [
+  "direct",
+  "percentage",
+]);
 
 export const voucherProductStatusEnum = pgEnum("voucher_product_status", [
   "pending",
@@ -57,8 +60,18 @@ export const orderStatusEnum = pgEnum("order_status", [
   "failed",
 ]);
 
-export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "card"]);
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "bank_transfer",
+  "card",
+]);
 
-export const paymentStatusEnum = pgEnum("payment_status", ["success", "failed"]);
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "success",
+  "failed",
+]);
 
-export const reviewStatusEnum = pgEnum("review_status", ["active", "deleted", "hidden"]);
+export const reviewStatusEnum = pgEnum("review_status", [
+  "active",
+  "deleted",
+  "hidden",
+]);

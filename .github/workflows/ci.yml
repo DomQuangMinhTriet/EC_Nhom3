@@ -43,11 +43,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm test
+
       - name: Build
         run: npm run build
-
-      # TODO(Phase 2+): add `npm test` back once route/service tests exist
-      # for the Express + Drizzle backend.
 
   frontend:
     name: Frontend checks

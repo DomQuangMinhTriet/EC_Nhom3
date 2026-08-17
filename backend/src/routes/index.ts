@@ -7,10 +7,14 @@ import partnerProfileRoutes from "../modules/partnerProfile/partnerProfile.route
 import branchProfileRoutes from "../modules/branchProfile/branchProfile.routes";
 
 import branchQuotaRoutes from "../modules/branchQuota/branchQuota.routes";
+import { profileRouter } from "../modules/profile/profile.routes";
+import { usersRouter } from "../modules/users/users.routes";
 
 export const apiRouter = Router();
 
 apiRouter.use("/api/auth", authRouter);
+apiRouter.use("/api/profile", profileRouter);
+apiRouter.use("/api/users", usersRouter);
 apiRouter.use("/", healthRouter);
 
 // Categories
