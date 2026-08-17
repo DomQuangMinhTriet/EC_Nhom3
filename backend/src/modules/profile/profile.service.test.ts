@@ -441,15 +441,15 @@ test("getProfile throws 404 if not found", async () => {
   const service = new ProfileService(createRepository());
   await assert.rejects(
     service.getProfile(customerProfile.userId, "Customer"),
-    (err: any) => err.statusCode === 404 && err.message === "Customer profile not found"
+    (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Customer profile not found"
   );
   await assert.rejects(
     service.getProfile(partnerProfile.userId, "Partner"),
-    (err: any) => err.statusCode === 404 && err.message === "Partner profile not found"
+    (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Partner profile not found"
   );
   await assert.rejects(
     service.getProfile(branchProfile.userId, "Branch"),
-    (err: any) => err.statusCode === 404 && err.message === "Branch profile not found"
+    (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Branch profile not found"
   );
 });
 
@@ -457,7 +457,7 @@ test("getProfile throws 403 for unallowed roles", async () => {
   const service = new ProfileService(createRepository());
   await assert.rejects(
     service.getProfile(customerProfile.userId, "Super_Admin"),
-    (err: any) => err.statusCode === 403 && err.message === "Role is not allowed to have a profile"
+    (err: unknown) => err instanceof AppError && err.statusCode === 403 && err.message === "Role is not allowed to have a profile"
   );
 });
 
@@ -465,7 +465,7 @@ test("getPartnerBranches throws 404 if profile not found", async () => {
   const service = new ProfileService(createRepository());
   await assert.rejects(
     service.getPartnerBranches(partnerProfile.userId),
-    (err: any) => err.statusCode === 404 && err.message === "Partner profile not found"
+    (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Partner profile not found"
   );
 });
 
@@ -493,7 +493,7 @@ test("uploadAvatar throws 404 if profile not found", async (t) => {
   }));
   await assert.rejects(
     service.uploadAvatar(customerProfile.userId, "base64-string"),
-    (err: any) => err.statusCode === 404 && err.message === "Customer profile not found"
+    (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Customer profile not found"
   );
 });
 

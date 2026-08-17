@@ -29,8 +29,8 @@ const createRepository = (overrides: Partial<CategoryTreeRepository> = {}) =>
             return null;
         },
         hasChildren: async (id: string) => id === rootCategory.categoryId, // Only root has a child
-        create: async (data: any) => ({ ...childCategory, ...data }),
-        update: async (id: string, data: any) => ({
+        create: async (data: Record<string, unknown>) => ({ ...childCategory, ...data }),
+        update: async (id: string, data: Record<string, unknown>) => ({
             ...(id === rootCategory.categoryId ? rootCategory : childCategory),
             ...data,
         }),

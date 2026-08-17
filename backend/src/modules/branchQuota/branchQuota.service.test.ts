@@ -46,7 +46,7 @@ const createRepository = (overrides: Partial<BranchQuotaRepository> = {}) =>
             if (voucherId === mockVoucherProductId && branchId === validBranchId1) return defaultAllocation;
             return null;
         },
-        bulkAllocate: async (allocations: any[]) => {
+        bulkAllocate: async (allocations: Record<string, unknown>[]) => {
             return allocations.map(a => ({ ...a, soldQuantity: 0 }));
         },
         updateAllocation: async (voucherId: string, branchId: string, totalQuantity: number) => {
@@ -76,7 +76,7 @@ test("methods throw 404 if partner profile is not found", async () => {
     
     await assert.rejects(
         service.getAllocations("wrong-user", mockVoucherProductId),
-        (err: any) => err instanceof AppError && err.statusCode === 404 && err.message === "Partner profile not found"
+        (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Partner profile not found"
     );
 });
 
@@ -85,7 +85,7 @@ test("methods throw 403 if voucher is not owned by partner", async () => {
     
     await assert.rejects(
         service.getAllocations(mockUserId, "wrong-voucher"),
-        (err: any) => err instanceof AppError && err.statusCode === 403 && err.message === "Voucher does not exist or does not belong to this partner"
+        (err: unknown) => err instanceof AppError && err.statusCode === 403 && err.message === "Voucher does not exist or does not belong to this partner"
     );
 });
 
@@ -120,7 +120,7 @@ test("allocateVouchers throws 400 if voucher is not active", async () => {
     
     await assert.rejects(
         service.allocateVouchers(mockUserId, "inactive-voucher", [{ branchProfileId: validBranchId1, totalQuantity: 50 }]),
-        (err: any) => err instanceof AppError && err.statusCode === 400 && err.message === "Only active vouchers can be allocated to branches"
+        (err: unknown) => err instanceof AppError && err.statusCode === 400 && err.message === "Only active vouchers can be allocated to branches"
     );
 });
 
@@ -129,7 +129,7 @@ test("allocateVouchers throws 403 if no branches belong to partner", async () =>
     
     await assert.rejects(
         service.allocateVouchers(mockUserId, mockVoucherProductId, [{ branchProfileId: "invalid-branch", totalQuantity: 50 }]),
-        (err: any) => err instanceof AppError && err.statusCode === 403 && err.message === "None of the provided branches belong to this partner"
+        (err: unknown) => err instanceof AppError && err.statusCode === 403 && err.message === "None of the provided branches belong to this partner"
     );
 });
 
@@ -158,7 +158,7 @@ test("updateAllocation throws 404 if existing allocation not found", async () =>
     
     await assert.rejects(
         service.updateAllocation(mockUserId, mockVoucherProductId, "non-existent-branch", 200),
-        (err: any) => err instanceof AppError && err.statusCode === 404 && err.message === "Allocation not found"
+        (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Allocation not found"
     );
 });
 
@@ -167,7 +167,7 @@ test("updateAllocation throws 400 if totalQuantity < soldQuantity", async () => 
     
     await assert.rejects(
         service.updateAllocation(mockUserId, mockVoucherProductId, validBranchId1, 5), // existing sold is 10
-        (err: any) => err instanceof AppError && err.statusCode === 400 && err.message.includes("Total quantity cannot be less than sold quantity")
+        (err: unknown) => err instanceof AppError && err.statusCode === 400 && err.message.includes("Total quantity cannot be less than sold quantity")
     );
 });
 
@@ -179,7 +179,7 @@ test("updateAllocation throws 409 if update fails due to race condition", async 
     
     await assert.rejects(
         service.updateAllocation(mockUserId, mockVoucherProductId, validBranchId1, 200),
-        (err: any) => err instanceof AppError && err.statusCode === 409 && err.message.includes("Failed to update allocation")
+        (err: unknown) => err instanceof AppError && err.statusCode === 409 && err.message.includes("Failed to update allocation")
     );
 });
 
@@ -216,6 +216,6 @@ test("deleteAllocation throws 404 if allocation not found", async () => {
     
     await assert.rejects(
         service.deleteAllocation(mockUserId, mockVoucherProductId, "non-existent-branch"),
-        (err: any) => err instanceof AppError && err.statusCode === 404 && err.message === "Allocation not found"
+        (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Allocation not found"
     );
 });
