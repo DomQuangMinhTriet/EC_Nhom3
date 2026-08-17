@@ -86,9 +86,9 @@ export async function signIn(values: LoginValues) {
 }
 
 export function signUp(values: RegisterValues) {
-  return apiRequest<RegisterResponse>("/api/auth/register", {
+  return apiRequest<RegisterResponse>("/api/auth/register/customer", {
     method: "POST",
-    body: { email: values.email, password: values.password, roleCode: "Customer" },
+    body: { email: values.email, password: values.password },
   });
 }
 
