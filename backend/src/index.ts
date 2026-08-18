@@ -25,6 +25,11 @@ async function logDatabaseTables() {
 
 void logDatabaseTables();
 
+// Profiles routes
+// app.use("/", customerProfileRoutes);
+// app.use("/", partnerProfileRoutes);
+// app.use("/", branchProfileRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
