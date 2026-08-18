@@ -10,6 +10,9 @@ import { branchQuotaRouter } from "../modules/branchQuota/branchQuota.routes";
 import { profileRouter } from "../modules/profile/profile.routes";
 import { usersRouter } from "../modules/users/users.routes";
 import { voucherProductRouter } from "../modules/voucherProduct/voucherProduct.routes";
+import { cartRouter } from "../modules/cart/cart.routes";
+import { voucherInstanceRouter } from "../modules/voucherInstance/voucherInstance.routes";
+import { reviewRouter } from "../modules/review/review.routes";
 
 export const apiRouter = Router();
 
@@ -31,3 +34,12 @@ apiRouter.use("/api", voucherProductRouter);
 
 // Quotas
 apiRouter.use("/api", branchQuotaRouter);
+
+// Cart
+apiRouter.use("/api", cartRouter);
+
+// Voucher Instances (My Vouchers)
+apiRouter.use("/api", voucherInstanceRouter);
+
+// Reviews
+apiRouter.use("/api", reviewRouter);
