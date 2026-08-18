@@ -1,5 +1,5 @@
 import { ApiError, apiClient } from "@/lib/api/client";
-import { readAuthSession } from "@/features/auth/auth-api";
+import { authHeaders } from "@/lib/api/auth-headers";
 
 export type Gender = "Nam" | "Nữ";
 
@@ -76,12 +76,6 @@ export type CreateBranchProfileInput = {
 export type UpdateCustomerProfileInput = Partial<CreateCustomerProfileInput>;
 export type UpdatePartnerProfileInput = Partial<Omit<CreatePartnerProfileInput, "partnerProfileCode">>;
 export type UpdateBranchProfileInput = Partial<Omit<CreateBranchProfileInput, "partnerProfileId" | "branchProfileCode">>;
-
-function authHeaders() {
-  const session = readAuthSession();
-  if (!session) throw new ApiError("Bạn cần đăng nhập để tiếp tục.", 401);
-  return { Authorization: `Bearer ${session.accessToken}` };
-}
 
 export async function getMyProfile<T extends CustomerProfile | PartnerProfile | BranchProfile>() {
   const res = await apiClient<{ profile: T }>("/profile", { headers: authHeaders() });

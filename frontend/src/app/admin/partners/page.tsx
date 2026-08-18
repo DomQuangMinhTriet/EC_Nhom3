@@ -6,7 +6,7 @@ import { RecordsTable } from "@/components/admin/records-table";
 import { Button } from "@/components/ui/button";
 import { State } from "@/components/common/state";
 import { ProfileStatusBadge } from "@/components/profile/profile-status-badge";
-import { ProfileStatusAction } from "@/components/profile/profile-status-action";
+import { StatusAction } from "@/components/common/status-action";
 import { useToast } from "@/components/common/toast";
 import { useAdminPartners, useUpdatePartnerStatus } from "@/hooks/queries/use-profile";
 import type { PartnerProfileStatus } from "@/features/profile/profile-api";
@@ -52,7 +52,7 @@ export default function PartnersPage() {
             partner.taxCode,
             partner.representativeName,
             <ProfileStatusBadge key="s" status={partner.status}/>,
-            <ProfileStatusAction
+            <StatusAction
               key="a"
               statuses={partnerStatuses}
               currentStatus={partner.status}

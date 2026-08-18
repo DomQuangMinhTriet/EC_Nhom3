@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { RecordsTable } from "@/components/admin/records-table";
 import { State } from "@/components/common/state";
 import { ProfileStatusBadge } from "@/components/profile/profile-status-badge";
-import { ProfileStatusAction } from "@/components/profile/profile-status-action";
+import { StatusAction } from "@/components/common/status-action";
 import { useToast } from "@/components/common/toast";
 import { useAdminBranches, useUpdateBranchStatus } from "@/hooks/queries/use-profile";
 import type { BranchProfileStatus } from "@/features/profile/profile-api";
@@ -49,7 +49,7 @@ export default function BranchesAdminPage() {
             <span key="p" className="font-mono text-[11px] text-slate-500">{branch.partnerProfileId}</span>,
             branch.address || "—",
             <ProfileStatusBadge key="s" status={branch.status}/>,
-            <ProfileStatusAction
+            <StatusAction
               key="a"
               statuses={branchStatuses}
               currentStatus={branch.status}

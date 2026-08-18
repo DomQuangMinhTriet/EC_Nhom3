@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function ProfileStatusAction<TStatus extends string>({
+export function StatusAction<TStatus extends string>({
   statuses,
   currentStatus,
   pending,

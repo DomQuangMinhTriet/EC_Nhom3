@@ -1,3 +1,2 @@
-// TODO(API): replace with /admin/* dashboard, users, partners, categories, voucher approval and audit-log endpoints.
-export const adminUsers = [{ name: "Nguyễn Văn An", email: "nguyenvanan@email.com", role: "Customer", status: "Hoạt động" }, { name: "Trần Minh Anh", email: "partner@lotteria.vn", role: "Partner", status: "Hoạt động" }, { name: "Lê Quốc Bảo", email: "bao@cgv.vn", role: "Partner", status: "Tạm khóa" }];
+// TODO(API): replace with /admin/* dashboard, categories, voucher approval and audit-log endpoints.
 export const approvalMocks = [{ id: "a1", partner: "An Nhiên Spa", title: "Massage thư giãn giảm 40%", submitted: "06/08/2026" }, { id: "a2", partner: "Sendo", title: "Voucher thời trang giảm 60%", submitted: "05/08/2026" }];
