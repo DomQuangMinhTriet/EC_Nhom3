@@ -1,42 +1,14 @@
 import type { Request, Response } from "express";
 import { AppError } from "../../shared/errors/AppError";
+import {
+  parseOptionalStringQuery,
+  parsePositiveIntegerQuery,
+} from "../../shared/http/requestParsers";
 import { VoucherProductService } from "./voucherProduct.service";
 import type { VoucherProductStatus } from "./voucherProduct.repository";
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const parsePositiveIntegerQuery = (
-  value: unknown,
-  field: string,
-): number | undefined => {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value !== "string") {
-    throw new AppError(`${field} must be a number`, 400);
-  }
-
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new AppError(`${field} must be a positive integer`, 400);
-  }
-
-  return parsed;
-};
-
-const parseOptionalStringQuery = (value: unknown, field: string) => {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value !== "string") {
-    throw new AppError(`${field} must be a string`, 400);
-  }
-
-  return value;
-};
 
 const parseVoucherId = (value: unknown) => {
   if (typeof value !== "string" || !uuidPattern.test(value)) {

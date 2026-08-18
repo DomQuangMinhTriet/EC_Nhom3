@@ -23,9 +23,9 @@ export type CreateVoucherProductRecord = {
 export type UpdateVoucherProductRecord = Partial<
   Omit<
     CreateVoucherProductRecord,
-    "partnerProfileId" | "status" | "rejectionReason"
+    "partnerProfileId" | "rejectionReason"
   >
->;
+> & { rejectionReason?: string | null };
 
 export type VoucherProductStatus =
   | "pending"
@@ -129,18 +129,19 @@ export class VoucherProductRepository {
     const where = filters.length > 0 ? and(...filters) : undefined;
     const offset = (page - 1) * pageSize;
 
-    const vouchers = await db
-      .select()
-      .from(voucherProduct)
-      .where(where)
-      .orderBy(desc(voucherProduct.createdAt))
-      .limit(pageSize)
-      .offset(offset);
-
-    const totalRows = await db
-      .select({ total: sql<number>`count(*)` })
-      .from(voucherProduct)
-      .where(where);
+    const [vouchers, totalRows] = await Promise.all([
+      db
+        .select()
+        .from(voucherProduct)
+        .where(where)
+        .orderBy(desc(voucherProduct.createdAt))
+        .limit(pageSize)
+        .offset(offset),
+      db
+        .select({ total: sql<number>`count(*)` })
+        .from(voucherProduct)
+        .where(where),
+    ]);
 
     return {
       vouchers,

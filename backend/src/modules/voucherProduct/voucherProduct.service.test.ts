@@ -165,6 +165,8 @@ test("updates only partner-owned voucher fields", async () => {
       assert.deepEqual(updates, {
         title: "Updated Voucher",
         maxLimit: null,
+        status: "pending",
+        rejectionReason: null,
       });
       return { ...voucher, ...updates };
     },
@@ -181,6 +183,86 @@ test("updates only partner-owned voucher fields", async () => {
   );
 
   assert.equal(result.voucher?.title, "Updated Voucher");
+  assert.equal(result.voucher?.status, "pending");
+});
+
+test("partner edits reset an active voucher to pending for re-approval", async () => {
+  const activeVoucher = { ...voucher, status: "active" as const };
+  const repository = createRepository({
+    findByIdAndPartnerProfileId: async () => activeVoucher,
+    updateByPartnerProfileId: async (_id, _profileId, updates) => {
+      assert.equal(updates.status, "pending");
+      assert.equal(updates.rejectionReason, null);
+      return { ...activeVoucher, ...updates };
+    },
+  });
+  const service = new VoucherProductService(repository);
+
+  const result = await service.updatePartnerVoucher(
+    partnerUserId,
+    voucherProductId,
+    { discountValue: "30" },
+  );
+
+  assert.equal(result.voucher?.status, "pending");
+  assert.equal(result.voucher?.discountValue, "30");
+});
+
+test("updatePartnerVoucher validates partial dates against existing voucher", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.updatePartnerVoucher(partnerUserId, voucherProductId, {
+      startDate: "2026-10-01T00:00:00.000Z",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "startDate must be before endDate",
+  );
+});
+
+test("updatePartnerVoucher validates partial limits against existing voucher", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.updatePartnerVoucher(partnerUserId, voucherProductId, {
+      minLimit: 10,
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "maxLimit must be greater than or equal to minLimit",
+  );
+});
+
+test("createVoucher rejects empty numeric strings before DB write", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.createVoucher(partnerUserId, {
+      ...createInput,
+      originalPrice: "",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "originalPrice must be a non-negative number",
+  );
+});
+
+test("updatePartnerVoucher rejects invalid field types with 400", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.updatePartnerVoucher(partnerUserId, voucherProductId, {
+      title: 123,
+    } as unknown as { title: string }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "title must be a string",
+  );
 });
 
 test("updatePartnerVoucher throws 404 for voucher outside partner ownership", async () => {
@@ -228,12 +310,50 @@ test("getVouchers returns paginated system vouchers", async () => {
   assert.equal(result.pagination.totalPages, 3);
 });
 
+test("public voucher listing rejects non-active status filters", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.getVouchers({ status: "pending" }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "Public voucher listing only supports active status",
+  );
+});
+
+test("public voucher listing defaults to active status", async () => {
+  const repository = createRepository({
+    findAll: async (options) => {
+      assert.equal(options.status, "active");
+      return { vouchers: [{ ...voucher, status: "active" }], total: 1 };
+    },
+  });
+  const service = new VoucherProductService(repository);
+
+  const result = await service.getVouchers();
+
+  assert.equal(result.vouchers[0]?.status, "active");
+});
+
 test("getVoucherById throws 404 if voucher is missing", async () => {
   const service = new VoucherProductService(
     createRepository({
       findById: async () => null,
     }),
   );
+
+  await assert.rejects(
+    service.getVoucherById(voucherProductId),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
+      error.message === "Voucher not found",
+  );
+});
+
+test("getVoucherById hides non-active vouchers from public callers", async () => {
+  const service = new VoucherProductService(createRepository());
 
   await assert.rejects(
     service.getVoucherById(voucherProductId),

@@ -58,18 +58,26 @@ const trim = (value: string) => value.trim();
 
 const hasValue = (value: unknown) => value !== undefined && value !== null;
 
-const normalizeMoney = (value: string | number, field: string) => {
+const normalizeMoney = (value: unknown, field: string) => {
+  if (typeof value !== "string" && typeof value !== "number") {
+    throw new AppError(`${field} must be a non-negative number`, 400);
+  }
+
   const text = typeof value === "number" ? String(value) : trim(value);
   const numberValue = Number(text);
 
-  if (!Number.isFinite(numberValue) || numberValue < 0) {
+  if (!text || !Number.isFinite(numberValue) || numberValue < 0) {
     throw new AppError(`${field} must be a non-negative number`, 400);
   }
 
   return text;
 };
 
-const normalizeDate = (value: string | Date, field: string) => {
+const normalizeDate = (value: unknown, field: string) => {
+  if (typeof value !== "string" && !(value instanceof Date)) {
+    throw new AppError(`${field} must be a valid date`, 400);
+  }
+
   const date = value instanceof Date ? value : new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -77,6 +85,62 @@ const normalizeDate = (value: string | Date, field: string) => {
   }
 
   return date;
+};
+
+const normalizeOptionalString = (value: unknown, field: string) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    throw new AppError(`${field} must be a string`, 400);
+  }
+
+  return value.trim();
+};
+
+const normalizeOptionalNullableString = (value: unknown, field: string) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new AppError(`${field} must be a string or null`, 400);
+  }
+
+  return value.trim() || null;
+};
+
+const normalizeOptionalInteger = (value: unknown, field: string) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new AppError(`${field} must be an integer`, 400);
+  }
+
+  return value;
+};
+
+const normalizeOptionalNullableInteger = (value: unknown, field: string) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new AppError(`${field} must be an integer or null`, 400);
+  }
+
+  return value;
 };
 
 const isDiscountType = (value: string): value is DiscountType =>
@@ -156,7 +220,7 @@ export class VoucherProductService {
       await this.ensureCategoryExists(input.categoryId);
     }
 
-    const updates = this.normalizeUpdateInput(input);
+    const updates = this.normalizeUpdateInput(input, existing);
 
     if (Object.keys(updates).length === 0) {
       throw new AppError("At least one voucher field is required", 400);
@@ -166,7 +230,11 @@ export class VoucherProductService {
       await this.voucherProductRepository.updateByPartnerProfileId(
         voucherProductId,
         partnerProfileId,
-        updates,
+        {
+          ...updates,
+          status: "pending",
+          rejectionReason: null,
+        },
       );
 
     return { voucher };
@@ -181,11 +249,15 @@ export class VoucherProductService {
       throw new AppError("Invalid voucher status", 400);
     }
 
+    if (input.status && input.status !== "active") {
+      throw new AppError("Public voucher listing only supports active status", 400);
+    }
+
     const { vouchers, total } = await this.voucherProductRepository.findAll({
       page,
       pageSize,
       categoryId: input.categoryId,
-      status: input.status,
+      status: "active",
       search,
     });
 
@@ -205,6 +277,10 @@ export class VoucherProductService {
       await this.voucherProductRepository.findById(voucherProductId);
 
     if (!voucher) {
+      throw new AppError("Voucher not found", 404);
+    }
+
+    if (voucher.status !== "active") {
       throw new AppError("Voucher not found", 404);
     }
 
@@ -255,8 +331,24 @@ export class VoucherProductService {
   }
 
   private normalizeCreateInput(input: CreateVoucherProductInput) {
+    if (typeof input.categoryId !== "string") {
+      throw new AppError("categoryId is required", 400);
+    }
+
+    if (typeof input.title !== "string") {
+      throw new AppError("title is required", 400);
+    }
+
+    if (!isDiscountType(input.discountType)) {
+      throw new AppError("Invalid discountType", 400);
+    }
+
+    if (!Number.isInteger(input.validDurationDays)) {
+      throw new AppError("validDurationDays must be a positive integer", 400);
+    }
+
     const title = trim(input.title);
-    const description = input.description?.trim() ?? "";
+    const description = normalizeOptionalString(input.description, "description") ?? "";
     const startDate = normalizeDate(input.startDate, "startDate");
     const endDate = normalizeDate(input.endDate, "endDate");
     const minLimit = input.minLimit ?? 1;
@@ -264,10 +356,6 @@ export class VoucherProductService {
 
     if (!title) {
       throw new AppError("title is required", 400);
-    }
-
-    if (!isDiscountType(input.discountType)) {
-      throw new AppError("Invalid discountType", 400);
     }
 
     if (startDate >= endDate) {
@@ -301,18 +389,32 @@ export class VoucherProductService {
       validDurationDays,
       minLimit,
       maxLimit: input.maxLimit,
-      imageUrl: input.imageUrl?.trim() || null,
+      imageUrl: normalizeOptionalNullableString(input.imageUrl, "imageUrl") ?? null,
     };
   }
 
-  private normalizeUpdateInput(input: UpdateVoucherProductInput) {
+  private normalizeUpdateInput(
+    input: UpdateVoucherProductInput,
+    existing: {
+      startDate: Date;
+      endDate: Date;
+      minLimit: number;
+      maxLimit: number | null;
+    },
+  ) {
     const updates: UpdateVoucherProductRecord = {};
 
     if (input.categoryId !== undefined) {
+      if (typeof input.categoryId !== "string") {
+        throw new AppError("categoryId must be a string", 400);
+      }
       updates.categoryId = input.categoryId;
     }
 
     if (input.title !== undefined) {
+      if (typeof input.title !== "string") {
+        throw new AppError("title must be a string", 400);
+      }
       const title = trim(input.title);
       if (!title) {
         throw new AppError("title is required", 400);
@@ -321,7 +423,7 @@ export class VoucherProductService {
     }
 
     if (input.description !== undefined) {
-      updates.description = input.description.trim();
+      updates.description = normalizeOptionalString(input.description, "description");
     }
 
     if (input.originalPrice !== undefined) {
@@ -332,6 +434,9 @@ export class VoucherProductService {
     }
 
     if (input.discountType !== undefined) {
+      if (typeof input.discountType !== "string") {
+        throw new AppError("discountType must be a string", 400);
+      }
       if (!isDiscountType(input.discountType)) {
         throw new AppError("Invalid discountType", 400);
       }
@@ -354,48 +459,41 @@ export class VoucherProductService {
     }
 
     if (input.validDurationDays !== undefined) {
-      if (
-        !Number.isInteger(input.validDurationDays) ||
-        input.validDurationDays < 1
-      ) {
+      const validDurationDays = normalizeOptionalInteger(input.validDurationDays, "validDurationDays");
+      if (validDurationDays === undefined || validDurationDays < 1) {
         throw new AppError("validDurationDays must be a positive integer", 400);
       }
-      updates.validDurationDays = input.validDurationDays;
+      updates.validDurationDays = validDurationDays;
     }
 
     if (input.minLimit !== undefined) {
-      if (!Number.isInteger(input.minLimit) || input.minLimit < 1) {
+      const minLimit = normalizeOptionalInteger(input.minLimit, "minLimit");
+      if (minLimit === undefined || minLimit < 1) {
         throw new AppError("minLimit must be a positive integer", 400);
       }
-      updates.minLimit = input.minLimit;
+      updates.minLimit = minLimit;
     }
 
     if (input.maxLimit !== undefined) {
-      if (input.maxLimit !== null && !Number.isInteger(input.maxLimit)) {
-        throw new AppError("maxLimit must be an integer or null", 400);
-      }
-      updates.maxLimit = input.maxLimit;
+      updates.maxLimit = normalizeOptionalNullableInteger(input.maxLimit, "maxLimit");
     }
 
-    if (
-      updates.startDate &&
-      updates.endDate &&
-      updates.startDate >= updates.endDate
-    ) {
+    const nextStartDate = updates.startDate ?? existing.startDate;
+    const nextEndDate = updates.endDate ?? existing.endDate;
+    const nextMinLimit = updates.minLimit ?? existing.minLimit;
+    const nextMaxLimit =
+      updates.maxLimit !== undefined ? updates.maxLimit : existing.maxLimit;
+
+    if (nextStartDate >= nextEndDate) {
       throw new AppError("startDate must be before endDate", 400);
     }
 
-    if (
-      updates.minLimit !== undefined &&
-      updates.maxLimit !== undefined &&
-      updates.maxLimit !== null &&
-      updates.maxLimit < updates.minLimit
-    ) {
+    if (nextMaxLimit !== null && nextMaxLimit < nextMinLimit) {
       throw new AppError("maxLimit must be greater than or equal to minLimit", 400);
     }
 
     if (input.imageUrl !== undefined) {
-      updates.imageUrl = input.imageUrl?.trim() || null;
+      updates.imageUrl = normalizeOptionalNullableString(input.imageUrl, "imageUrl");
     }
 
     return updates;

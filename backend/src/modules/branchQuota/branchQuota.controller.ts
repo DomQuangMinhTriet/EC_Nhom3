@@ -1,25 +1,9 @@
 import { Request, Response } from "express";
 import { BranchQuotaService, type BranchAllocationInput } from "./branchQuota.service";
 import { AppError } from "../../shared/errors/AppError";
+import { parsePositiveIntegerQuery } from "../../shared/http/requestParsers";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const parsePositiveIntegerQuery = (value: unknown, field: string) => {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    if (typeof value !== "string") {
-        throw new AppError(`${field} must be a number`, 400);
-    }
-
-    const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < 1) {
-        throw new AppError(`${field} must be a positive integer`, 400);
-    }
-
-    return parsed;
-};
 
 export class BranchQuotaController {
     constructor(private readonly branchQuotaService = new BranchQuotaService()) {}

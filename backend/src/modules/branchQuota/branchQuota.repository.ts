@@ -50,26 +50,27 @@ export class BranchQuotaRepository {
         // "Trả về danh sách các branch đang sở hữu voucher này." -> Must JOIN branchProfile to return branch info
         const offset = (page - 1) * pageSize;
 
-        const data = await db
-            .select({
-                branchProfileId: branchVoucherProduct.branchProfileId,
-                voucherProductId: branchVoucherProduct.voucherProductId,
-                totalQuantity: branchVoucherProduct.totalQuantity,
-                soldQuantity: branchVoucherProduct.soldQuantity,
-                branchName: branchProfile.branchName,
-                address: branchProfile.address,
-                phone: branchProfile.phone
-            })
-            .from(branchVoucherProduct)
-            .innerJoin(branchProfile, eq(branchVoucherProduct.branchProfileId, branchProfile.branchProfileId))
-            .where(eq(branchVoucherProduct.voucherProductId, voucherProductId))
-            .limit(pageSize)
-            .offset(offset);
-
-        const totalRows = await db
-            .select({ total: sql<number>`count(*)` })
-            .from(branchVoucherProduct)
-            .where(eq(branchVoucherProduct.voucherProductId, voucherProductId));
+        const [data, totalRows] = await Promise.all([
+            db
+                .select({
+                    branchProfileId: branchVoucherProduct.branchProfileId,
+                    voucherProductId: branchVoucherProduct.voucherProductId,
+                    totalQuantity: branchVoucherProduct.totalQuantity,
+                    soldQuantity: branchVoucherProduct.soldQuantity,
+                    branchName: branchProfile.branchName,
+                    address: branchProfile.address,
+                    phone: branchProfile.phone
+                })
+                .from(branchVoucherProduct)
+                .innerJoin(branchProfile, eq(branchVoucherProduct.branchProfileId, branchProfile.branchProfileId))
+                .where(eq(branchVoucherProduct.voucherProductId, voucherProductId))
+                .limit(pageSize)
+                .offset(offset),
+            db
+                .select({ total: sql<number>`count(*)` })
+                .from(branchVoucherProduct)
+                .where(eq(branchVoucherProduct.voucherProductId, voucherProductId)),
+        ]);
 
         return {
             data,

@@ -1,8 +1,8 @@
 # Voucher Product API
 
 Tai lieu nay mo ta API quan ly voucher product theo Phase 3 Product System APIs.
-Partner tao va quan ly voucher cua minh; Admin duyet voucher; public co the xem
-danh sach va chi tiet voucher trong he thong.
+Partner tao va quan ly voucher cua minh; Admin duyet voucher; public chi xem
+duoc voucher da `active`.
 
 ## Base URL
 
@@ -25,9 +25,9 @@ Request body su dung JSON.
 | --- | --- | --- |
 | `POST /partner/vouchers` | Partner tao voucher moi, status luon la `pending` | Partner |
 | `GET /partner/vouchers` | Lay tat ca voucher cua partner dang dang nhap | Partner |
-| `PATCH /partner/vouchers/:id` | Cap nhat voucher cua partner dang dang nhap | Partner |
-| `GET /vouchers` | Lay tat ca voucher trong he thong, co phan trang | Public |
-| `GET /vouchers/:id` | Lay chi tiet voucher | Public |
+| `PATCH /partner/vouchers/:id` | Cap nhat voucher cua partner dang dang nhap, dua ve `pending` de duyet lai | Partner |
+| `GET /vouchers` | Lay voucher `active` trong he thong, co phan trang | Public |
+| `GET /vouchers/:id` | Lay chi tiet voucher `active` | Public |
 | `PATCH /admin/vouchers/:id/status` | Admin duyet/tu choi/an voucher | Super Admin, Operational Admin |
 
 ## Gia tri hop le
@@ -198,6 +198,10 @@ Partner chi cap nhat duoc voucher thuoc partner profile cua minh. API nay khong
 cho partner cap nhat `status`, `partnerProfileId`, `rejectionReason`,
 `createdAt`, `updatedAt`.
 
+Sau moi lan Partner cap nhat voucher, backend tu dua `status` ve `pending` va
+xoa `rejectionReason` de Admin duyet lai noi dung moi. Noi dung vua sua se
+khong xuat hien o API public cho den khi Admin approve lai.
+
 Field co the cap nhat:
 
 ```text
@@ -252,8 +256,11 @@ Query ho tro:
 | `page` | Trang hien tai, bat dau tu 1 | `1` |
 | `pageSize` | So item moi trang, toi da 100 | `20` |
 | `categoryId` | Loc theo category | Khong loc |
-| `status` | Loc theo voucher status | Khong loc |
+| `status` | Chi chap nhan `active` tren public API | `active` |
 | `search` | Tim theo title/description | Khong tim |
+
+Public API luon loc `status = active`. Neu client gui `status=pending`,
+`status=rejected` hoac status khac `active`, API tra `400 Bad Request`.
 
 ### Response thanh cong
 
@@ -293,7 +300,7 @@ HTTP `200 OK`:
 }
 ```
 
-Neu voucher khong ton tai:
+Neu voucher khong ton tai hoac voucher chua `active`:
 
 ```json
 {
@@ -353,8 +360,9 @@ HTTP `200 OK`:
 1. Partner tao voucher qua `POST /api/partner/vouchers`.
 2. Voucher moi luon co status `pending`.
 3. Partner xem voucher cua minh qua `GET /api/partner/vouchers`.
-4. Partner co the sua thong tin voucher qua `PATCH /api/partner/vouchers/:id`.
-5. Admin duyet voucher qua `PATCH /api/admin/vouchers/:id/status`.
+4. Partner co the sua thong tin voucher qua `PATCH /api/partner/vouchers/:id`;
+   voucher se quay ve `pending`.
+5. Admin duyet lai voucher qua `PATCH /api/admin/vouchers/:id/status`.
 6. Client/public lay danh sach qua `GET /api/vouchers` va chi tiet qua
    `GET /api/vouchers/:id`.
 
