@@ -77,8 +77,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm test
+
       - name: Build
         run: npm run build
-
-      # TODO(Phase 6): add `npm test` back once screen/component tests
-      # exist for the Next.js app.
