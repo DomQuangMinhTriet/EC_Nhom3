@@ -9,6 +9,9 @@ import { categoryTreeRouter } from "../modules/categoryTree/categoryTree.routes"
 import { branchQuotaRouter } from "../modules/branchQuota/branchQuota.routes";
 import { profileRouter } from "../modules/profile/profile.routes";
 import { usersRouter } from "../modules/users/users.routes";
+import { cartRouter } from "../modules/cart/cart.routes";
+import { voucherInstanceRouter } from "../modules/voucherInstance/voucherInstance.routes";
+import { reviewRouter } from "../modules/review/review.routes";
 
 export const apiRouter = Router();
 
@@ -27,3 +30,12 @@ apiRouter.use("/api", categoryTreeRouter);
 
 // Quotas
 apiRouter.use("/api", branchQuotaRouter);
+
+// Cart
+apiRouter.use("/api", cartRouter);
+
+// Voucher Instances (My Vouchers)
+apiRouter.use("/api", voucherInstanceRouter);
+
+// Reviews
+apiRouter.use("/api", reviewRouter);
