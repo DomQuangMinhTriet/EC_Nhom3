@@ -3,7 +3,33 @@ import { partnerVoucherSchema, redeemSchema, rejectionReasonSchema } from "@/lib
 
 describe("partner, branch and admin workflows", () => {
   it("validates a partner voucher ready to submit for approval", () => {
-    expect(partnerVoucherSchema.safeParse({ title: "Voucher combo bữa trưa", category: "Ăn uống", originalPrice: 200000, salePrice: 140000, stock: 500, expiry: "2026-12-31" }).success).toBe(true);
+    expect(
+      partnerVoucherSchema.safeParse({
+        categoryId: "00000000-0000-4000-8000-000000000003",
+        title: "Voucher combo bữa trưa",
+        originalPrice: 200000,
+        discountType: "percentage",
+        discountValue: 20,
+        startDate: "2026-08-20",
+        endDate: "2026-09-20",
+        validDurationDays: 30,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a voucher whose end date is before its start date", () => {
+    expect(
+      partnerVoucherSchema.safeParse({
+        categoryId: "00000000-0000-4000-8000-000000000003",
+        title: "Voucher combo bữa trưa",
+        originalPrice: 200000,
+        discountType: "percentage",
+        discountValue: 20,
+        startDate: "2026-09-20",
+        endDate: "2026-08-20",
+        validDurationDays: 30,
+      }).success,
+    ).toBe(false);
   });
 
   it("requires a redeem code and mandatory rejection reason", () => {
