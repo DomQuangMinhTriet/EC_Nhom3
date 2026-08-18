@@ -4,6 +4,23 @@ import { AppError } from "../../shared/errors/AppError";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const parsePositiveIntegerQuery = (value: unknown, field: string) => {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value !== "string") {
+        throw new AppError(`${field} must be a number`, 400);
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+        throw new AppError(`${field} must be a positive integer`, 400);
+    }
+
+    return parsed;
+};
+
 export class BranchQuotaController {
     constructor(private readonly branchQuotaService = new BranchQuotaService()) {}
 
@@ -54,8 +71,11 @@ export class BranchQuotaController {
             throw new AppError("Invalid voucher ID", 400);
         }
 
-        const allocations = await this.branchQuotaService.getAllocations(userId, voucherProductId);
-        res.json({ data: allocations });
+        const result = await this.branchQuotaService.getAllocations(userId, voucherProductId, {
+            page: parsePositiveIntegerQuery(req.query.page, "page"),
+            pageSize: parsePositiveIntegerQuery(req.query.pageSize, "pageSize"),
+        });
+        res.json(result);
     };
 
     updateAllocation = async (req: Request, res: Response) => {

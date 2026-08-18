@@ -1,6 +1,6 @@
 import { db } from "../../db/client";
 import { branchVoucherProduct, partnerProfile, voucherProduct, branchProfile } from "../../db/schema";
-import { and, eq, inArray, lte } from "drizzle-orm";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
 
 export class BranchQuotaRepository {
     async getPartnerProfileIdByUserId(userId: string) {
@@ -46,9 +46,11 @@ export class BranchQuotaRepository {
         return result.map(r => r.branchProfileId);
     }
 
-    async findAllocations(voucherProductId: string) {
+    async findAllocations(voucherProductId: string, page: number, pageSize: number) {
         // "Trả về danh sách các branch đang sở hữu voucher này." -> Must JOIN branchProfile to return branch info
-        return await db
+        const offset = (page - 1) * pageSize;
+
+        const data = await db
             .select({
                 branchProfileId: branchVoucherProduct.branchProfileId,
                 voucherProductId: branchVoucherProduct.voucherProductId,
@@ -60,7 +62,19 @@ export class BranchQuotaRepository {
             })
             .from(branchVoucherProduct)
             .innerJoin(branchProfile, eq(branchVoucherProduct.branchProfileId, branchProfile.branchProfileId))
+            .where(eq(branchVoucherProduct.voucherProductId, voucherProductId))
+            .limit(pageSize)
+            .offset(offset);
+
+        const totalRows = await db
+            .select({ total: sql<number>`count(*)` })
+            .from(branchVoucherProduct)
             .where(eq(branchVoucherProduct.voucherProductId, voucherProductId));
+
+        return {
+            data,
+            total: Number(totalRows[0]?.total ?? 0),
+        };
     }
 
     async findAllocation(voucherProductId: string, branchProfileId: string) {

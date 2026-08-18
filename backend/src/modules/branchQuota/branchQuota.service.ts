@@ -6,6 +6,11 @@ export type BranchAllocationInput = {
     totalQuantity: number;
 };
 
+export type BranchAllocationListInput = {
+    page?: number;
+    pageSize?: number;
+};
+
 export class BranchQuotaService {
     constructor(private readonly branchQuotaRepository = new BranchQuotaRepository()) {}
 
@@ -59,15 +64,27 @@ export class BranchQuotaService {
         };
     }
 
-    async getAllocations(userId: string, voucherProductId: string) {
+    async getAllocations(userId: string, voucherProductId: string, input: BranchAllocationListInput = {}) {
         await this.verifyOwnership(userId, voucherProductId);
 
-        const allocations = await this.branchQuotaRepository.findAllocations(voucherProductId);
+        const page = Math.max(1, input.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 20));
+        const { data, total } = await this.branchQuotaRepository.findAllocations(voucherProductId, page, pageSize);
         
-        return allocations.map(a => ({
+        const allocations = data.map(a => ({
             ...a,
             remainingQuantity: a.totalQuantity - a.soldQuantity
         }));
+
+        return {
+            data: allocations,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        };
     }
 
     async updateAllocation(userId: string, voucherProductId: string, branchProfileId: string, totalQuantity: number) {
