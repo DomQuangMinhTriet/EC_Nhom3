@@ -33,6 +33,14 @@ export class CartService {
             throw new AppError("Voucher product is not active", 400);
         }
 
+        const hasAllocation = await this.cartRepository.hasAnyAllocation(voucherProductId);
+        if (!hasAllocation) {
+            throw new AppError(
+                "This voucher has not been allocated to any branch yet and is not available for purchase",
+                400,
+            );
+        }
+
         const availableStock = await this.cartRepository.getAvailableStock(voucherProductId);
 
         const existingItem = await this.cartRepository.findCartItemByVoucherId(cart.cartId, voucherProductId);

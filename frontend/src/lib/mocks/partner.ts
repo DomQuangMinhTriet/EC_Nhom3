@@ -1,4 +1,2 @@
-// TODO(API): replace with /partners/me, /partner/vouchers, /partners/me/branches and report endpoints.
-export const partnerMock = { brand: "Lotteria Việt Nam", contact: "Trần Minh Anh", email: "partner@lotteria.vn", phone: "028 3823 4567", status: "Đã duyệt" };
+// TODO(API): replace with /partner/vouchers and report endpoints.
 export const partnerVoucherMocks = [{ id: "lotteria-combo", title: "Giảm 30% tất cả combo bữa", status: "Đang bán", sold: 3420, revenue: 478800000, expiry: "30/09/2026" }, { id: "lotteria-family", title: "Combo gia đình giảm 25%", status: "Chờ duyệt", sold: 0, revenue: 0, expiry: "31/10/2026" }, { id: "lotteria-lunch", title: "Ưu đãi bữa trưa −20%", status: "Tạm dừng", sold: 836, revenue: 83600000, expiry: "15/08/2026" }];
-export const branchMocks = [{ id: "b1", name: "CN Quận 1 — 49 Hàm Nghi", staff: 4, quota: 500 }, { id: "b2", name: "CN Bình Thạnh — 183 Đinh Tiên Hoàng", staff: 3, quota: 350 }, { id: "b3", name: "CN Gò Vấp — 168 Nguyễn Kiệm", staff: 2, quota: 250 }];

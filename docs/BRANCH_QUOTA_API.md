@@ -3,6 +3,13 @@
 Tai lieu nay mo ta API phan bo voucher cho Branch theo Phase 3 Product System
 APIs, muc Branch Quota Management.
 
+**Quan trong**: mot voucher da duoc admin duyet (`status = active`) van chua
+mua duoc — `POST /customers/me/cart/items` tinh so luong con lai (`available
+stock`) tu tong `totalQuantity`/`soldQuantity` cua cac allocation trong module
+nay. Neu Partner chua goi `POST /partner/vouchers/:id/branches` de phan bo it
+nhat mot branch, voucher se luon co 0 stock va bi tu choi khi khach hang them
+vao gio hang, du da active. Xem [CART_API.md](CART_API.md) muc "Loi pho bien".
+
 ## Base URL
 
 ```text

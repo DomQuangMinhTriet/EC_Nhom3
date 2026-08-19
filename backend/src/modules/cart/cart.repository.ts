@@ -74,6 +74,15 @@ export class CartRepository {
         return Math.max(0, totalStock - totalSold);
     }
 
+    async hasAnyAllocation(voucherProductId: string): Promise<boolean> {
+        const result = await db
+            .select({ branchProfileId: branchVoucherProduct.branchProfileId })
+            .from(branchVoucherProduct)
+            .where(eq(branchVoucherProduct.voucherProductId, voucherProductId))
+            .limit(1);
+
+        return result.length > 0;
+    }
 
 
     async findCartItemByVoucherId(cartId: string, voucherProductId: string) {

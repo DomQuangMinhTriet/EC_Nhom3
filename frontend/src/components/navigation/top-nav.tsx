@@ -24,8 +24,6 @@ export function TopNav() {
         <Logo />
         <nav className="hidden items-center gap-6 text-xs font-semibold text-slate-500 md:flex">
           <Link href="/vouchers" className="hover:text-primary">Khám phá voucher</Link>
-          <Link href="/vouchers?category=hot" className="hover:text-primary">Ưu đãi hot</Link>
-          <Link href="/vouchers?category=food" className="hover:text-primary">Ăn uống</Link>
         </nav>
         <form onSubmit={search} className="ml-auto hidden max-w-[300px] flex-1 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 focus-within:border-primary md:flex">
           <span className="mr-2 text-slate-400">⌕</span>

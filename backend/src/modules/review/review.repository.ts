@@ -45,26 +45,18 @@ export class ReviewRepository {
     }
 
     async getReviewsWithAverage(voucherProductId: string) {
-        // Fetch reviews
-        const reviews = await db.query.review.findMany({
-            where: and(
-                eq(review.voucherProductId, voucherProductId),
-                eq(review.status, "active")
-            ),
-        });
+        const activeReviewsForVoucher = and(
+            eq(review.voucherProductId, voucherProductId),
+            eq(review.status, "active")
+        );
 
-        // Calculate average
-        const avgResult = await db
-            .select({
-                averageRating: avg(review.rating)
-            })
-            .from(review)
-            .where(
-                and(
-                    eq(review.voucherProductId, voucherProductId),
-                    eq(review.status, "active")
-                )
-            );
+        const [reviews, avgResult] = await Promise.all([
+            db.query.review.findMany({ where: activeReviewsForVoucher }),
+            db
+                .select({ averageRating: avg(review.rating) })
+                .from(review)
+                .where(activeReviewsForVoucher),
+        ]);
 
         const averageRating = parseFloat(avgResult[0]?.averageRating as string ?? "0");
 

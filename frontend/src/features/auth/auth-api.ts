@@ -92,6 +92,30 @@ export function signUp(values: RegisterValues) {
   });
 }
 
+export type CredentialsValues = { email: string; password: string };
+
+function requireBearerToken() {
+  const session = readAuthSession();
+  if (!session) throw new Error("Bạn cần đăng nhập để thực hiện thao tác này.");
+  return `Bearer ${session.accessToken}`;
+}
+
+export function registerPartner(values: CredentialsValues) {
+  return apiRequest<RegisterResponse>("/api/auth/register/partner", {
+    method: "POST",
+    body: values,
+    headers: { Authorization: requireBearerToken() },
+  });
+}
+
+export function registerBranch(values: CredentialsValues) {
+  return apiRequest<RegisterResponse>("/api/auth/register/branch", {
+    method: "POST",
+    body: values,
+    headers: { Authorization: requireBearerToken() },
+  });
+}
+
 export async function refreshAuthSession() {
   const current = readAuthSession();
   if (!current) return null;
@@ -109,3 +133,24 @@ export const onAuthChange = (listener: () => void) => {
   window.addEventListener(authChangedEvent, listener);
   return () => window.removeEventListener(authChangedEvent, listener);
 };
+
+const pendingProfileKey = (email: string) => `ec-voucher-pending-profile:${email.toLowerCase()}`;
+
+export type PendingCustomerProfileDraft = { fullName: string; phone?: string };
+
+export function savePendingCustomerProfileDraft(email: string, draft: PendingCustomerProfileDraft) {
+  sessionStorage.setItem(pendingProfileKey(email), JSON.stringify(draft));
+}
+
+export function takePendingCustomerProfileDraft(email: string): PendingCustomerProfileDraft | null {
+  const key = pendingProfileKey(email);
+  const value = sessionStorage.getItem(key);
+  if (!value) return null;
+
+  sessionStorage.removeItem(key);
+  try {
+    return JSON.parse(value) as PendingCustomerProfileDraft;
+  } catch {
+    return null;
+  }
+}
