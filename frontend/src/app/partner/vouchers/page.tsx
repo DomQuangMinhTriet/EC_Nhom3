@@ -57,7 +57,10 @@ export default function PartnerVouchersPage() {
             <VoucherStatusBadge key="s" status={voucher.status}/>,
             formatPrice(voucher),
             new Date(voucher.endDate).toLocaleDateString("vi-VN"),
-            <Link key="e" className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/edit`}>Sửa</Link>,
+            <div key="a" className="flex gap-3">
+              <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/edit`}>Sửa</Link>
+              <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/branches`}>Phân bổ chi nhánh</Link>
+            </div>,
           ])}
         />
       )}
