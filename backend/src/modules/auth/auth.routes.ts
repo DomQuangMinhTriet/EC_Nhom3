@@ -41,6 +41,14 @@ authRouter.post(
 );
 
 authRouter.post(
+  "/register/partner",
+  requireAuth,
+  authorizeRoles("Super_Admin", "Operational_Admin"),
+  credentialRateLimit,
+  asyncHandler(authController.registerPartner),
+);
+
+authRouter.post(
   "/register/branch",
   requireAuth,
   authorizeRoles("Partner"),

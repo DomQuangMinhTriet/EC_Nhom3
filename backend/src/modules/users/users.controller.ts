@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { AppRole, UserStatus } from "../../shared/auth/jwt";
 import { AppError } from "../../shared/errors/AppError";
+import { parsePositiveIntegerWithDefault } from "../../shared/http/requestParsers";
 import { UsersService } from "./users.service";
 
 const userStatuses = [
@@ -27,29 +28,12 @@ const isAppRole = (value: string): value is AppRole =>
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const parsePositiveInteger = (
-  value: unknown,
-  fallback: number,
-  field: string,
-) => {
-  if (value === undefined) {
-    return fallback;
-  }
-
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new AppError(`${field} must be a positive integer`, 400);
-  }
-
-  return parsed;
-};
-
 export class UsersController {
   constructor(private readonly usersService = new UsersService()) {}
 
   getUsers = async (req: Request, res: Response) => {
-    const page = parsePositiveInteger(req.query.page, 1, "page");
-    const limit = parsePositiveInteger(req.query.limit, 20, "limit");
+    const page = parsePositiveIntegerWithDefault(req.query.page, 1, "page");
+    const limit = parsePositiveIntegerWithDefault(req.query.limit, 20, "limit");
     const role = req.query.role;
     const status = req.query.status;
 

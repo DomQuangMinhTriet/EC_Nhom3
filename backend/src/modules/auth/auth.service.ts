@@ -10,7 +10,7 @@ type CredentialsInput = {
   password: string;
 };
 
-type ManagedRole = "Super_Admin" | "Operational_Admin" | "Branch";
+type ManagedRole = "Super_Admin" | "Operational_Admin" | "Partner" | "Branch";
 
 const authResponse = (user: {
   userId: string;
@@ -79,6 +79,15 @@ export class AuthService {
       roleCode: "Operational_Admin",
       status: "active",
       message: "Operational Admin registered successfully.",
+    });
+  }
+
+  async registerPartner(input: CredentialsInput) {
+    return this.registerManagedAccount({
+      ...input,
+      roleCode: "Partner",
+      status: "active",
+      message: "Partner registered successfully.",
     });
   }
 

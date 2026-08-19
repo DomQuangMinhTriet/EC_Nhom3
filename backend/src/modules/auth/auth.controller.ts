@@ -52,6 +52,21 @@ export class AuthController {
       );
   };
 
+  registerPartner = async (req: Request, res: Response) => {
+    const { email, password } = req.body as {
+      email?: string;
+      password?: string;
+    };
+
+    if (!email || !password) {
+      throw new AppError("email and password are required", 400);
+    }
+
+    res
+      .status(201)
+      .json(await this.authService.registerPartner({ email, password }));
+  };
+
   registerBranch = async (req: Request, res: Response) => {
     const { email, password } = req.body as {
       email?: string;
