@@ -39,8 +39,8 @@ const createRepository = (overrides: Partial<BranchQuotaRepository> = {}) =>
             return [];
         },
         findAllocations: async (voucherId: string) => {
-            if (voucherId === mockVoucherProductId) return [defaultAllocation];
-            return [];
+            if (voucherId === mockVoucherProductId) return { data: [defaultAllocation], total: 1 };
+            return { data: [], total: 0 };
         },
         findAllocation: async (voucherId: string, branchId: string) => {
             if (voucherId === mockVoucherProductId && branchId === validBranchId1) return defaultAllocation;
@@ -138,9 +138,39 @@ test("getAllocations correctly retrieves and maps remainingQuantity", async () =
     const service = new BranchQuotaService(createRepository());
     const result = await service.getAllocations(mockUserId, mockVoucherProductId);
     
-    assert.equal(result.length, 1);
-    assert.equal(result[0]!.branchProfileId, validBranchId1);
-    assert.equal(result[0]!.remainingQuantity, 90); // 100 - 10 = 90
+    assert.equal(result.data.length, 1);
+    assert.equal(result.data[0]!.branchProfileId, validBranchId1);
+    assert.equal(result.data[0]!.remainingQuantity, 90); // 100 - 10 = 90
+    assert.deepEqual(result.pagination, {
+        page: 1,
+        pageSize: 20,
+        total: 1,
+        totalPages: 1
+    });
+});
+
+test("getAllocations supports pagination", async () => {
+    const repository = createRepository({
+        findAllocations: async (voucherId: string, page: number, pageSize: number) => {
+            assert.equal(voucherId, mockVoucherProductId);
+            assert.equal(page, 2);
+            assert.equal(pageSize, 10);
+            return { data: [defaultAllocation], total: 21 };
+        }
+    });
+    const service = new BranchQuotaService(repository);
+    const result = await service.getAllocations(mockUserId, mockVoucherProductId, {
+        page: 2,
+        pageSize: 10
+    });
+
+    assert.equal(result.data.length, 1);
+    assert.deepEqual(result.pagination, {
+        page: 2,
+        pageSize: 10,
+        total: 21,
+        totalPages: 3
+    });
 });
 
 // 4. updateAllocation

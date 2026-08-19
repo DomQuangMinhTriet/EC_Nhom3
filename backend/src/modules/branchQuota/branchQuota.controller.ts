@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BranchQuotaService, type BranchAllocationInput } from "./branchQuota.service";
 import { AppError } from "../../shared/errors/AppError";
+import { parsePositiveIntegerQuery } from "../../shared/http/requestParsers";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -54,8 +55,11 @@ export class BranchQuotaController {
             throw new AppError("Invalid voucher ID", 400);
         }
 
-        const allocations = await this.branchQuotaService.getAllocations(userId, voucherProductId);
-        res.json({ data: allocations });
+        const result = await this.branchQuotaService.getAllocations(userId, voucherProductId, {
+            page: parsePositiveIntegerQuery(req.query.page, "page"),
+            pageSize: parsePositiveIntegerQuery(req.query.pageSize, "pageSize"),
+        });
+        res.json(result);
     };
 
     updateAllocation = async (req: Request, res: Response) => {

@@ -9,6 +9,7 @@ import { categoryTreeRouter } from "../modules/categoryTree/categoryTree.routes"
 import { branchQuotaRouter } from "../modules/branchQuota/branchQuota.routes";
 import { profileRouter } from "../modules/profile/profile.routes";
 import { usersRouter } from "../modules/users/users.routes";
+import { voucherProductRouter } from "../modules/voucherProduct/voucherProduct.routes";
 import { cartRouter } from "../modules/cart/cart.routes";
 import { voucherInstanceRouter } from "../modules/voucherInstance/voucherInstance.routes";
 import { reviewRouter } from "../modules/review/review.routes";
@@ -22,6 +23,9 @@ apiRouter.use("/", healthRouter);
 
 // Categories
 apiRouter.use("/api", categoryTreeRouter);
+
+// Vouchers
+apiRouter.use("/api", voucherProductRouter);
 
 // Profiles
 // apiRouter.use("/", customerProfileRoutes);
