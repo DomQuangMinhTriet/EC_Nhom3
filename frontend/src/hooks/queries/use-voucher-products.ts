@@ -25,6 +25,13 @@ export function usePartnerVouchers() {
   return useQuery({ queryKey: voucherProductKeys.mine, queryFn: getPartnerVouchers });
 }
 
+// GET /vouchers/:id only returns active vouchers (public endpoint) — use this for
+// the partner's own edit form instead, since it must work for pending/rejected too.
+export function usePartnerVoucherById(id?: string) {
+  const listQuery = useQuery({ queryKey: voucherProductKeys.mine, queryFn: getPartnerVouchers, enabled: Boolean(id) });
+  return { ...listQuery, data: listQuery.data?.find((voucher) => voucher.voucherProductId === id) };
+}
+
 export function useVoucherProduct(id: string) {
   return useQuery({ queryKey: voucherProductKeys.detail(id), queryFn: () => getVoucherProductById(id), enabled: Boolean(id) });
 }

@@ -9,14 +9,14 @@ import { State } from "@/components/common/state";
 import { VoucherStatusBadge } from "@/components/voucher/voucher-status-badge";
 import { useToast } from "@/components/common/toast";
 import { partnerVoucherSchema, type PartnerVoucherValues } from "@/lib/schemas/workflows";
-import { useCategories, useCreatePartnerVoucher, useUpdatePartnerVoucher, useVoucherProduct } from "@/hooks/queries/use-voucher-products";
+import { useCategories, useCreatePartnerVoucher, usePartnerVoucherById, useUpdatePartnerVoucher } from "@/hooks/queries/use-voucher-products";
 
 export function VoucherForm({ voucherId }: { voucherId?: string }) {
   const editing = Boolean(voucherId);
   const toast = useToast();
   const router = useRouter();
   const categoriesQuery = useCategories();
-  const voucherQuery = useVoucherProduct(voucherId ?? "");
+  const voucherQuery = usePartnerVoucherById(voucherId);
   const createVoucher = useCreatePartnerVoucher();
   const updateVoucher = useUpdatePartnerVoucher();
 
@@ -84,6 +84,10 @@ export function VoucherForm({ voucherId }: { voucherId?: string }) {
   }
 
   const voucher = voucherQuery.data;
+
+  if (editing && !voucherQuery.isLoading && !voucher) {
+    return <State icon="🎟" title="Không tìm thấy voucher" text="Voucher này không tồn tại hoặc không thuộc về bạn."/>;
+  }
 
   return (
     <form onSubmit={handleSubmit(submit)} className="rounded-xl border border-slate-200 bg-white p-6 shadow-brand-sm">
