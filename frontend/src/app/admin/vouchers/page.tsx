@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { RecordsTable } from "@/components/admin/records-table";
@@ -59,7 +60,7 @@ export default function AdminVouchersPage() {
       {!vouchersQuery.isLoading && !vouchersQuery.isError && vouchers.length > 0 && (
         <>
           <RecordsTable
-            headers={["Voucher", "Trạng thái", "Thao tác"]}
+            headers={["Voucher", "Trạng thái", "Thao tác", ""]}
             rows={vouchers.map((voucher) => [
               <b key="n">{voucher.title}</b>,
               <VoucherStatusBadge key="s" status={voucher.status}/>,
@@ -70,6 +71,7 @@ export default function AdminVouchersPage() {
                 pending={updateStatus.isPending}
                 onSubmit={(next) => changeStatus(voucher.voucherProductId, next)}
               />,
+              <Link key="r" className="font-semibold text-primary" href={`/admin/vouchers/${voucher.voucherProductId}/reviews`}>Đánh giá</Link>,
             ])}
           />
 

@@ -60,6 +60,7 @@ export default function PartnerVouchersPage() {
             <div key="a" className="flex gap-3">
               <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/edit`}>Sửa</Link>
               <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/branches`}>Phân bổ chi nhánh</Link>
+              <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/reviews`}>Đánh giá</Link>
             </div>,
           ])}
         />
