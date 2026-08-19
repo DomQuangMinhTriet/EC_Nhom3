@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createPartnerVoucher,
@@ -42,6 +43,11 @@ export function useVoucherProductList(params: ListVoucherProductsParams = {}) {
 
 export function useCategories() {
   return useQuery({ queryKey: voucherProductKeys.categories, queryFn: getCategories, staleTime: 5 * 60_000 });
+}
+
+export function useCategoryNameMap() {
+  const categoriesQuery = useCategories();
+  return useMemo(() => new Map(categoriesQuery.data?.map((category) => [category.categoryId, category.name])), [categoriesQuery.data]);
 }
 
 export function useCreatePartnerVoucher() {
