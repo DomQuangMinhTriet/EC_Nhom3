@@ -55,6 +55,7 @@ function createRepository(overrides?: Partial<CartRepository>): CartRepository {
         getOrCreateCart: async () => mockCart,
         getCartWithItems: async () => ({ ...mockCart, items: [] }),
         getVoucherProduct: async () => mockVoucherProduct,
+        hasAnyAllocation: async () => true,
         getAvailableStock: async () => 10,
         findCartItemByVoucherId: async () => null,
         findCartItemById: async () => mockCartItem,
@@ -147,6 +148,18 @@ test("addItem throws 400 if voucher product is not active", async () => {
     await assert.rejects(
         service.addItem(mockUserId, mockVoucherProductId, 1),
         (err: unknown) => err instanceof AppError && err.statusCode === 400 && err.message === "Voucher product is not active"
+    );
+});
+
+test("addItem throws 400 if voucher has not been allocated to any branch yet", async () => {
+    const service = new CartService(createRepository({
+        hasAnyAllocation: async () => false,
+        getAvailableStock: async () => 10, // even with stock elsewhere, no allocation means not purchasable
+    }));
+
+    await assert.rejects(
+        service.addItem(mockUserId, mockVoucherProductId, 1),
+        (err: unknown) => err instanceof AppError && err.statusCode === 400 && err.message.includes("has not been allocated to any branch")
     );
 });
 

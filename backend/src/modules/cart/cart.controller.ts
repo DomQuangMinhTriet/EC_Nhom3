@@ -1,8 +1,7 @@
 import type { Request, Response } from "express";
 import { AppError } from "../../shared/errors/AppError";
+import { isUuid } from "../../shared/http/requestParsers";
 import { CartService } from "./cart.service";
-
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class CartController {
     constructor(private readonly cartService = new CartService()) {}
@@ -17,7 +16,7 @@ export class CartController {
         const userId = req.user!.userId;
         const { voucherProductId, quantity } = req.body;
 
-        if (!voucherProductId || !uuidRegex.test(voucherProductId)) {
+        if (!isUuid(voucherProductId)) {
             throw new AppError("Invalid voucherProductId", 400);
         }
 
@@ -30,7 +29,7 @@ export class CartController {
         const cartItemId = req.params.id as string;
         const { quantity } = req.body;
 
-        if (!uuidRegex.test(cartItemId)) {
+        if (!isUuid(cartItemId)) {
             throw new AppError("Invalid cart item ID", 400);
         }
 
@@ -42,7 +41,7 @@ export class CartController {
         const userId = req.user!.userId;
         const cartItemId = req.params.id as string;
 
-        if (!uuidRegex.test(cartItemId)) {
+        if (!isUuid(cartItemId)) {
             throw new AppError("Invalid cart item ID", 400);
         }
 

@@ -1,8 +1,7 @@
 import type { Request, Response } from "express";
 import { AppError } from "../../shared/errors/AppError";
+import { isUuid } from "../../shared/http/requestParsers";
 import { VoucherInstanceService } from "./voucherInstance.service";
-
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class VoucherInstanceController {
     constructor(private readonly voucherInstanceService = new VoucherInstanceService()) {}
@@ -19,7 +18,7 @@ export class VoucherInstanceController {
         const userId = req.user!.userId;
         const voucherCodeId = req.params.id as string;
 
-        if (!uuidRegex.test(voucherCodeId)) {
+        if (!isUuid(voucherCodeId)) {
             throw new AppError("Invalid voucher ID", 400);
         }
 
