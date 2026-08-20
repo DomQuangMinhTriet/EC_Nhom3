@@ -13,19 +13,22 @@ import { voucherProductRouter } from "../modules/voucherProduct/voucherProduct.r
 import { cartRouter } from "../modules/cart/cart.routes";
 import { voucherInstanceRouter } from "../modules/voucherInstance/voucherInstance.routes";
 import { reviewRouter } from "../modules/review/review.routes";
+import { notificationRouter } from "../modules/notification/notification.routes";
 
 export const apiRouter = Router();
 
 apiRouter.use("/api/auth", authRouter);
 apiRouter.use("/api/profile", profileRouter);
 apiRouter.use("/api/users", usersRouter);
-apiRouter.use("/", healthRouter);
 
 // Categories
-apiRouter.use("/api", categoryTreeRouter);
+apiRouter.use("/api/categories", categoryTreeRouter);
 
 // Vouchers
-apiRouter.use("/api", voucherProductRouter);
+apiRouter.use("/api/vouchers", voucherProductRouter);
+
+// Notifications
+apiRouter.use("/api/notifications", notificationRouter);
 
 // Profiles
 // apiRouter.use("/", customerProfileRoutes);
@@ -33,13 +36,13 @@ apiRouter.use("/api", voucherProductRouter);
 // apiRouter.use("/", branchProfileRoutes);
 
 // Quotas
-apiRouter.use("/api", branchQuotaRouter);
+apiRouter.use("/api/quotas", branchQuotaRouter);
 
 // Cart
-apiRouter.use("/api", cartRouter);
+apiRouter.use("/api/carts", cartRouter);
 
 // Voucher Instances (My Vouchers)
-apiRouter.use("/api", voucherInstanceRouter);
+apiRouter.use("/api/voucher-instances", voucherInstanceRouter);
 
 // Reviews
-apiRouter.use("/api", reviewRouter);
+apiRouter.use("/api/reviews", reviewRouter);
