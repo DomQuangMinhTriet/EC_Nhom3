@@ -37,12 +37,14 @@ describe("review api", () => {
     expect(JSON.parse(init.body as string)).toEqual({ voucherCodeId: "vc1", rating: 5, comment: "Tốt" });
   });
 
-  it("fetches reviews and average for a voucher product", async () => {
+  it("fetches reviews and average for a voucher product from /reviews/vouchers/:id", async () => {
     const payload = { averageRating: 4.5, reviews: [] };
-    mockFetchOnce(200, { data: payload });
+    const fetchMock = mockFetchOnce(200, { data: payload });
 
     const result = await getVoucherReviews("v1");
     expect(result).toEqual(payload);
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain("/reviews/vouchers/v1");
   });
 
   it("sends the target status when moderating a review", async () => {

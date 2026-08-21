@@ -57,6 +57,15 @@ describe("voucher product api", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("fetches the partner's own vouchers from /vouchers/mine", async () => {
+    const fetchMock = mockFetchOnce(200, { vouchers: [] });
+
+    await getPartnerVouchers();
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain("/vouchers/mine");
+  });
+
   it("lists public vouchers without requiring auth", async () => {
     const fetchMock = mockFetchOnce(200, { vouchers: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } });
     localStorage.clear();

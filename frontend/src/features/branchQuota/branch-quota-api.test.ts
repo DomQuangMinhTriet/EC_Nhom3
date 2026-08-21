@@ -44,6 +44,7 @@ describe("branch quota api", () => {
     await getAllocations("v1", { page: 2, pageSize: 10 });
 
     const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain("/quotas/vouchers/v1/branches");
     expect(url).toContain("page=2");
     expect(url).toContain("pageSize=10");
   });
