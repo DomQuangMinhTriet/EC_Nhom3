@@ -10,11 +10,11 @@ voucherInstanceRouter.use(requireAuth);
 voucherInstanceRouter.use(authorizeRoles("Customer"));
 
 voucherInstanceRouter.get(
-    "/customers/me/vouchers",
+    "/",
     asyncHandler(voucherInstanceController.getMyVouchers)
 );
 
 voucherInstanceRouter.get(
-    "/customers/me/vouchers/:id",
+    "/:id",
     asyncHandler(voucherInstanceController.getVoucherDetail)
 );

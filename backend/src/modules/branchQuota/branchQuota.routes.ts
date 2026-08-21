@@ -11,21 +11,21 @@ branchQuotaRouter.use(requireAuth);
 branchQuotaRouter.use(authorizeRoles("Partner"));
 
 branchQuotaRouter.post(
-    "/partner/vouchers/:id/branches",
+    "/vouchers/:id/branches",
     asyncHandler(branchQuotaController.allocateVouchers)
 );
 
 branchQuotaRouter.get(
-    "/partner/vouchers/:id/branches",
+    "/vouchers/:id/branches",
     asyncHandler(branchQuotaController.getAllocations)
 );
 
 branchQuotaRouter.put(
-    "/partner/vouchers/:id/branches/:branchId",
+    "/vouchers/:id/branches/:branchId",
     asyncHandler(branchQuotaController.updateAllocation)
 );
 
 branchQuotaRouter.delete(
-    "/partner/vouchers/:id/branches/:branchId",
+    "/vouchers/:id/branches/:branchId",
     asyncHandler(branchQuotaController.deleteAllocation)
 );

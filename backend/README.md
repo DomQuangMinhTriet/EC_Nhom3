@@ -44,11 +44,11 @@ backend/
 |   `-- *.sql                 # Generated SQL migrations
 |-- src/
 |   |-- modules/
-|   |   `-- health/
-|   |       |-- health.controller.ts
-|   |       |-- health.repository.ts
-|   |       |-- health.routes.ts
-|   |       `-- health.service.ts
+|   |   `-- <feature>/
+|   |       |-- <feature>.controller.ts
+|   |       |-- <feature>.repository.ts
+|   |       |-- <feature>.routes.ts
+|   |       `-- <feature>.service.ts
 |   |-- routes/
 |   |   `-- index.ts           # Register module routers
 |   |-- shared/
@@ -145,15 +145,15 @@ Nguyen tac tach lop:
 Vi du module hien tai:
 
 ```text
-src/modules/health/
-|-- health.routes.ts
-|-- health.controller.ts
-|-- health.service.ts
-`-- health.repository.ts
+src/modules/notification/
+|-- notification.routes.ts
+|-- notification.controller.ts
+|-- notification.service.ts
+`-- notification.repository.ts
 ```
 
-`GET /api/health/db` di qua repository de ping database bang Drizzle ORM, nen
-day la mau nho de copy khi them `voucher`, `order`, `partner`, `admin`, ...
+`GET /api/notifications` di qua controller, service va repository de lay
+notification cua Customer, nen day la mau nho de copy khi them module moi.
 
 ## Environment Variables
 
@@ -184,15 +184,21 @@ CLOUDINARY_API_SECRET=
 
 ## Current API
 
-Hien tai backend moi co cac route kiem tra co ban:
+Tai lieu API chi tiet nam trong thu muc `docs/`, vi du:
 
-| Method | Path             | Description                  |
-| ------ | ---------------- | ---------------------------- |
-| `GET`  | `/`              | Basic API health response    |
-| `GET`  | `/api/health/db` | Verify database connectivity |
-
-Nhung route nghiep vu nhu voucher, order, partner, admin se duoc them tiep
-theo cau truc `src/`.
+| Tai lieu | Noi dung |
+| --- | --- |
+| `docs/API_INDEX.md` | Muc luc tat ca endpoint hien tai |
+| `docs/AUTH_API.md` | Dang ky, dang nhap, refresh token |
+| `docs/PROFILE_API.md` | Tao va cap nhat profile |
+| `docs/USER_API.md` | Quan ly user |
+| `docs/CATEGORY_API.md` | Category |
+| `docs/VOUCHER_PRODUCT_API.md` | Voucher product |
+| `docs/BRANCH_QUOTA_API.md` | Branch quota |
+| `docs/CART_API.md` | Cart |
+| `docs/VOUCHER_INSTANCE_API.md` | Voucher instance cua Customer |
+| `docs/REVIEW_API.md` | Review |
+| `docs/NOTIFICATION_API.md` | Notification va email |
 
 ## Notes
 

@@ -8,38 +8,38 @@ const voucherProductController = new VoucherProductController();
 export const voucherProductRouter = Router();
 
 voucherProductRouter.post(
-  "/partner/vouchers",
+  "/",
   requireAuth,
   authorizeRoles("Partner"),
   asyncHandler(voucherProductController.createVoucher),
 );
 
 voucherProductRouter.get(
-  "/partner/vouchers",
+  "/mine",
   requireAuth,
   authorizeRoles("Partner"),
   asyncHandler(voucherProductController.getPartnerVouchers),
 );
 
 voucherProductRouter.patch(
-  "/partner/vouchers/:id",
+  "/:id",
   requireAuth,
   authorizeRoles("Partner"),
   asyncHandler(voucherProductController.updatePartnerVoucher),
 );
 
 voucherProductRouter.get(
-  "/vouchers",
+  "/",
   asyncHandler(voucherProductController.getVouchers),
 );
 
 voucherProductRouter.get(
-  "/vouchers/:id",
+  "/:id",
   asyncHandler(voucherProductController.getVoucherById),
 );
 
 voucherProductRouter.patch(
-  "/admin/vouchers/:id/status",
+  "/:id/status",
   requireAuth,
   authorizeRoles("Super_Admin", "Operational_Admin"),
   asyncHandler(voucherProductController.updateVoucherStatus),

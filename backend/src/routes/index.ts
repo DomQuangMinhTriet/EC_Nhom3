@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { authRouter } from "../modules/auth/auth.routes";
-import { healthRouter } from "../modules/health/health.routes";
 import { categoryTreeRouter } from "../modules/categoryTree/categoryTree.routes";
 // import customerProfileRoutes from "../modules/customerProfile/customerProfile.routes";
 // import partnerProfileRoutes from "../modules/partnerProfile/partnerProfile.routes";

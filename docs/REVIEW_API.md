@@ -1,45 +1,35 @@
 # Review API
 
-Tai lieu nay mo ta API danh gia (review) voucher.
-
 ## Base URL
 
 ```text
-http://localhost:<PORT>/api
+http://localhost:<PORT>/api/reviews
 ```
 
-Thay `<PORT>` bang port backend trong file `.env`. Moi request deu can access
-token trong header:
+Tat ca endpoint can bearer token.
 
 ```http
 Authorization: Bearer <ACCESS_TOKEN>
 ```
 
-Request body su dung JSON.
-
 ## Tong quan
 
-| Endpoint | Muc dich | Quyen truy cap |
-| --- | --- | --- |
-| `POST /customers/me/reviews` | Tao review cho voucher da su dung | Customer |
-| `PUT /customers/me/reviews/:id` | Sua review cua chinh minh | Customer |
-| `GET /vouchers/:id/reviews` | Xem danh sach review va diem trung binh cua mot voucher | Partner, Super Admin, Operational Admin |
-| `PATCH /admin/reviews/:id/status` | An hoac xoa (mem) mot review | Super Admin, Operational Admin |
+| Method | Endpoint | Muc dich | Quyen truy cap |
+| --- | --- | --- | --- |
+| `POST` | `/` | Customer tao review | Customer |
+| `PUT` | `/:id` | Customer sua review cua minh | Customer |
+| `GET` | `/vouchers/:id` | Xem review cua voucher | Partner, Super Admin, Operational Admin |
+| `PATCH` | `/:id/status` | An/xoa mem review | Super Admin, Operational Admin |
 
-`:id` o `PUT /customers/me/reviews/:id` va `PATCH /admin/reviews/:id/status`
-la `reviewId`. `:id` o `GET /vouchers/:id/reviews` la `voucherProductId`.
+`:id` trong `POST` body la `voucherCodeId`. `:id` tren URL co the la
+`reviewId` hoac `voucherProductId` tuy endpoint.
 
-## 1. Tao review
+## Tao review
 
-### Muc dich
-
-Customer chi tao duoc review cho voucher instance (`voucherCode`) thuoc so huu
-cua minh va da o trang thai `used`.
-
-### Request
+Customer chi review duoc voucher code thuoc minh va da `used`.
 
 ```http
-POST /api/customers/me/reviews
+POST /api/reviews
 Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 Content-Type: application/json
 ```
@@ -52,18 +42,23 @@ Content-Type: application/json
 }
 ```
 
-Field bat buoc: `voucherCodeId`, `rating` (so nguyen 1-5), `comment`.
+Response `201 Created`:
 
-### Response thanh cong
+```json
+{
+  "data": {
+    "reviewId": "00000000-0000-4000-8000-000000000006",
+    "rating": 5,
+    "comment": "Rat hai long voi uu dai nay.",
+    "status": "active"
+  }
+}
+```
 
-HTTP `201 Created`, tra ve review vua tao voi `status: "active"`.
-
-## 2. Sua review
-
-### Request
+## Sua review
 
 ```http
-PUT /api/customers/me/reviews/:id
+PUT /api/reviews/:id
 Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 Content-Type: application/json
 ```
@@ -71,28 +66,25 @@ Content-Type: application/json
 ```json
 {
   "rating": 4,
-  "comment": "Cap nhat lai danh gia sau khi dung them."
+  "comment": "Cap nhat lai danh gia."
 }
 ```
 
-Chi sua duoc review thuoc so huu cua chinh Customer dang dang nhap. Review sau
-khi sua duoc danh dau `isEdited: true`.
+Chi sua duoc review cua Customer dang dang nhap.
 
-## 3. Xem review cua mot voucher
-
-### Request
+## Xem review cua voucher
 
 ```http
-GET /api/vouchers/:id/reviews
+GET /api/reviews/vouchers/:id
 Authorization: Bearer <ACCESS_TOKEN>
 ```
 
+`:id` la `voucherProductId`.
+
 Partner chi xem duoc review cua voucher thuoc partner profile cua minh.
-Super Admin/Operational Admin xem duoc moi voucher.
+Super Admin va Operational Admin xem duoc moi voucher.
 
-### Response thanh cong
-
-HTTP `200 OK`:
+Response:
 
 ```json
 {
@@ -103,14 +95,10 @@ HTTP `200 OK`:
 }
 ```
 
-`averageRating` va `reviews` chi tinh tren review co `status: "active"`.
-
-## 4. An/xoa review (Admin)
-
-### Request
+## An/xoa mem review
 
 ```http
-PATCH /api/admin/reviews/:id/status
+PATCH /api/reviews/:id/status
 Authorization: Bearer <ADMIN_ACCESS_TOKEN>
 Content-Type: application/json
 ```
@@ -121,22 +109,29 @@ Content-Type: application/json
 }
 ```
 
-`status` hop le: `hidden`, `deleted`. Day la xoa mem — record van con trong
-database, chi doi `status`, khong bi xoa that.
+`status` hop le:
 
-## Loi pho bien
+```text
+hidden
+deleted
+```
 
-Response loi co format:
+Response:
 
 ```json
 {
-  "error": "Error message"
+  "data": {
+    "reviewId": "00000000-0000-4000-8000-000000000006",
+    "status": "hidden"
+  }
 }
 ```
 
+## Loi pho bien
+
 | HTTP status | Y nghia |
 | --- | --- |
-| `400` | Thieu field bat buoc, `rating` ngoai khoang 1-5, voucher instance chua o trang thai `used`, `status` khong hop le |
+| `400` | Thieu field, rating ngoai 1-5, status khong hop le, UUID sai |
 | `401` | Thieu bearer token hoac token khong hop le |
-| `403` | Role khong co quyen, hoac voucher/review khong thuoc ve nguoi goi |
-| `404` | Khong tim thay customer profile, voucher instance, voucher product, hoac review |
+| `403` | Role khong du quyen hoac resource khong thuoc nguoi goi |
+| `404` | Khong tim thay profile, voucher code, voucher product, review |
