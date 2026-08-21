@@ -8,7 +8,7 @@ const reviewController = new ReviewController();
 
 // Create review (Customer only)
 reviewRouter.post(
-    "/customers/me/reviews",
+    "/",
     requireAuth,
     authorizeRoles("Customer"),
     asyncHandler(reviewController.createReview)
@@ -16,7 +16,7 @@ reviewRouter.post(
 
 // Edit review (Customer only)
 reviewRouter.put(
-    "/customers/me/reviews/:id",
+    "/:id",
     requireAuth,
     authorizeRoles("Customer"),
     asyncHandler(reviewController.editReview)
@@ -24,7 +24,7 @@ reviewRouter.put(
 
 // Get reviews (Partner and Admins)
 reviewRouter.get(
-    "/vouchers/:id/reviews",
+    "/vouchers/:id",
     requireAuth,
     authorizeRoles("Partner", "Super_Admin", "Operational_Admin"),
     asyncHandler(reviewController.getVoucherReviews)
@@ -32,7 +32,7 @@ reviewRouter.get(
 
 // Change review status (Admins only)
 reviewRouter.patch(
-    "/admin/reviews/:id/status",
+    "/:id/status",
     requireAuth,
     authorizeRoles("Super_Admin", "Operational_Admin"),
     asyncHandler(reviewController.changeReviewStatus)

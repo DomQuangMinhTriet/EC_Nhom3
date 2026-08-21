@@ -11,21 +11,21 @@ cartRouter.use(requireAuth);
 cartRouter.use(authorizeRoles("Customer"));
 
 cartRouter.get(
-    "/customers/me/cart",
+    "/me",
     asyncHandler(cartController.getCart)
 );
 
 cartRouter.post(
-    "/customers/me/cart/items",
+    "/me/items",
     asyncHandler(cartController.addItem)
 );
 
 cartRouter.put(
-    "/customers/me/cart/items/:id",
+    "/me/items/:id",
     asyncHandler(cartController.updateItemQuantity)
 );
 
 cartRouter.delete(
-    "/customers/me/cart/items/:id",
+    "/me/items/:id",
     asyncHandler(cartController.removeItem)
 );

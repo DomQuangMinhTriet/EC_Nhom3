@@ -1,52 +1,50 @@
 # Profile API
 
-Tai lieu nay mo ta muc dich va cach su dung API tao va cap nhat profile cho
-Customer, Partner va Branch theo implementation hien tai.
-
 ## Base URL
 
 ```text
 http://localhost:<PORT>/api/profile
 ```
 
-Thay `<PORT>` bang port backend trong file `.env`. Moi request deu can access
-token trong header:
+Moi request can bearer token. Request body dung JSON.
 
 ```http
 Authorization: Bearer <ACCESS_TOKEN>
 ```
 
-Request body su dung JSON.
-
 ## Tong quan
 
-| Endpoint | Muc dich | Quyen truy cap |
-| --- | --- | --- |
-| `POST /` | Tao profile cho user dang dang nhap | Customer, Partner, Branch |
-| `PATCH /` | Cap nhat profile cua user dang dang nhap | Customer, Partner, Branch |
-| `PATCH /:profileType/:profileId/status` | Cap nhat status Partner/Branch profile | Super Admin, Operational Admin |
-
-`Super_Admin` va `Operational_Admin` khong duoc truy cap API tao/cap nhat
-profile ca nhan. Rieng API cap nhat status profile chi danh cho `Super_Admin`
-va `Operational_Admin`.
+| Method | Endpoint | Muc dich | Quyen truy cap |
+| --- | --- | --- | --- |
+| `GET` | `/` | Lay profile cua user dang dang nhap | Customer, Partner, Branch |
+| `POST` | `/` | Tao profile theo role hien tai | Customer, Partner, Branch |
+| `PATCH` | `/` | Cap nhat profile theo role hien tai | Customer, Partner, Branch |
+| `POST` | `/avatar` | Upload avatar customer qua Cloudinary | Customer |
+| `GET` | `/branches` | Partner lay branches cua minh | Partner |
+| `GET` | `/admin/partners` | Lay tat ca partner profiles | Super Admin, Operational Admin |
+| `GET` | `/admin/branches` | Lay tat ca branch profiles | Super Admin, Operational Admin |
+| `PATCH` | `/:profileType/:profileId/status` | Cap nhat status Partner/Branch profile | Super Admin, Operational Admin |
 
 ## Gia tri hop le
 
-### Gender
+Gender:
 
 ```text
 Nam
-Nữ
+Nu
 ```
 
-### Profile type
+Luu y code hien tai dang dung gia tri database cho nu gioi theo encoding trong
+source. Khi test, nen lay gia tri hop le tu seed/schema hien tai.
+
+Profile type:
 
 ```text
 partner
 branch
 ```
 
-### Partner status
+Partner status:
 
 ```text
 pending
@@ -56,7 +54,7 @@ terminated
 rejected
 ```
 
-### Branch status
+Branch status:
 
 ```text
 pending
@@ -66,14 +64,28 @@ closed
 rejected
 ```
 
-## 1. Tao profile
+## Lay profile cua minh
 
-### Muc dich
+```http
+GET /api/profile
+Authorization: Bearer <ACCESS_TOKEN>
+```
 
-Tao profile cho user dang dang nhap dua tren `roleCode` trong access token. Moi
-user chi tao duoc mot profile tuong ung voi role hien tai.
+Response tra ve object theo role:
 
-### Customer request
+```json
+{
+  "profile": {
+    "customerProfileId": "00000000-0000-4000-8000-000000000001",
+    "userId": "00000000-0000-4000-8000-000000000002",
+    "fullName": "Nguyen Van A"
+  }
+}
+```
+
+## Tao profile
+
+### Customer
 
 ```http
 POST /api/profile
@@ -92,15 +104,7 @@ Content-Type: application/json
 }
 ```
 
-Field bat buoc: `fullName`.
-
-### Partner request
-
-```http
-POST /api/profile
-Authorization: Bearer <PARTNER_ACCESS_TOKEN>
-Content-Type: application/json
-```
+### Partner
 
 ```json
 {
@@ -111,16 +115,7 @@ Content-Type: application/json
 }
 ```
 
-Field bat buoc: `partnerProfileCode`, `partnerName`, `taxCode`,
-`representativeName`.
-
-### Branch request
-
-```http
-POST /api/profile
-Authorization: Bearer <BRANCH_ACCESS_TOKEN>
-Content-Type: application/json
-```
+### Branch
 
 ```json
 {
@@ -133,155 +128,88 @@ Content-Type: application/json
 }
 ```
 
-Field bat buoc: `partnerProfileId`, `branchProfileCode`, `branchName`.
-
-`partnerProfileId` phai ton tai trong bang `partner_profiles`.
-
-Partner profile va Branch profile duoc tao voi status mac dinh `active`. Client
-khong can gui `status`; neu gui thi backend cung khong ghi field nay tu request.
-
-### Response thanh cong
-
-HTTP `201 Created`:
+Response `201 Created`:
 
 ```json
 {
   "profile": {
-    "customerProfileId": "00000000-0000-4000-8000-000000000001",
-    "userId": "00000000-0000-4000-8000-000000000002",
-    "fullName": "Nguyen Van A",
-    "phone": "0900000000",
-    "birthDate": "2000-01-01",
-    "gender": "Nam",
-    "avatarUrl": "https://example.com/avatar.png",
-    "address": "Ho Chi Minh City",
-    "createdAt": "2026-08-17T10:00:00.000Z",
-    "updatedAt": "2026-08-17T10:00:00.000Z"
+    "userId": "00000000-0000-4000-8000-000000000002"
   }
 }
 ```
 
-Neu user da co profile, API tra HTTP `409 Conflict`:
-
-```json
-{
-  "error": "Profile already exists"
-}
-```
-
-## 2. Cap nhat profile
-
-### Muc dich
-
-Cap nhat profile cua user dang dang nhap. API chi cap nhat field duoc phep theo
-role va tu dong cap nhat `updatedAt`.
-
-Khong cho cap nhat cac field dinh danh va trang thai nhu:
-
-```text
-partnerProfileCode
-branchProfileCode
-partnerProfileId
-status
-rejectionReason
-```
-
-### Customer request
+## Cap nhat profile
 
 ```http
 PATCH /api/profile
+Authorization: Bearer <ACCESS_TOKEN>
+Content-Type: application/json
+```
+
+Customer co the cap nhat:
+
+```text
+fullName
+phone
+birthDate
+gender
+avatarUrl
+address
+```
+
+Partner co the cap nhat:
+
+```text
+partnerName
+taxCode
+representativeName
+```
+
+Branch co the cap nhat:
+
+```text
+branchName
+phone
+address
+email
+```
+
+## Upload avatar
+
+```http
+POST /api/profile/avatar
 Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 Content-Type: application/json
 ```
 
 ```json
 {
-  "fullName": "Nguyen Van A Updated",
-  "phone": "0900000001",
-  "address": "Thu Duc City"
+  "avatarBase64": "data:image/png;base64,..."
 }
 ```
 
-Field co the cap nhat: `fullName`, `phone`, `birthDate`, `gender`, `avatarUrl`,
-`address`.
+Response tra ve profile customer da cap nhat `avatarUrl`.
 
-### Partner request
+## Partner lay branches cua minh
 
 ```http
-PATCH /api/profile
+GET /api/profile/branches
 Authorization: Bearer <PARTNER_ACCESS_TOKEN>
-Content-Type: application/json
 ```
 
-```json
-{
-  "partnerName": "Eco Partner Updated",
-  "taxCode": "0312345678",
-  "representativeName": "Tran Thi B"
-}
-```
-
-Field co the cap nhat: `partnerName`, `taxCode`, `representativeName`.
-
-### Branch request
+## Admin lay all profiles
 
 ```http
-PATCH /api/profile
-Authorization: Bearer <BRANCH_ACCESS_TOKEN>
-Content-Type: application/json
+GET /api/profile/admin/partners
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
 ```
 
-```json
-{
-  "branchName": "Eco Branch 1 Updated",
-  "phone": "0911111112",
-  "address": "District 3, Ho Chi Minh City",
-  "email": "branch-updated@example.com"
-}
+```http
+GET /api/profile/admin/branches
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
 ```
 
-Field co the cap nhat: `branchName`, `phone`, `address`, `email`.
-
-Request phai co it nhat mot field profile hop le. Field khac trong body khong
-duoc ghi vao database.
-
-### Response thanh cong
-
-HTTP `200 OK`:
-
-```json
-{
-  "profile": {
-    "partnerProfileId": "00000000-0000-4000-8000-000000000010",
-    "userId": "00000000-0000-4000-8000-000000000002",
-    "partnerProfileCode": "PARTNER001",
-    "partnerName": "Eco Partner Updated",
-    "taxCode": "0312345678",
-    "representativeName": "Tran Thi B",
-    "status": "active",
-    "rejectionReason": "",
-    "createdAt": "2026-08-17T10:00:00.000Z",
-    "updatedAt": "2026-08-17T10:30:00.000Z"
-  }
-}
-```
-
-Neu user chua co profile, API tra HTTP `404 Not Found`:
-
-```json
-{
-  "error": "Profile not found"
-}
-```
-
-## 3. Cap nhat status profile
-
-### Muc dich
-
-Cho phep `Super_Admin` hoac `Operational_Admin` cap nhat status cua Partner
-profile hoac Branch profile.
-
-### Endpoint
+## Admin cap nhat status profile
 
 ```http
 PATCH /api/profile/:profileType/:profileId/status
@@ -289,90 +217,21 @@ Authorization: Bearer <ADMIN_ACCESS_TOKEN>
 Content-Type: application/json
 ```
 
-`:profileType` hop le:
-
-```text
-partner
-branch
-```
-
-`:profileId` la `partnerProfileId` khi `profileType=partner`, hoac
-`branchProfileId` khi `profileType=branch`.
-
-`status` phai nam trong danh sach status hop le cua tung profile type o muc
-"Gia tri hop le".
-
-### Request
-
 ```json
 {
-  "status": "suspended"
+  "status": "rejected",
+  "rejectionReason": "Thong tin chua hop le"
 }
 ```
 
-### Response thanh cong
-
-HTTP `200 OK`:
-
-```json
-{
-  "message": "Profile status updated successfully.",
-  "profile": {
-    "partnerProfileId": "00000000-0000-4000-8000-000000000010",
-    "userId": "00000000-0000-4000-8000-000000000002",
-    "partnerProfileCode": "PARTNER001",
-    "partnerName": "Eco Partner",
-    "taxCode": "0312345678",
-    "representativeName": "Tran Thi B",
-    "status": "suspended",
-    "rejectionReason": "",
-    "createdAt": "2026-08-17T10:00:00.000Z",
-    "updatedAt": "2026-08-17T10:30:00.000Z"
-  }
-}
-```
-
-Neu `profileId` hop le nhung khong ton tai, API tra HTTP `404 Not Found`:
-
-```json
-{
-  "error": "Profile not found"
-}
-```
-
-Neu `profileType`, `profileId` hoac `status` khong hop le, API tra HTTP
-`400 Bad Request`. Vi du:
-
-```json
-{
-  "error": "Invalid status"
-}
-```
-
-## Luong su dung de xuat
-
-1. User dang ky qua `POST /api/auth/register`.
-2. Admin cap nhat user sang status `active` neu can.
-3. User dang nhap qua `POST /api/auth/login` de nhan access token.
-4. User goi `POST /api/profile` de tao profile theo role hien tai.
-5. User goi `PATCH /api/profile` de cap nhat thong tin profile.
-6. Admin goi `PATCH /api/profile/:profileType/:profileId/status` khi can thay
-   doi trang thai Partner/Branch profile.
+`:profileType` la `partner` hoac `branch`.
 
 ## Loi pho bien
 
-Response loi co format:
-
-```json
-{
-  "error": "Error message"
-}
-```
-
 | HTTP status | Y nghia |
 | --- | --- |
-| `400` | Thieu field bat buoc, sai kieu field, gender/profileType/profileId/status khong hop le |
+| `400` | Field sai kieu, gender/status/profileType/profileId khong hop le |
 | `401` | Thieu bearer token hoac token khong hop le |
-| `403` | Role khong co quyen truy cap Profile API |
-| `404` | Khong tim thay profile hoac partner profile |
+| `403` | Role khong du quyen |
+| `404` | Profile hoac partner profile khong ton tai |
 | `409` | User da co profile |

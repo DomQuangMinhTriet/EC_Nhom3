@@ -1,60 +1,34 @@
 # Auth API
 
-Tai lieu nay mo ta muc dich va cach su dung cac API dang ky, dang nhap va lam
-moi token theo implementation hien tai.
-
 ## Base URL
 
 ```text
 http://localhost:<PORT>/api/auth
 ```
 
-Thay `<PORT>` bang port backend trong file `.env`. Request body su dung JSON.
+Request body dung JSON. Cac endpoint tao account noi bo can bearer token theo
+role ghi trong bang tong quan.
 
 ## Tong quan
 
-| Endpoint | Muc dich | Quyen truy cap |
-| --- | --- | --- |
-| `POST /register` | Tu dang ky tai khoan | Cong khai |
-| `POST /register/partner` | Admin tao tai khoan Partner | Super Admin, Operational Admin |
-| `POST /register/branch` | Partner tao tai khoan Branch | Partner |
-| `POST /login` | Dang nhap va nhan token | Cong khai, account phai active |
-| `POST /refresh` | Tao cap token moi | Co refresh token hop le |
+| Method | Endpoint | Muc dich | Quyen truy cap |
+| --- | --- | --- | --- |
+| `POST` | `/register/customer` | Customer tu dang ky | Public |
+| `POST` | `/register/super-admin` | Tao Super Admin | Super Admin |
+| `POST` | `/register/operational-admin` | Tao Operational Admin | Super Admin |
+| `POST` | `/register/partner` | Tao Partner | Super Admin, Operational Admin |
+| `POST` | `/register/branch` | Tao Branch | Partner |
+| `POST` | `/login` | Dang nhap | Public, account active |
+| `POST` | `/refresh` | Lam moi token | Refresh token hop le |
 
-## 1. Tu dang ky
+## Register
 
-### Muc dich
-
-Tao tai khoan Supabase Auth va user local. Neu khong gui `roleCode`, backend mac
-dinh dung role `Customer`.
-
-Role tu dang ky hop le:
-
-```text
-Customer
-Partner
-Branch
-```
-
-`Super_Admin` va `Operational_Admin` khong duoc tu dang ky qua endpoint nay.
-User local duoc tao voi status mac dinh `pending`.
-
-### Request
+### Customer
 
 ```http
-POST /api/auth/register
+POST /api/auth/register/customer
 Content-Type: application/json
 ```
-
-```json
-{
-  "email": "customer@example.com",
-  "password": "strong-password",
-  "roleCode": "Customer"
-}
-```
-
-Co the bo `roleCode` neu muon dang ky Customer:
 
 ```json
 {
@@ -63,47 +37,23 @@ Co the bo `roleCode` neu muon dang ky Customer:
 }
 ```
 
-### Response thanh cong
-
-HTTP `201 Created`:
+Response `201 Created`:
 
 ```json
 {
-  "message": "Registration successful. Please verify your email before logging in.",
+  "message": "Registration successful.",
   "user": {
     "userId": "00000000-0000-4000-8000-000000000001",
     "email": "customer@example.com",
     "roleCode": "Customer",
-    "status": "pending",
-    "createdAt": "2026-08-16T10:00:00.000Z",
-    "updatedAt": "2026-08-16T10:00:00.000Z"
+    "status": "active"
   }
 }
 ```
 
-## 2. Admin tao Partner
+### Managed accounts
 
-### Muc dich
-
-Cho phep `Super_Admin` hoac `Operational_Admin` tao tai khoan dang nhap cho
-Partner. API su dung Supabase Admin, xac nhan email ngay va luon gan:
-
-```json
-{
-  "roleCode": "Partner",
-  "status": "pending"
-}
-```
-
-Client khong can gui `roleCode` hay `status`.
-
-### Request
-
-```http
-POST /api/auth/register/partner
-Authorization: Bearer <ADMIN_ACCESS_TOKEN>
-Content-Type: application/json
-```
+Tat ca request managed account dung body:
 
 ```json
 {
@@ -112,87 +62,18 @@ Content-Type: application/json
 }
 ```
 
-### Response thanh cong
-
-HTTP `201 Created`:
-
-```json
-{
-  "message": "Partner registered successfully.",
-  "user": {
-    "userId": "00000000-0000-4000-8000-000000000003",
-    "email": "partner@example.com",
-    "roleCode": "Partner",
-    "status": "pending",
-    "createdAt": "2026-08-16T10:00:00.000Z",
-    "updatedAt": "2026-08-16T10:00:00.000Z"
-  }
-}
-```
-
-Request thieu bearer token tra HTTP `401`. Token khong co role `Super_Admin`
-hoac `Operational_Admin` tra HTTP `403`.
-
-## 3. Partner tao Branch
-
-### Muc dich
-
-Cho phep Partner tao tai khoan dang nhap cho Branch. API su dung Supabase Admin,
-xac nhan email ngay va luon gan:
-
-```json
-{
-  "roleCode": "Branch",
-  "status": "pending"
-}
-```
-
-Client khong can gui `roleCode` hay `status`.
-
-### Request
+Vi du tao Partner:
 
 ```http
-POST /api/auth/register/branch
-Authorization: Bearer <PARTNER_ACCESS_TOKEN>
+POST /api/auth/register/partner
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
 Content-Type: application/json
 ```
 
-```json
-{
-  "email": "branch@example.com",
-  "password": "strong-password"
-}
-```
+Branch duoc tao voi `status = pending`. Cac role managed khac duoc tao theo
+status trong service hien tai.
 
-### Response thanh cong
-
-HTTP `201 Created`:
-
-```json
-{
-  "message": "Branch registered successfully.",
-  "user": {
-    "userId": "00000000-0000-4000-8000-000000000002",
-    "email": "branch@example.com",
-    "roleCode": "Branch",
-    "status": "pending",
-    "createdAt": "2026-08-16T10:00:00.000Z",
-    "updatedAt": "2026-08-16T10:00:00.000Z"
-  }
-}
-```
-
-Request thieu bearer token tra HTTP `401`. Token khong co role `Partner` tra
-HTTP `403`.
-
-## 4. Dang nhap
-
-### Muc dich
-
-Xac thuc email/password qua Supabase va cap access token, refresh token cua
-backend. Chi account co status `active` moi dang nhap thanh cong.
-
-### Request
+## Login
 
 ```http
 POST /api/auth/login
@@ -206,9 +87,7 @@ Content-Type: application/json
 }
 ```
 
-### Response thanh cong
-
-HTTP `200 OK`:
+Response `200 OK`:
 
 ```json
 {
@@ -216,37 +95,20 @@ HTTP `200 OK`:
     "userId": "00000000-0000-4000-8000-000000000001",
     "email": "user@example.com",
     "roleCode": "Customer",
-    "status": "pending"
+    "status": "active"
   },
   "accessToken": "<ACCESS_TOKEN>",
   "refreshToken": "<REFRESH_TOKEN>"
 }
 ```
 
-Dung access token cho API can xac thuc:
+Dung access token cho API bao ve:
 
 ```http
 Authorization: Bearer <ACCESS_TOKEN>
 ```
 
-Sai email hoac password tra HTTP `401 Unauthorized`.
-
-Account co status `pending`, `banned` hoac `deactivated` tra HTTP
-`403 Forbidden`:
-
-```json
-{
-  "error": "Account is not active"
-}
-```
-
-## 5. Lam moi token
-
-### Muc dich
-
-Dung refresh token de tao access token va refresh token moi.
-
-### Request
+## Refresh
 
 ```http
 POST /api/auth/refresh
@@ -259,46 +121,14 @@ Content-Type: application/json
 }
 ```
 
-### Response thanh cong
-
-HTTP `200 OK`:
-
-```json
-{
-  "user": {
-    "userId": "00000000-0000-4000-8000-000000000001",
-    "email": "user@example.com",
-    "roleCode": "Customer",
-    "status": "pending"
-  },
-  "accessToken": "<NEW_ACCESS_TOKEN>",
-  "refreshToken": "<NEW_REFRESH_TOKEN>"
-}
-```
-
-## Luong su dung de xuat
-
-1. Nguoi dung goi `/register` de tao tai khoan.
-2. Nguoi dung goi `/login` de nhan access token va refresh token.
-3. Client gui access token trong header `Authorization` khi goi API bao ve.
-4. Super Admin hoac Operational Admin goi `/register/partner` de tao tai khoan Partner.
-5. Partner goi `/register/branch` de tao tai khoan Branch.
-6. Khi access token het han, client goi `/refresh` bang refresh token.
+Response tra ve cap access/refresh token moi.
 
 ## Loi pho bien
 
-Response loi co format:
-
-```json
-{
-  "error": "Error message"
-}
-```
-
 | HTTP status | Y nghia |
 | --- | --- |
-| `400` | Thieu field, roleCode khong hop le hoac Supabase tu choi dang ky |
-| `401` | Sai thong tin dang nhap, thieu token hoac token khong hop le |
-| `403` | Role khong du quyen truy cap endpoint |
-| `500` | Backend khong the tao hoac doc user local |
+| `400` | Thieu `email`/`password`, refresh token thieu, hoac Supabase tu choi request |
+| `401` | Sai credential, thieu bearer token, token khong hop le |
+| `403` | Account khong active hoac role khong du quyen |
+| `500` | Khong tao/doc duoc local user |
 | `502` | Supabase khong tra ve user hop le |
