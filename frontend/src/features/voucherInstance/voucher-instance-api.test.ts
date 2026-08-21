@@ -33,7 +33,7 @@ describe("voucher instance api", () => {
     await getMyVoucherInstances();
 
     const [url] = fetchMock.mock.calls[0] as [string];
-    expect(url.endsWith("/customers/me/vouchers")).toBe(true);
+    expect(url.endsWith("/voucher-instances")).toBe(true);
   });
 
   it("appends the status filter when provided", async () => {

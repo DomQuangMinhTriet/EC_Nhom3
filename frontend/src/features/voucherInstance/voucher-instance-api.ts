@@ -28,11 +28,11 @@ export type VoucherInstanceDetail = VoucherInstance & { qrDataUri: string };
 
 export async function getMyVoucherInstances(status?: VoucherInstanceStatus) {
   const query = status ? `?status=${status}` : "";
-  const res = await apiClient<{ data: VoucherInstance[] }>(`/customers/me/vouchers${query}`, { headers: authHeaders() });
+  const res = await apiClient<{ data: VoucherInstance[] }>(`/voucher-instances${query}`, { headers: authHeaders() });
   return res.data;
 }
 
 export async function getVoucherInstanceDetail(voucherCodeId: string) {
-  const res = await apiClient<{ data: VoucherInstanceDetail }>(`/customers/me/vouchers/${voucherCodeId}`, { headers: authHeaders() });
+  const res = await apiClient<{ data: VoucherInstanceDetail }>(`/voucher-instances/${voucherCodeId}`, { headers: authHeaders() });
   return res.data;
 }

@@ -65,7 +65,7 @@ function toQuery(params: Record<string, string | number | undefined>) {
 }
 
 export async function createPartnerVoucher(input: CreateVoucherProductInput) {
-  const res = await apiClient<{ voucher: VoucherProduct }>("/partner/vouchers", {
+  const res = await apiClient<{ voucher: VoucherProduct }>("/vouchers", {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(input),
@@ -74,12 +74,12 @@ export async function createPartnerVoucher(input: CreateVoucherProductInput) {
 }
 
 export async function getPartnerVouchers() {
-  const res = await apiClient<{ vouchers: VoucherProduct[] }>("/partner/vouchers", { headers: authHeaders() });
+  const res = await apiClient<{ vouchers: VoucherProduct[] }>("/vouchers/mine", { headers: authHeaders() });
   return res.vouchers;
 }
 
 export async function updatePartnerVoucher(voucherProductId: string, input: UpdateVoucherProductInput) {
-  const res = await apiClient<{ voucher: VoucherProduct }>(`/partner/vouchers/${voucherProductId}`, {
+  const res = await apiClient<{ voucher: VoucherProduct }>(`/vouchers/${voucherProductId}`, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify(input),
@@ -97,7 +97,7 @@ export async function getVoucherProductById(voucherProductId: string) {
 }
 
 export async function updateVoucherProductStatus(voucherProductId: string, status: AdminVoucherStatus, rejectionReason?: string) {
-  const res = await apiClient<{ message: string; voucher: VoucherProduct }>(`/admin/vouchers/${voucherProductId}/status`, {
+  const res = await apiClient<{ message: string; voucher: VoucherProduct }>(`/vouchers/${voucherProductId}/status`, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify({ status, rejectionReason }),

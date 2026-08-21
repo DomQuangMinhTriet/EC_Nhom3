@@ -44,7 +44,7 @@ describe("voucher product api", () => {
 
     expect(result).toEqual(voucher);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/partner/vouchers");
+    expect(url).toContain("/vouchers");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer token-xyz");
     expect(JSON.parse(init.body as string)).toMatchObject({ categoryId: "c1", title: "Eco Coffee Voucher" });
   });

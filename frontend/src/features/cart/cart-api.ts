@@ -26,12 +26,12 @@ export type Cart = {
 };
 
 export async function getCart() {
-  const res = await apiClient<{ data: Cart }>("/customers/me/cart", { headers: authHeaders() });
+  const res = await apiClient<{ data: Cart }>("/carts/me", { headers: authHeaders() });
   return res.data;
 }
 
 export async function addCartItem(voucherProductId: string, quantity: number) {
-  const res = await apiClient<{ data: CartItem }>("/customers/me/cart/items", {
+  const res = await apiClient<{ data: CartItem }>("/carts/me/items", {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ voucherProductId, quantity }),
@@ -40,7 +40,7 @@ export async function addCartItem(voucherProductId: string, quantity: number) {
 }
 
 export async function updateCartItemQuantity(cartItemId: string, quantity: number) {
-  const res = await apiClient<{ data: CartItem }>(`/customers/me/cart/items/${cartItemId}`, {
+  const res = await apiClient<{ data: CartItem }>(`/carts/me/items/${cartItemId}`, {
     method: "PUT",
     headers: authHeaders(),
     body: JSON.stringify({ quantity }),
@@ -49,7 +49,7 @@ export async function updateCartItemQuantity(cartItemId: string, quantity: numbe
 }
 
 export async function removeCartItem(cartItemId: string) {
-  return apiClient<{ data: { message: string } }>(`/customers/me/cart/items/${cartItemId}`, {
+  return apiClient<{ data: { message: string } }>(`/carts/me/items/${cartItemId}`, {
     method: "DELETE",
     headers: authHeaders(),
   });

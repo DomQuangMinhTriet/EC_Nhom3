@@ -33,7 +33,7 @@ describe("review api", () => {
     await createReview("vc1", 5, "Tốt");
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/customers/me/reviews");
+    expect(url).toContain("/reviews");
     expect(JSON.parse(init.body as string)).toEqual({ voucherCodeId: "vc1", rating: 5, comment: "Tốt" });
   });
 
@@ -51,7 +51,7 @@ describe("review api", () => {
     await changeReviewStatus("r1", "hidden");
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/admin/reviews/r1/status");
+    expect(url).toContain("/reviews/r1/status");
     expect(JSON.parse(init.body as string)).toEqual({ status: "hidden" });
   });
 });
