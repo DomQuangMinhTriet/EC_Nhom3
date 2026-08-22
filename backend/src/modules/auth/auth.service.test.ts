@@ -148,14 +148,6 @@ test("registers managed accounts with the expected roles and statuses", async ()
       status: "pending",
       message: "Branch registered successfully.",
     },
-    {
-      name: "active branch",
-      register: (service: AuthService) =>
-        service.registerActiveBranch(credentials),
-      roleCode: "Branch",
-      status: "active",
-      message: "Branch registered successfully.",
-    },
   ] as const;
 
   for (const item of cases) {

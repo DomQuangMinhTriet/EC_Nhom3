@@ -18,7 +18,6 @@ role ghi trong bang tong quan.
 | `POST` | `/register/operational-admin` | Tao Operational Admin | Super Admin |
 | `POST` | `/register/partner` | Tao Partner | Super Admin, Operational Admin |
 | `POST` | `/register/branch` | Tao Branch | Partner |
-| `POST` | `/register/branch/active` | Tao Branch active | Super Admin, Operational Admin |
 | `POST` | `/login` | Dang nhap | Public, account active |
 | `POST` | `/refresh` | Lam moi token | Refresh token hop le |
 
@@ -82,40 +81,6 @@ Trang thai account sau khi tao:
 | `/register/operational-admin` | `Operational_Admin` | `active` | Super Admin |
 | `/register/partner` | `Partner` | `active` | Super Admin, Operational Admin |
 | `/register/branch` | `Branch` | `pending` | Partner |
-| `/register/branch/active` | `Branch` | `active` | Super Admin, Operational Admin |
-
-### Branch active by admin
-
-Endpoint nay dung khi admin can tao account Branch co the dang nhap ngay.
-Endpoint chi tao account trong bang `users`, khong tao `branch_profiles`.
-Branch profile van duoc tao qua Profile API.
-
-```http
-POST /api/auth/register/branch/active
-Authorization: Bearer <ADMIN_ACCESS_TOKEN>
-Content-Type: application/json
-```
-
-```json
-{
-  "email": "branch@example.com",
-  "password": "strong-password"
-}
-```
-
-Response `201 Created`:
-
-```json
-{
-  "message": "Branch registered successfully.",
-  "user": {
-    "userId": "00000000-0000-4000-8000-000000000001",
-    "email": "branch@example.com",
-    "roleCode": "Branch",
-    "status": "active"
-  }
-}
-```
 
 ## Login
 

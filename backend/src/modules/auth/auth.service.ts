@@ -100,15 +100,6 @@ export class AuthService {
     });
   }
 
-  async registerActiveBranch(input: CredentialsInput) {
-    return this.registerManagedAccount({
-      ...input,
-      roleCode: "Branch",
-      status: "active",
-      message: "Branch registered successfully.",
-    });
-  }
-
   private async registerManagedAccount({
     email,
     password,

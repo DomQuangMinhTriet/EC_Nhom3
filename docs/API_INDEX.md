@@ -14,7 +14,6 @@ Chi tiet: [AUTH_API.md](AUTH_API.md)
 | `POST` | `/api/auth/register/operational-admin` |
 | `POST` | `/api/auth/register/partner` |
 | `POST` | `/api/auth/register/branch` |
-| `POST` | `/api/auth/register/branch/active` |
 | `POST` | `/api/auth/login` |
 | `POST` | `/api/auth/refresh` |
 
