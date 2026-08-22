@@ -82,6 +82,21 @@ export class AuthController {
       .json(await this.authService.registerBranch({ email, password }));
   };
 
+  registerActiveBranch = async (req: Request, res: Response) => {
+    const { email, password } = req.body as {
+      email?: string;
+      password?: string;
+    };
+
+    if (!email || !password) {
+      throw new AppError("email and password are required", 400);
+    }
+
+    res
+      .status(201)
+      .json(await this.authService.registerActiveBranch({ email, password }));
+  };
+
   login = async (req: Request, res: Response) => {
     const { email, password } = req.body as {
       email?: string;

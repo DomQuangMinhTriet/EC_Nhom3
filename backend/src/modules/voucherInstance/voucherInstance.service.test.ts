@@ -12,7 +12,6 @@ const mockVoucherCodeId = "vc-123";
 const mockVoucher = {
     voucherCodeId: mockVoucherCodeId,
     code: "SECRET-CODE-123",
-    qr: "some-qr-payload",
     status: "available" as const,
     expiredAt: new Date(),
     createdAt: new Date(),

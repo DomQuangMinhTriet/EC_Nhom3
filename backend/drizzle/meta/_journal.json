@@ -15,6 +15,20 @@
       "when": 1785424194989,
       "tag": "0001_tiny_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787411873001,
+      "tag": "0002_premium_karen_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787412846066,
+      "tag": "0003_brainy_tusk",
+      "breakpoints": true
     }
   ]
 }

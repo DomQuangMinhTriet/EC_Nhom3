@@ -25,7 +25,6 @@ export class VoucherInstanceRepository {
             .select({
                 voucherCodeId: voucherCode.voucherCodeId,
                 code: voucherCode.code,
-                qr: voucherCode.qr,
                 status: voucherCode.status,
                 expiredAt: voucherCode.expiredAt,
                 createdAt: voucherCode.createdAt,
@@ -51,7 +50,6 @@ export class VoucherInstanceRepository {
             .select({
                 voucherCodeId: voucherCode.voucherCodeId,
                 code: voucherCode.code,
-                qr: voucherCode.qr,
                 status: voucherCode.status,
                 expiredAt: voucherCode.expiredAt,
                 createdAt: voucherCode.createdAt,

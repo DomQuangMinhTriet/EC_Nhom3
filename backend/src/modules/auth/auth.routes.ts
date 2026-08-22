@@ -57,6 +57,14 @@ authRouter.post(
 );
 
 authRouter.post(
+  "/register/branch/active",
+  requireAuth,
+  authorizeRoles("Super_Admin", "Operational_Admin"),
+  credentialRateLimit,
+  asyncHandler(authController.registerActiveBranch),
+);
+
+authRouter.post(
   "/login",
   credentialRateLimit,
   asyncHandler(authController.login),

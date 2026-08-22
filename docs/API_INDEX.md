@@ -14,6 +14,7 @@ Chi tiet: [AUTH_API.md](AUTH_API.md)
 | `POST` | `/api/auth/register/operational-admin` |
 | `POST` | `/api/auth/register/partner` |
 | `POST` | `/api/auth/register/branch` |
+| `POST` | `/api/auth/register/branch/active` |
 | `POST` | `/api/auth/login` |
 | `POST` | `/api/auth/refresh` |
 
@@ -86,6 +87,15 @@ Chi tiet: [CART_API.md](CART_API.md)
 | `POST` | `/api/carts/me/items` |
 | `PUT` | `/api/carts/me/items/:id` |
 | `DELETE` | `/api/carts/me/items/:id` |
+
+## Orders
+
+Chi tiet: [ORDER_API.md](ORDER_API.md)
+
+| Method | Path |
+| --- | --- |
+| `POST` | `/api/orders` |
+| `PUT` | `/api/orders/:id` |
 
 ## Voucher Instances
 

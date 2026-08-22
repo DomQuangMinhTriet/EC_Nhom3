@@ -94,8 +94,10 @@ export const orderItem = pgTable(
       .notNull()
       .references(() => order.orderId),
     orderItemId: uuid("orderItemId").defaultRandom().notNull(),
-    voucherCodeId: uuid("voucherCodeId")
+    voucherProductId: uuid("voucherProductId")
       .notNull()
+      .references(() => voucherProduct.voucherProductId),
+    voucherCodeId: uuid("voucherCodeId")
       .references(() => voucherCode.voucherCodeId),
     quantity: integer("quantity").notNull().default(1),
     unitPrice: numeric("unitPrice", { precision: 9, scale: 2 })

@@ -182,6 +182,30 @@ A centralized e-commerce platform providing:
 
 ---
 
+### API Documents
+
+**Purpose:** REST API reference for backend modules.
+
+Start with [API_INDEX.md](API_INDEX.md) for a short endpoint overview, then
+open each detailed module document:
+
+- [AUTH_API.md](AUTH_API.md) - authentication and account registration
+- [PROFILE_API.md](PROFILE_API.md) - customer, partner, and branch profiles
+- [USER_API.md](USER_API.md) - admin user listing and updates
+- [CATEGORY_API.md](CATEGORY_API.md) - category tree management
+- [VOUCHER_PRODUCT_API.md](VOUCHER_PRODUCT_API.md) - voucher product workflow
+- [BRANCH_QUOTA_API.md](BRANCH_QUOTA_API.md) - branch allocation quotas
+- [CART_API.md](CART_API.md) - customer cart operations
+- [ORDER_API.md](ORDER_API.md) - order creation, payment update, voucher code generation
+- [VOUCHER_INSTANCE_API.md](VOUCHER_INSTANCE_API.md) - customer voucher instances
+- [REVIEW_API.md](REVIEW_API.md) - voucher reviews
+- [NOTIFICATION_API.md](NOTIFICATION_API.md) - notifications
+
+**Audience:** Backend developers, frontend developers, QA testers
+**Document Status:** In progress, updated with current backend API behavior
+
+---
+
 ## Project Timeline
 
 ### Development Phases

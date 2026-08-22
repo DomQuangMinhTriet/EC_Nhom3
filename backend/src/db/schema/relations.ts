@@ -167,6 +167,10 @@ export const orderItemRelations = relations(orderItem, ({ one }) => ({
     fields: [orderItem.orderId],
     references: [order.orderId],
   }),
+  voucherProduct: one(voucherProduct, {
+    fields: [orderItem.voucherProductId],
+    references: [voucherProduct.voucherProductId],
+  }),
   voucherCode: one(voucherCode, {
     fields: [orderItem.voucherCodeId],
     references: [voucherCode.voucherCodeId],
