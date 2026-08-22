@@ -44,7 +44,7 @@ describe("voucher product api", () => {
 
     expect(result).toEqual(voucher);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/partner/vouchers");
+    expect(url).toContain("/vouchers");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer token-xyz");
     expect(JSON.parse(init.body as string)).toMatchObject({ categoryId: "c1", title: "Eco Coffee Voucher" });
   });
@@ -55,6 +55,15 @@ describe("voucher product api", () => {
 
     await expect(getPartnerVouchers()).rejects.toThrow();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fetches the partner's own vouchers from /vouchers/mine", async () => {
+    const fetchMock = mockFetchOnce(200, { vouchers: [] });
+
+    await getPartnerVouchers();
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain("/vouchers/mine");
   });
 
   it("lists public vouchers without requiring auth", async () => {

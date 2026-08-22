@@ -33,7 +33,7 @@ describe("branch quota api", () => {
     await allocateBranches("v1", [{ branchProfileId: "b1", totalQuantity: 100 }]);
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/partner/vouchers/v1/branches");
+    expect(url).toContain("/quotas/vouchers/v1/branches");
     expect(JSON.parse(init.body as string)).toEqual([{ branchProfileId: "b1", totalQuantity: 100 }]);
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer token-quota");
   });
@@ -44,6 +44,7 @@ describe("branch quota api", () => {
     await getAllocations("v1", { page: 2, pageSize: 10 });
 
     const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain("/quotas/vouchers/v1/branches");
     expect(url).toContain("page=2");
     expect(url).toContain("pageSize=10");
   });
@@ -62,7 +63,7 @@ describe("branch quota api", () => {
     await deleteAllocation("v1", "b1");
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/partner/vouchers/v1/branches/b1");
+    expect(url).toContain("/quotas/vouchers/v1/branches/b1");
     expect(init.method).toBe("DELETE");
   });
 });

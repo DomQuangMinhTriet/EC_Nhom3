@@ -33,7 +33,7 @@ describe("category tree api", () => {
     await createCategory({ name: "Ăn uống" });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/admin/categories");
+    expect(url).toContain("/categories");
     expect(JSON.parse(init.body as string)).toEqual({ name: "Ăn uống" });
   });
 
@@ -50,7 +50,7 @@ describe("category tree api", () => {
     await deleteCategory("c1");
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/admin/categories/c1");
+    expect(url).toContain("/categories/c1");
     expect(init.method).toBe("DELETE");
   });
 });

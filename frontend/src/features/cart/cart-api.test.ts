@@ -34,7 +34,7 @@ describe("cart api", () => {
     const result = await getCart();
     expect(result).toEqual(cart);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/customers/me/cart");
+    expect(url).toContain("/carts/me");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer token-cart");
   });
 
@@ -53,7 +53,7 @@ describe("cart api", () => {
     await updateCartItemQuantity("ci1", 5);
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/customers/me/cart/items/ci1");
+    expect(url).toContain("/carts/me/items/ci1");
     expect(init.method).toBe("PUT");
   });
 

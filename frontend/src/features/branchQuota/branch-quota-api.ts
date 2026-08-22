@@ -20,7 +20,7 @@ export type GetAllocationsResult = {
 };
 
 export async function allocateBranches(voucherProductId: string, input: AllocateBranchesInput) {
-  return apiClient<{ data: BranchAllocation[]; message: string }>(`/partner/vouchers/${voucherProductId}/branches`, {
+  return apiClient<{ data: BranchAllocation[]; message: string }>(`/quotas/vouchers/${voucherProductId}/branches`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(input),
@@ -33,19 +33,19 @@ export async function getAllocations(voucherProductId: string, params: { page?: 
   if (params.pageSize) search.set("pageSize", String(params.pageSize));
   const query = search.size ? `?${search}` : "";
 
-  return apiClient<GetAllocationsResult>(`/partner/vouchers/${voucherProductId}/branches${query}`, { headers: authHeaders() });
+  return apiClient<GetAllocationsResult>(`/quotas/vouchers/${voucherProductId}/branches${query}`, { headers: authHeaders() });
 }
 
 export async function updateAllocation(voucherProductId: string, branchProfileId: string, totalQuantity: number) {
   const res = await apiClient<{ data: BranchAllocation; message: string }>(
-    `/partner/vouchers/${voucherProductId}/branches/${branchProfileId}`,
+    `/quotas/vouchers/${voucherProductId}/branches/${branchProfileId}`,
     { method: "PUT", headers: authHeaders(), body: JSON.stringify({ totalQuantity }) },
   );
   return res.data;
 }
 
 export async function deleteAllocation(voucherProductId: string, branchProfileId: string) {
-  return apiClient<{ message: string }>(`/partner/vouchers/${voucherProductId}/branches/${branchProfileId}`, {
+  return apiClient<{ message: string }>(`/quotas/vouchers/${voucherProductId}/branches/${branchProfileId}`, {
     method: "DELETE",
     headers: authHeaders(),
   });
