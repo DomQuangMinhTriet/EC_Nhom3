@@ -20,7 +20,6 @@ export class OrderController {
   };
 
   updateOrder = async (req: Request, res: Response) => {
-    const userId = req.user!.userId;
     const orderId = req.params.id;
 
     if (!isUuid(orderId)) {
@@ -28,7 +27,7 @@ export class OrderController {
     }
 
     res.json({
-      data: await this.orderService.updateOrder(userId, orderId, req.body),
+      data: await this.orderService.updateOrderBySystem(orderId, req.body),
     });
   };
 }

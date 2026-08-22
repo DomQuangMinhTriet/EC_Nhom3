@@ -17,8 +17,8 @@ const orderRecord = {
   cartId,
   customerProfileId,
   subtotalAmount: "200.00",
-  discountAmount: "20.00",
-  totalAmount: "180.00",
+  discountAmount: "0.00",
+  totalAmount: "200.00",
   status: "pending_payment" as const,
   reason: null,
   createdAt,
@@ -56,6 +56,7 @@ const createRepository = (overrides: Partial<OrderRepository> = {}) =>
     getAvailableStock: async () => 2,
     createOrderFromCart: async () => orderRecord,
     findOrderByIdAndCustomer: async () => orderRecord,
+    findOrderById: async () => orderRecord,
     getOrderDetail: async () => ({ ...orderRecord, items: [], payments: [] }),
     updateOrder: async () => orderRecord,
     ...overrides,
@@ -78,8 +79,8 @@ test("createOrder creates a pending order preserving cart item quantity", async 
     cartId,
     customerProfileId,
     subtotalAmount: "200.00",
-    discountAmount: "20.00",
-    totalAmount: "180.00",
+    discountAmount: "0.00",
+    totalAmount: "200.00",
     items: [{ voucherProductId, quantity: 2, unitPrice: "100.00" }],
   });
 });
@@ -125,7 +126,40 @@ test("updateOrder completes a pending order and records successful payment detai
     payment: {
       transactionId: "txn-123",
       paymentMethod: "card",
-      amount: "180.00",
+      amount: "200.00",
+      currency: "VND",
+      status: "success",
+      reason: undefined,
+    },
+  });
+});
+
+test("updateOrderBySystem completes a pending order without a customer token", async () => {
+  let captured: Parameters<OrderRepository["updateOrder"]>[0] | undefined;
+  const service = new OrderService(
+    createRepository({
+      updateOrder: async (input) => {
+        captured = input;
+        return { ...orderRecord, status: "completed" };
+      },
+    }),
+  );
+
+  await service.updateOrderBySystem(orderId, {
+    status: "completed",
+    transactionId: "txn-system-123",
+    paymentMethod: "bank_transfer",
+  });
+
+  assert.deepEqual(captured, {
+    orderId,
+    customerProfileId,
+    status: "completed",
+    reason: null,
+    payment: {
+      transactionId: "txn-system-123",
+      paymentMethod: "bank_transfer",
+      amount: "200.00",
       currency: "VND",
       status: "success",
       reason: undefined,

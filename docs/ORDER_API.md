@@ -6,10 +6,16 @@
 http://localhost:<PORT>/api/orders
 ```
 
-Tat ca endpoint can bearer token cua `Customer`.
+`POST /api/orders` can bearer token cua `Customer`:
 
 ```http
 Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
+```
+
+`PUT /api/orders/:id` la endpoint internal/payment callback, dung API key:
+
+```http
+ec-voucher-api-key: <EC_VOUCHER_API_KEY>
 ```
 
 ## Tong quan
@@ -57,8 +63,8 @@ Response `201 Created`:
     "cartId": "00000000-0000-4000-8000-000000000001",
     "customerProfileId": "00000000-0000-4000-8000-000000000002",
     "subtotalAmount": "200000.00",
-    "discountAmount": "20000.00",
-    "totalAmount": "180000.00",
+    "discountAmount": "0.00",
+    "totalAmount": "200000.00",
     "status": "pending_payment",
     "reason": null,
     "items": [
@@ -98,18 +104,15 @@ Tong tien:
 
 ```text
 subtotalAmount = sum(cart_item.unitPrice * quantity)
-discountAmount = sum(discount cua tung item * quantity)
-totalAmount = subtotalAmount - discountAmount
+discountAmount = 0
+totalAmount = subtotalAmount
 ```
-
-Voi `discountType = direct`, discount toi da bang `unitPrice`.
-Voi `discountType = percentage`, discount value toi da duoc tinh nhu `100`.
 
 ## Cap nhat order completed
 
 ```http
 PUT /api/orders/:id
-Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
+ec-voucher-api-key: <EC_VOUCHER_API_KEY>
 Content-Type: application/json
 ```
 
@@ -135,7 +138,7 @@ Response `200 OK`:
   "data": {
     "orderId": "00000000-0000-4000-8000-000000000010",
     "status": "completed",
-    "totalAmount": "180000.00",
+    "totalAmount": "200000.00",
     "items": [
       {
         "orderItemId": "00000000-0000-4000-8000-000000000011",
@@ -156,7 +159,7 @@ Response `200 OK`:
         "paymentId": "00000000-0000-4000-8000-000000000031",
         "transactionId": "txn-123",
         "paymentMethod": "card",
-        "amount": "180000.00",
+        "amount": "200000.00",
         "currency": "VND",
         "status": "success"
       }
@@ -189,7 +192,7 @@ Body co the gui amount/currency tuy chinh:
   "status": "completed",
   "transactionId": "txn-124",
   "paymentMethod": "bank_transfer",
-  "amount": "180000.00",
+  "amount": "200000.00",
   "currency": "VND"
 }
 ```
@@ -198,7 +201,7 @@ Body co the gui amount/currency tuy chinh:
 
 ```http
 PUT /api/orders/:id
-Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
+ec-voucher-api-key: <EC_VOUCHER_API_KEY>
 Content-Type: application/json
 ```
 
@@ -237,8 +240,8 @@ Payment failed se duoc luu voi `payments.status = failed`.
 | HTTP status | Y nghia |
 | --- | --- |
 | `400` | `cartId`/`orderId` khong hop le, cart rong, status/payment invalid, voucher khong active, vuot stock |
-| `401` | Thieu bearer token hoac token khong hop le |
-| `403` | Role khong phai Customer |
+| `401` | Thieu/sai bearer token o endpoint tao order, hoac thieu/sai `ec-voucher-api-key` o endpoint update order |
+| `403` | Role khong phai Customer o endpoint tao order |
 | `404` | Khong tim thay customer profile, cart, order |
 | `409` | Cart da co order |
 | `500` | Khong tao duoc order hoac voucher code |

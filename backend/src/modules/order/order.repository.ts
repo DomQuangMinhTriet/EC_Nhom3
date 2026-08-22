@@ -187,6 +187,14 @@ export class OrderRepository {
     return result ?? null;
   }
 
+  async findOrderById(orderId: string) {
+    const result = await db.query.order.findFirst({
+      where: eq(order.orderId, orderId),
+    });
+
+    return result ?? null;
+  }
+
   async getOrderDetail(orderId: string, customerProfileId: string) {
     const orderRecord = await this.findOrderByIdAndCustomer(
       orderId,

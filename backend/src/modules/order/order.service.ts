@@ -37,24 +37,6 @@ const parseMoney = (value: string | number, field: string) => {
   return toMoney(parsed);
 };
 
-const calculateUnitDiscount = (
-  unitPrice: number,
-  discountType: "direct" | "percentage",
-  discountValue: string,
-) => {
-  const parsedDiscount = Number(discountValue);
-
-  if (!Number.isFinite(parsedDiscount) || parsedDiscount <= 0) {
-    return 0;
-  }
-
-  if (discountType === "direct") {
-    return Math.min(unitPrice, parsedDiscount);
-  }
-
-  return unitPrice * (Math.min(parsedDiscount, 100) / 100);
-};
-
 export class OrderService {
   constructor(private readonly orderRepository = new OrderRepository()) {}
 
@@ -92,7 +74,6 @@ export class OrderService {
     }
 
     let subtotalAmount = 0;
-    let discountAmount = 0;
     const orderItems: CreateOrderItemRecord[] = [];
 
     for (const item of cartItems) {
@@ -121,12 +102,6 @@ export class OrderService {
       }
 
       subtotalAmount += unitPrice * item.quantity;
-      discountAmount +=
-        calculateUnitDiscount(
-          unitPrice,
-          item.voucherProduct.discountType,
-          item.voucherProduct.discountValue,
-        ) * item.quantity;
 
       orderItems.push({
         voucherProductId: item.voucherProductId,
@@ -139,8 +114,8 @@ export class OrderService {
       cartId,
       customerProfileId,
       subtotalAmount: toMoney(subtotalAmount),
-      discountAmount: toMoney(discountAmount),
-      totalAmount: toMoney(subtotalAmount - discountAmount),
+      discountAmount: "0.00",
+      totalAmount: toMoney(subtotalAmount),
       items: orderItems,
     });
 
@@ -155,6 +130,35 @@ export class OrderService {
   }
 
   async updateOrder(userId: string, orderId: string, input: UpdateOrderInput) {
+    const customerProfileId = await this.getCustomerProfileId(userId);
+    const existingOrder = await this.orderRepository.findOrderByIdAndCustomer(
+      orderId,
+      customerProfileId,
+    );
+
+    if (!existingOrder) {
+      throw new AppError("Order not found", 404);
+    }
+
+    return await this.updateExistingOrder(existingOrder, input);
+  }
+
+  async updateOrderBySystem(orderId: string, input: UpdateOrderInput) {
+    const existingOrder = await this.orderRepository.findOrderById(orderId);
+
+    if (!existingOrder) {
+      throw new AppError("Order not found", 404);
+    }
+
+    return await this.updateExistingOrder(existingOrder, input);
+  }
+
+  private async updateExistingOrder(
+    existingOrder: NonNullable<
+      Awaited<ReturnType<OrderRepository["findOrderById"]>>
+    >,
+    input: UpdateOrderInput,
+  ) {
     const hasPaymentFields =
       input.transactionId !== undefined ||
       input.paymentMethod !== undefined ||
@@ -178,16 +182,6 @@ export class OrderService {
       typeof input.reason !== "string"
     ) {
       throw new AppError("reason must be a string", 400);
-    }
-
-    const customerProfileId = await this.getCustomerProfileId(userId);
-    const existingOrder = await this.orderRepository.findOrderByIdAndCustomer(
-      orderId,
-      customerProfileId,
-    );
-
-    if (!existingOrder) {
-      throw new AppError("Order not found", 404);
     }
 
     const nextStatus = input.status ?? existingOrder.status;
@@ -217,8 +211,8 @@ export class OrderService {
     );
 
     const updatedOrder = await this.orderRepository.updateOrder({
-      orderId,
-      customerProfileId,
+      orderId: existingOrder.orderId,
+      customerProfileId: existingOrder.customerProfileId,
       status: nextStatus,
       reason: input.reason !== undefined ? input.reason : existingOrder.reason,
       payment,
@@ -229,8 +223,8 @@ export class OrderService {
     }
 
     return await this.orderRepository.getOrderDetail(
-      orderId,
-      customerProfileId,
+      existingOrder.orderId,
+      existingOrder.customerProfileId,
     );
   }
 
