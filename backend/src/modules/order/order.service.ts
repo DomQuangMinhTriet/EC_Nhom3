@@ -4,7 +4,9 @@ import {
   type CreatePaymentRecord,
   type OrderStatus,
   type PaymentMethod,
+  DuplicateTransactionError,
   OrderRepository,
+  StockReservationError,
 } from "./order.repository";
 
 type UpdateOrderInput = {
@@ -62,18 +64,13 @@ export class OrderService {
       throw new AppError("Cart not found", 404);
     }
 
-    const existingOrder = await this.orderRepository.findOrderByCartId(cartId);
-    if (existingOrder) {
-      throw new AppError("Order already exists for this cart", 409);
-    }
-
     const cartItems =
       await this.orderRepository.getCartItemsWithProducts(cartId);
     if (cartItems.length === 0) {
       throw new AppError("Cart is empty", 400);
     }
 
-    let subtotalAmount = 0;
+    let totalAmount = 0;
     const orderItems: CreateOrderItemRecord[] = [];
 
     for (const item of cartItems) {
@@ -101,7 +98,7 @@ export class OrderService {
         throw new AppError("Cart item unitPrice is invalid", 400);
       }
 
-      subtotalAmount += unitPrice * item.quantity;
+      totalAmount += unitPrice * item.quantity;
 
       orderItems.push({
         voucherProductId: item.voucherProductId,
@@ -110,12 +107,10 @@ export class OrderService {
       });
     }
 
-    const createdOrder = await this.orderRepository.createOrderFromCart({
+    const createdOrder = await this.createOrderWithReservedStock({
       cartId,
       customerProfileId,
-      subtotalAmount: toMoney(subtotalAmount),
-      discountAmount: "0.00",
-      totalAmount: toMoney(subtotalAmount),
+      totalAmount: toMoney(totalAmount),
       items: orderItems,
     });
 
@@ -151,6 +146,32 @@ export class OrderService {
     }
 
     return await this.updateExistingOrder(existingOrder, input);
+  }
+
+  async cancelOrder(userId: string, orderId: string, reason?: unknown) {
+    if (reason !== undefined && reason !== null && typeof reason !== "string") {
+      throw new AppError("reason must be a string", 400);
+    }
+
+    return await this.updateOrder(userId, orderId, {
+      status: "failed",
+      reason:
+        typeof reason === "string" ? reason : "Customer cancelled order",
+    });
+  }
+
+  private async createOrderWithReservedStock(
+    input: Parameters<OrderRepository["createOrderFromCart"]>[0],
+  ) {
+    try {
+      return await this.orderRepository.createOrderFromCart(input);
+    } catch (error) {
+      if (error instanceof StockReservationError) {
+        throw new AppError(error.message, 400);
+      }
+
+      throw error;
+    }
   }
 
   private async updateExistingOrder(
@@ -210,7 +231,7 @@ export class OrderService {
       existingOrder.totalAmount,
     );
 
-    const updatedOrder = await this.orderRepository.updateOrder({
+    const updatedOrder = await this.updateOrderRecord({
       orderId: existingOrder.orderId,
       customerProfileId: existingOrder.customerProfileId,
       status: nextStatus,
@@ -226,6 +247,20 @@ export class OrderService {
       existingOrder.orderId,
       existingOrder.customerProfileId,
     );
+  }
+
+  private async updateOrderRecord(
+    input: Parameters<OrderRepository["updateOrder"]>[0],
+  ) {
+    try {
+      return await this.orderRepository.updateOrder(input);
+    } catch (error) {
+      if (error instanceof DuplicateTransactionError) {
+        throw new AppError(error.message, 409);
+      }
+
+      throw error;
+    }
   }
 
   private buildPayment(

@@ -1,6 +1,13 @@
-import { and, eq, sql, sum } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db/client";
-import { branchVoucherProduct, cart, cartItem, customerProfile, voucherProduct } from "../../db/schema";
+import {
+    branchVoucherProduct,
+    cart,
+    cartItem,
+    customerProfile,
+    voucherProduct,
+} from "../../db/schema";
+import { getAvailableStock } from "../../shared/inventory/inventory.repository";
 
 export class CartRepository {
     async getCustomerProfileIdByUserId(userId: string): Promise<string | null> {
@@ -58,20 +65,7 @@ export class CartRepository {
     }
 
     async getAvailableStock(voucherProductId: string): Promise<number> {
-        const result = await db
-            .select({
-                totalStock: sum(branchVoucherProduct.totalQuantity),
-                totalSold: sum(branchVoucherProduct.soldQuantity),
-            })
-            .from(branchVoucherProduct)
-            .where(eq(branchVoucherProduct.voucherProductId, voucherProductId));
-
-        if (!result || result.length === 0) return 0;
-
-        const totalStock = parseInt(result[0]?.totalStock as string ?? "0", 10);
-        const totalSold = parseInt(result[0]?.totalSold as string ?? "0", 10);
-
-        return Math.max(0, totalStock - totalSold);
+        return await getAvailableStock(voucherProductId);
     }
 
     async hasAnyAllocation(voucherProductId: string): Promise<boolean> {

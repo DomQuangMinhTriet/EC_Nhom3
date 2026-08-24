@@ -94,6 +94,7 @@ Chi tiet: [ORDER_API.md](ORDER_API.md)
 | Method | Path |
 | --- | --- |
 | `POST` | `/api/orders` |
+| `PATCH` | `/api/orders/:id/cancel` |
 | `PUT` | `/api/orders/:id` |
 
 ## Voucher Instances

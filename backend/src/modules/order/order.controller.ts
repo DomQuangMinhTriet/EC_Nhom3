@@ -30,4 +30,22 @@ export class OrderController {
       data: await this.orderService.updateOrderBySystem(orderId, req.body),
     });
   };
+
+  cancelOrder = async (req: Request, res: Response) => {
+    const orderId = req.params.id;
+
+    if (!isUuid(orderId)) {
+      throw new AppError("Invalid order ID", 400);
+    }
+
+    const { reason } = req.body as { reason?: unknown };
+
+    res.json({
+      data: await this.orderService.cancelOrder(
+        req.user!.userId,
+        orderId,
+        reason,
+      ),
+    });
+  };
 }

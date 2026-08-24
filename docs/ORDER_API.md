@@ -18,12 +18,19 @@ Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 ec-voucher-api-key: <EC_VOUCHER_API_KEY>
 ```
 
+`PATCH /api/orders/:id/cancel` can bearer token cua `Customer`:
+
+```http
+Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
+```
+
 ## Tong quan
 
 | Method | Endpoint | Muc dich |
 | --- | --- | --- |
 | `POST` | `/` | Tao order tu cart |
-| `PUT` | `/:id` | Cap nhat order khi thanh toan hoac huy/thanh toan that bai |
+| `PUT` | `/:id` | Internal/payment callback cap nhat order |
+| `PATCH` | `/:id/cancel` | Customer huy order dang cho thanh toan |
 
 `:id` la `orderId`.
 
@@ -60,10 +67,7 @@ Response `201 Created`:
 {
   "data": {
     "orderId": "00000000-0000-4000-8000-000000000010",
-    "cartId": "00000000-0000-4000-8000-000000000001",
     "customerProfileId": "00000000-0000-4000-8000-000000000002",
-    "subtotalAmount": "200000.00",
-    "discountAmount": "0.00",
     "totalAmount": "200000.00",
     "status": "pending_payment",
     "reason": null,
@@ -93,19 +97,24 @@ Response `201 Created`:
 Logic tao order:
 
 - Customer chi tao order tu cart cua chinh minh.
+- `cartId` chi dung de lay `cart_items` luc checkout, khong duoc luu vao bang
+  `orders`.
+- Bang `orders` chi luu owner qua `customerProfileId` va tong tien qua
+  `totalAmount`.
 - Cart khong duoc rong.
 - Moi `cart_item` duoc map thanh mot `order_item`.
 - `order_item.quantity` giu nguyen quantity cua `cart_item`.
 - Order moi co `status = pending_payment`.
-- Neu cart da co order, API tra loi conflict.
 - Voucher product phai `active` va khong vuot available stock.
+- Backend lock allocation rows va reserve stock bang cach cong
+  `branch_voucher_products.soldQuantity` ngay khi tao order.
+- Sau khi tao order thanh cong, backend xoa cac `cart_items`; cart rong va co
+  the dung tiep cho lan mua sau.
 
 Tong tien:
 
 ```text
-subtotalAmount = sum(cart_item.unitPrice * quantity)
-discountAmount = 0
-totalAmount = subtotalAmount
+totalAmount = sum(cart_item.unitPrice * quantity)
 ```
 
 ## Cap nhat order completed
@@ -173,6 +182,8 @@ Khi order chuyen sang `completed`:
 - He thong tao voucher code cho cac `order_items` chua co code.
 - Voi moi `order_item`, so voucher code duoc tao bang `order_item.quantity`.
 - Moi voucher code la chuoi ngau nhien 24 ky tu.
+- Neu random code bi trung, backend retry bang `ON CONFLICT DO NOTHING`, khong
+  lam hong transaction dang chay.
 - Voucher code duoc luu trong bang `voucher_codes` voi `status = available`.
 - `expiredAt` lay moc som hon giua `now + validDurationDays` va
   `voucher_products.endDate`.
@@ -180,6 +191,8 @@ Khi order chuyen sang `completed`:
   ket tu order item sang voucher code. Tat ca voucher code da sinh van nam
   trong bang `voucher_codes` va co the xem qua Voucher Instance API.
 - Neu order da `completed`, API khong sinh voucher code lan nua.
+- Neu payment webhook retry cung `transactionId` cho cung order, API tra ve ket
+  qua hien tai va khong tao duplicate payment.
 
 Neu body co payment fields, API se tao record trong bang `payments`.
 Neu khong gui `amount`, amount mac dinh bang `orders.totalAmount`.
@@ -197,7 +210,28 @@ Body co the gui amount/currency tuy chinh:
 }
 ```
 
-## Huy order hoac thanh toan that bai
+## Customer huy order
+
+```http
+PATCH /api/orders/:id/cancel
+Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
+Content-Type: application/json
+```
+
+```json
+{
+  "reason": "Customer cancelled order"
+}
+```
+
+Response `200 OK`: order chuyen sang `failed`.
+
+Neu order dang `pending_payment`, backend release stock da reserve bang cach
+tru `branch_voucher_products.soldQuantity` theo so luong order item. Neu order
+da `completed`, API tra loi loi vi completed order khong duoc chuyen sang
+failed.
+
+## Thanh toan that bai tu internal callback
 
 ```http
 PUT /api/orders/:id
@@ -243,5 +277,5 @@ Payment failed se duoc luu voi `payments.status = failed`.
 | `401` | Thieu/sai bearer token o endpoint tao order, hoac thieu/sai `ec-voucher-api-key` o endpoint update order |
 | `403` | Role khong phai Customer o endpoint tao order |
 | `404` | Khong tim thay customer profile, cart, order |
-| `409` | Cart da co order |
+| `409` | `transactionId` da thuoc order khac |
 | `500` | Khong tao duoc order hoac voucher code |

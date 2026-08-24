@@ -14,6 +14,13 @@ orderRouter.post(
   asyncHandler(orderController.createOrder),
 );
 
+orderRouter.patch(
+  "/:id/cancel",
+  requireAuth,
+  authorizeRoles("Customer"),
+  asyncHandler(orderController.cancelOrder),
+);
+
 orderRouter.put(
   "/:id",
   requireEcVoucherApiKey,

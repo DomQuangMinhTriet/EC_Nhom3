@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, eq, isNull, sql, sum } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db/client";
 import {
   branchVoucherProduct,
@@ -12,6 +12,7 @@ import {
   voucherCode,
   voucherProduct,
 } from "../../db/schema";
+import { getAvailableStock } from "../../shared/inventory/inventory.repository";
 
 export type OrderStatus = "pending_payment" | "completed" | "failed";
 export type PaymentMethod = "bank_transfer" | "card";
@@ -25,8 +26,6 @@ export type CreateOrderItemRecord = {
 export type CreateOrderRecord = {
   cartId: string;
   customerProfileId: string;
-  subtotalAmount: string;
-  discountAmount: string;
   totalAmount: string;
   items: CreateOrderItemRecord[];
 };
@@ -48,11 +47,26 @@ export type UpdateOrderRecord = {
   payment?: CreatePaymentRecord;
 };
 
-const isUniqueViolation = (error: unknown) =>
-  typeof error === "object" &&
-  error !== null &&
-  "code" in error &&
-  (error as { code?: string }).code === "23505";
+type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+type LockedStockAllocation = {
+  branchProfileId: string;
+  voucherProductId: string;
+  totalQuantity: number;
+  soldQuantity: number;
+};
+
+export class StockReservationError extends Error {
+  constructor(public readonly availableStock: number) {
+    super(`Not enough stock available. Available: ${availableStock}`);
+  }
+}
+
+export class DuplicateTransactionError extends Error {
+  constructor() {
+    super("transactionId already exists for another order");
+  }
+}
 
 const generateVoucherCode = () => randomBytes(18).toString("base64url");
 
@@ -94,14 +108,6 @@ export class OrderRepository {
     return result ?? null;
   }
 
-  async findOrderByCartId(cartId: string) {
-    const result = await db.query.order.findFirst({
-      where: eq(order.cartId, cartId),
-    });
-
-    return result ?? null;
-  }
-
   async getCartItemsWithProducts(cartId: string) {
     return await db
       .select({
@@ -129,31 +135,23 @@ export class OrderRepository {
   }
 
   async getAvailableStock(voucherProductId: string): Promise<number> {
-    const result = await db
-      .select({
-        totalStock: sum(branchVoucherProduct.totalQuantity),
-        totalSold: sum(branchVoucherProduct.soldQuantity),
-      })
-      .from(branchVoucherProduct)
-      .where(eq(branchVoucherProduct.voucherProductId, voucherProductId));
-
-    if (!result || result.length === 0) return 0;
-
-    const totalStock = parseInt((result[0]?.totalStock as string) ?? "0", 10);
-    const totalSold = parseInt((result[0]?.totalSold as string) ?? "0", 10);
-
-    return Math.max(0, totalStock - totalSold);
+    return await getAvailableStock(voucherProductId);
   }
 
   async createOrderFromCart(data: CreateOrderRecord) {
     return await db.transaction(async (tx) => {
+      for (const item of this.sortItemsByProduct(data.items)) {
+        await this.reserveStock(
+          tx,
+          item.voucherProductId,
+          item.quantity,
+        );
+      }
+
       const [createdOrder] = await tx
         .insert(order)
         .values({
-          cartId: data.cartId,
           customerProfileId: data.customerProfileId,
-          subtotalAmount: data.subtotalAmount,
-          discountAmount: data.discountAmount,
           totalAmount: data.totalAmount,
           status: "pending_payment",
         })
@@ -171,6 +169,8 @@ export class OrderRepository {
           unitPrice: item.unitPrice,
         })),
       );
+
+      await tx.delete(cartItem).where(eq(cartItem.cartId, data.cartId));
 
       return createdOrder;
     });
@@ -261,10 +261,29 @@ export class OrderRepository {
             eq(order.customerProfileId, data.customerProfileId),
           ),
         )
-        .limit(1);
+        .limit(1)
+        .for("update");
 
       if (!existingOrder) {
         return null;
+      }
+
+      let shouldInsertPayment = Boolean(data.payment);
+      if (data.payment) {
+        const [existingPayment] = await tx
+          .select()
+          .from(payment)
+          .where(eq(payment.transactionId, data.payment.transactionId))
+          .limit(1)
+          .for("update");
+
+        if (existingPayment) {
+          if (existingPayment.orderId !== data.orderId) {
+            throw new DuplicateTransactionError();
+          }
+
+          shouldInsertPayment = false;
+        }
       }
 
       if (data.status === "completed" && existingOrder.status !== "completed") {
@@ -297,28 +316,25 @@ export class OrderRepository {
             for (let attempt = 0; attempt < 5; attempt += 1) {
               const code = generateVoucherCode();
 
-              try {
-                const [createdVoucherCode] = await tx
-                  .insert(voucherCode)
-                  .values({
-                    voucherProductId: item.voucherProductId,
+              const [createdVoucherCode] = await tx
+                .insert(voucherCode)
+                .values({
+                  voucherProductId: item.voucherProductId,
                   customerProfileId: data.customerProfileId,
                   code,
                   expiredAt: calculateExpiredAt(
                     item.validDurationDays,
                     item.endDate,
-                    ),
-                    status: "available",
-                  })
-                  .returning({ voucherCodeId: voucherCode.voucherCodeId });
+                  ),
+                  status: "available",
+                })
+                .onConflictDoNothing({ target: voucherCode.code })
+                .returning({ voucherCodeId: voucherCode.voucherCodeId });
 
+              if (createdVoucherCode) {
                 createdVoucherCodeId =
-                  createdVoucherCode?.voucherCodeId ?? null;
+                  createdVoucherCode.voucherCodeId;
                 break;
-              } catch (error) {
-                if (!isUniqueViolation(error) || attempt === 4) {
-                  throw error;
-                }
               }
             }
 
@@ -344,6 +360,10 @@ export class OrderRepository {
         }
       }
 
+      if (data.status === "failed" && existingOrder.status === "pending_payment") {
+        await this.releaseStockForOrder(tx, data.orderId);
+      }
+
       const [updatedOrder] = await tx
         .update(order)
         .set({
@@ -359,7 +379,7 @@ export class OrderRepository {
         )
         .returning();
 
-      if (data.payment) {
+      if (data.payment && shouldInsertPayment) {
         await tx.insert(payment).values({
           transactionId: data.payment.transactionId,
           orderId: data.orderId,
@@ -373,5 +393,134 @@ export class OrderRepository {
 
       return updatedOrder ?? null;
     });
+  }
+
+  private sortItemsByProduct(items: CreateOrderItemRecord[]) {
+    return [...items].sort((left, right) =>
+      left.voucherProductId.localeCompare(right.voucherProductId),
+    );
+  }
+
+  private async lockStockAllocations(
+    tx: TransactionClient,
+    voucherProductId: string,
+  ): Promise<LockedStockAllocation[]> {
+    return await tx
+      .select({
+        branchProfileId: branchVoucherProduct.branchProfileId,
+        voucherProductId: branchVoucherProduct.voucherProductId,
+        totalQuantity: branchVoucherProduct.totalQuantity,
+        soldQuantity: branchVoucherProduct.soldQuantity,
+      })
+      .from(branchVoucherProduct)
+      .where(eq(branchVoucherProduct.voucherProductId, voucherProductId))
+      .orderBy(asc(branchVoucherProduct.branchProfileId))
+      .for("update");
+  }
+
+  private async reserveStock(
+    tx: TransactionClient,
+    voucherProductId: string,
+    quantity: number,
+  ) {
+    const allocations = await this.lockStockAllocations(tx, voucherProductId);
+    const availableStock = allocations.reduce(
+      (sum, allocation) =>
+        sum + Math.max(0, allocation.totalQuantity - allocation.soldQuantity),
+      0,
+    );
+
+    if (quantity > availableStock) {
+      throw new StockReservationError(availableStock);
+    }
+
+    let remainingQuantity = quantity;
+
+    for (const allocation of allocations) {
+      if (remainingQuantity <= 0) break;
+
+      const availableInAllocation = Math.max(
+        0,
+        allocation.totalQuantity - allocation.soldQuantity,
+      );
+      const quantityToReserve = Math.min(
+        remainingQuantity,
+        availableInAllocation,
+      );
+
+      if (quantityToReserve <= 0) continue;
+
+      await tx
+        .update(branchVoucherProduct)
+        .set({
+          soldQuantity: sql`${branchVoucherProduct.soldQuantity} + ${quantityToReserve}`,
+        })
+        .where(
+          and(
+            eq(branchVoucherProduct.branchProfileId, allocation.branchProfileId),
+            eq(branchVoucherProduct.voucherProductId, voucherProductId),
+          ),
+        );
+
+      remainingQuantity -= quantityToReserve;
+    }
+  }
+
+  private async releaseStockForOrder(tx: TransactionClient, orderId: string) {
+    const items = await tx
+      .select({
+        voucherProductId: orderItem.voucherProductId,
+        quantity: orderItem.quantity,
+      })
+      .from(orderItem)
+      .where(eq(orderItem.orderId, orderId));
+
+    const quantityByProduct = new Map<string, number>();
+    for (const item of items) {
+      quantityByProduct.set(
+        item.voucherProductId,
+        (quantityByProduct.get(item.voucherProductId) ?? 0) + item.quantity,
+      );
+    }
+
+    for (const [voucherProductId, quantity] of [...quantityByProduct.entries()].sort(
+      ([left], [right]) => left.localeCompare(right),
+    )) {
+      await this.releaseStock(tx, voucherProductId, quantity);
+    }
+  }
+
+  private async releaseStock(
+    tx: TransactionClient,
+    voucherProductId: string,
+    quantity: number,
+  ) {
+    const allocations = await this.lockStockAllocations(tx, voucherProductId);
+    let remainingQuantity = quantity;
+
+    for (const allocation of allocations) {
+      if (remainingQuantity <= 0) break;
+
+      const quantityToRelease = Math.min(
+        remainingQuantity,
+        allocation.soldQuantity,
+      );
+
+      if (quantityToRelease <= 0) continue;
+
+      await tx
+        .update(branchVoucherProduct)
+        .set({
+          soldQuantity: sql`${branchVoucherProduct.soldQuantity} - ${quantityToRelease}`,
+        })
+        .where(
+          and(
+            eq(branchVoucherProduct.branchProfileId, allocation.branchProfileId),
+            eq(branchVoucherProduct.voucherProductId, voucherProductId),
+          ),
+        );
+
+      remainingQuantity -= quantityToRelease;
+    }
   }
 }

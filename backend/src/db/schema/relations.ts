@@ -141,7 +141,6 @@ export const cartRelations = relations(cart, ({ one, many }) => ({
     references: [customerProfile.customerProfileId],
   }),
   items: many(cartItem),
-  order: one(order, { fields: [cart.cartId], references: [order.cartId] }),
 }));
 
 export const cartItemRelations = relations(cartItem, ({ one }) => ({
@@ -153,7 +152,6 @@ export const cartItemRelations = relations(cartItem, ({ one }) => ({
 }));
 
 export const orderRelations = relations(order, ({ one, many }) => ({
-  cart: one(cart, { fields: [order.cartId], references: [cart.cartId] }),
   customer: one(customerProfile, {
     fields: [order.customerProfileId],
     references: [customerProfile.customerProfileId],

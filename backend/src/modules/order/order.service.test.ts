@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AppError } from "../../shared/errors/AppError";
-import type { CreateOrderRecord, OrderRepository } from "./order.repository";
+import {
+  DuplicateTransactionError,
+  type CreateOrderRecord,
+  type OrderRepository,
+  StockReservationError,
+} from "./order.repository";
 import { OrderService } from "./order.service";
 
 const userId = "00000000-0000-4000-8000-000000000001";
@@ -14,10 +19,7 @@ const createdAt = new Date("2026-01-01T00:00:00.000Z");
 
 const orderRecord = {
   orderId,
-  cartId,
   customerProfileId,
-  subtotalAmount: "200.00",
-  discountAmount: "0.00",
   totalAmount: "200.00",
   status: "pending_payment" as const,
   reason: null,
@@ -34,7 +36,6 @@ const createRepository = (overrides: Partial<OrderRepository> = {}) =>
       createdAt,
       updatedAt: createdAt,
     }),
-    findOrderByCartId: async () => null,
     getCartItemsWithProducts: async () => [
       {
         cartItemId: "00000000-0000-4000-8000-000000000006",
@@ -78,8 +79,6 @@ test("createOrder creates a pending order preserving cart item quantity", async 
   assert.deepEqual(captured, {
     cartId,
     customerProfileId,
-    subtotalAmount: "200.00",
-    discountAmount: "0.00",
     totalAmount: "200.00",
     items: [{ voucherProductId, quantity: 2, unitPrice: "100.00" }],
   });
@@ -98,6 +97,24 @@ test("createOrder rejects an empty cart", async () => {
       error instanceof AppError &&
       error.statusCode === 400 &&
       error.message === "Cart is empty",
+  );
+});
+
+test("createOrder returns 400 if locked stock is no longer enough", async () => {
+  const service = new OrderService(
+    createRepository({
+      createOrderFromCart: async () => {
+        throw new StockReservationError(0);
+      },
+    }),
+  );
+
+  await assert.rejects(
+    service.createOrder(userId, cartId),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "Not enough stock available. Available: 0",
   );
 });
 
@@ -164,6 +181,50 @@ test("updateOrderBySystem completes a pending order without a customer token", a
       status: "success",
       reason: undefined,
     },
+  });
+});
+
+test("updateOrderBySystem returns 409 if transactionId belongs to another order", async () => {
+  const service = new OrderService(
+    createRepository({
+      updateOrder: async () => {
+        throw new DuplicateTransactionError();
+      },
+    }),
+  );
+
+  await assert.rejects(
+    service.updateOrderBySystem(orderId, {
+      status: "completed",
+      transactionId: "txn-system-123",
+      paymentMethod: "bank_transfer",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 409 &&
+      error.message === "transactionId already exists for another order",
+  );
+});
+
+test("cancelOrder changes a customer order to failed", async () => {
+  let captured: Parameters<OrderRepository["updateOrder"]>[0] | undefined;
+  const service = new OrderService(
+    createRepository({
+      updateOrder: async (input) => {
+        captured = input;
+        return { ...orderRecord, status: "failed" };
+      },
+    }),
+  );
+
+  await service.cancelOrder(userId, orderId, "Changed my mind");
+
+  assert.deepEqual(captured, {
+    orderId,
+    customerProfileId,
+    status: "failed",
+    reason: "Changed my mind",
+    payment: undefined,
   });
 });
 
