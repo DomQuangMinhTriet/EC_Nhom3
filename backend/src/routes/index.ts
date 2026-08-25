@@ -10,6 +10,7 @@ import { profileRouter } from "../modules/profile/profile.routes";
 import { usersRouter } from "../modules/users/users.routes";
 import { voucherProductRouter } from "../modules/voucherProduct/voucherProduct.routes";
 import { cartRouter } from "../modules/cart/cart.routes";
+import { orderRouter } from "../modules/order/order.routes";
 import { voucherInstanceRouter } from "../modules/voucherInstance/voucherInstance.routes";
 import { reviewRouter } from "../modules/review/review.routes";
 import { notificationRouter } from "../modules/notification/notification.routes";
@@ -39,6 +40,9 @@ apiRouter.use("/api/quotas", branchQuotaRouter);
 
 // Cart
 apiRouter.use("/api/carts", cartRouter);
+
+// Orders
+apiRouter.use("/api/orders", orderRouter);
 
 // Voucher Instances (My Vouchers)
 apiRouter.use("/api/voucher-instances", voucherInstanceRouter);

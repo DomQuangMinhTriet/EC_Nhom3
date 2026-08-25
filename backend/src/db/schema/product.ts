@@ -87,7 +87,6 @@ export const voucherCode = pgTable("voucher_codes", {
     .notNull()
     .references(() => customerProfile.customerProfileId),
   code: text("code").notNull().unique(),
-  qr: text("qr").notNull().unique(),
   expiredAt: timestamp("expiredAt", { withTimezone: true }).notNull(),
   status: voucherCodeStatusEnum("status").notNull().default("available"),
   createdAt: timestamp("createdAt", { withTimezone: true })

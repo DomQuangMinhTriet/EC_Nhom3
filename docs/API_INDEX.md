@@ -87,6 +87,16 @@ Chi tiet: [CART_API.md](CART_API.md)
 | `PUT` | `/api/carts/me/items/:id` |
 | `DELETE` | `/api/carts/me/items/:id` |
 
+## Orders
+
+Chi tiet: [ORDER_API.md](ORDER_API.md)
+
+| Method | Path |
+| --- | --- |
+| `POST` | `/api/orders` |
+| `PATCH` | `/api/orders/:id/cancel` |
+| `PUT` | `/api/orders/:id` |
+
 ## Voucher Instances
 
 Chi tiet: [VOUCHER_INSTANCE_API.md](VOUCHER_INSTANCE_API.md)

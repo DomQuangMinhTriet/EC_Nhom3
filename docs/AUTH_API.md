@@ -73,6 +73,15 @@ Content-Type: application/json
 Branch duoc tao voi `status = pending`. Cac role managed khac duoc tao theo
 status trong service hien tai.
 
+Trang thai account sau khi tao:
+
+| Endpoint | Role tao ra | User status | Quyen tao |
+| --- | --- | --- | --- |
+| `/register/super-admin` | `Super_Admin` | `active` | Super Admin |
+| `/register/operational-admin` | `Operational_Admin` | `active` | Super Admin |
+| `/register/partner` | `Partner` | `active` | Super Admin, Operational Admin |
+| `/register/branch` | `Branch` | `pending` | Partner |
+
 ## Login
 
 ```http

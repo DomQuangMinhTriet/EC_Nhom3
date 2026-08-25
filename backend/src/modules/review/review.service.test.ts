@@ -17,7 +17,6 @@ const mockVoucherInstance = {
     customerProfileId: mockCustomerProfileId,
     voucherProductId: mockVoucherProductId,
     code: "CODE",
-    qr: "QR",
     status: "used" as const,
     expiredAt: new Date(),
     createdAt: new Date(),

@@ -61,19 +61,9 @@ export const cartItem = pgTable(
 
 export const order = pgTable("orders", {
   orderId: uuid("orderId").defaultRandom().primaryKey(),
-  cartId: uuid("cartId")
-    .notNull()
-    .unique()
-    .references(() => cart.cartId),
   customerProfileId: uuid("customerProfileId")
     .notNull()
     .references(() => customerProfile.customerProfileId),
-  subtotalAmount: numeric("subtotalAmount", { precision: 15, scale: 2 })
-    .notNull()
-    .default("0"),
-  discountAmount: numeric("discountAmount", { precision: 15, scale: 2 })
-    .notNull()
-    .default("0"),
   totalAmount: numeric("totalAmount", { precision: 15, scale: 2 })
     .notNull()
     .default("0"),
@@ -94,8 +84,10 @@ export const orderItem = pgTable(
       .notNull()
       .references(() => order.orderId),
     orderItemId: uuid("orderItemId").defaultRandom().notNull(),
-    voucherCodeId: uuid("voucherCodeId")
+    voucherProductId: uuid("voucherProductId")
       .notNull()
+      .references(() => voucherProduct.voucherProductId),
+    voucherCodeId: uuid("voucherCodeId")
       .references(() => voucherCode.voucherCodeId),
     quantity: integer("quantity").notNull().default(1),
     unitPrice: numeric("unitPrice", { precision: 9, scale: 2 })

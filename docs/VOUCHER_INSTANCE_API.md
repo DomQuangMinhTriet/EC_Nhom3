@@ -53,7 +53,6 @@ Response:
     {
       "voucherCodeId": "00000000-0000-4000-8000-000000000010",
       "code": "ABCD1234",
-      "qr": "ABCD1234",
       "status": "available",
       "expiredAt": "2026-09-20T00:00:00.000Z",
       "usedAt": null,
@@ -87,6 +86,8 @@ Response:
 ```
 
 Backend chi tra voucher thuoc Customer dang dang nhap.
+`qrDataUri` duoc generate on-the-fly tu `code`; bang `voucher_codes` khong
+luu column `qr`.
 
 ## Loi pho bien
 
