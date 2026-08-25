@@ -9,11 +9,8 @@ import { State } from "@/components/common/state";
 import { VoucherStatusBadge } from "@/components/voucher/voucher-status-badge";
 import { usePartnerVouchers } from "@/hooks/queries/use-voucher-products";
 
-function formatPrice(voucher: { originalPrice: string; discountType: string; discountValue: string }) {
-  const original = Number(voucher.originalPrice);
-  const value = Number(voucher.discountValue);
-  const sale = voucher.discountType === "percentage" ? original * (1 - value / 100) : Math.max(original - value, 0);
-  return `${sale.toLocaleString("vi-VN")}đ`;
+function formatPrice(voucher: { originalPrice: string }) {
+  return `${Number(voucher.originalPrice).toLocaleString("vi-VN")}đ`;
 }
 
 export default function PartnerVouchersPage() {

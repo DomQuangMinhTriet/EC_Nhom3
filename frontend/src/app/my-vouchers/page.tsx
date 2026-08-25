@@ -19,12 +19,6 @@ const statusStyle: Record<VoucherInstanceStatus, string> = {
   cancelled: "bg-red-50 text-danger",
 };
 
-function salePrice(voucher: { originalPrice: string; discountType: "direct" | "percentage"; discountValue: string }) {
-  const original = Number(voucher.originalPrice);
-  const value = Number(voucher.discountValue);
-  return voucher.discountType === "percentage" ? original * (1 - value / 100) : Math.max(original - value, 0);
-}
-
 export default function MyVouchersPage() { return <MyVouchersContent/>; }
 
 function MyVouchersContent() {
@@ -61,7 +55,7 @@ function MyVouchersContent() {
             <article key={voucher.voucherCodeId} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-brand-sm">
               <div className="flex items-center justify-between bg-gradient-to-r from-indigo-950 to-primary p-5 text-white">
                 <h2 className="text-sm font-extrabold">{voucher.voucherProduct.title}</h2>
-                <b className="text-lg">{salePrice(voucher.voucherProduct).toLocaleString("vi-VN")}đ</b>
+                <b className="text-lg">{Number(voucher.voucherProduct.originalPrice).toLocaleString("vi-VN")}đ</b>
               </div>
               <div className="flex items-end justify-between p-4">
                 <div>

@@ -6,12 +6,6 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { useCategoryNameMap, useVoucherProduct } from "@/hooks/queries/use-voucher-products";
 import { State } from "@/components/common/state";
 
-function salePrice(originalPrice: string, discountType: "direct" | "percentage", discountValue: string) {
-  const original = Number(originalPrice);
-  const value = Number(discountValue);
-  return discountType === "percentage" ? original * (1 - value / 100) : Math.max(original - value, 0);
-}
-
 export default function VoucherDetailPage() {
   const params = useParams<{ id: string }>();
   const { data: voucher, isLoading, isError } = useVoucherProduct(params.id);
@@ -25,9 +19,8 @@ export default function VoucherDetailPage() {
     return <main className="min-h-screen bg-slate-50"><TopNav/><div className="mx-auto max-w-xl p-8"><State icon="!" title="Voucher không tồn tại" text="Ưu đãi này có thể đã hết hạn hoặc không còn được bán."/></div></main>;
   }
 
-  const price = salePrice(voucher.originalPrice, voucher.discountType, voucher.discountValue);
+  const price = Number(voucher.originalPrice);
   const categoryName = categoryNames.get(voucher.categoryId);
-  const discountLabel = voucher.discountType === "percentage" ? `−${Number(voucher.discountValue)}%` : `−${Number(voucher.discountValue).toLocaleString("vi-VN")}đ`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -40,7 +33,7 @@ export default function VoucherDetailPage() {
               {voucher.imageUrl && <img src={voucher.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80"/>}
               <div className="relative text-center">
                 {categoryName && <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">{categoryName}</span>}
-                <h1 className="mt-5 text-6xl font-extrabold tracking-[-4px]">{discountLabel}</h1>
+                <h1 className="mt-5 text-3xl font-extrabold tracking-[-1px]">{voucher.title}</h1>
               </div>
             </div>
             <article className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-brand-sm">
@@ -58,7 +51,6 @@ export default function VoucherDetailPage() {
             {categoryName && <p className="text-xs font-semibold text-slate-500">{categoryName}</p>}
             <div className="my-5 border-y border-slate-100 py-5">
               <b className="text-3xl text-primary">{price.toLocaleString("vi-VN")}đ</b>
-              <s className="ml-3 text-sm text-slate-400">{Number(voucher.originalPrice).toLocaleString("vi-VN")}đ</s>
             </div>
             <AddToCartButton voucher={voucher}/>
             <p className="mt-4 text-center text-[11px] text-slate-500">🎟 Nhận mã voucher ngay sau thanh toán</p>
