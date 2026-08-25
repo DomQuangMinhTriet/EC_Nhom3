@@ -218,6 +218,46 @@ export class OrderRepository {
     };
   }
 
+  async getOrderDetailForAdmin(orderId: string) {
+    const [orderRecord] = await db
+      .select({
+        orderId: order.orderId,
+        customerProfileId: order.customerProfileId,
+        totalAmount: order.totalAmount,
+        status: order.status,
+        reason: order.reason,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        customer: {
+          fullName: customerProfile.fullName,
+          email: user.email,
+        },
+      })
+      .from(order)
+      .innerJoin(
+        customerProfile,
+        eq(order.customerProfileId, customerProfile.customerProfileId),
+      )
+      .innerJoin(user, eq(customerProfile.userId, user.userId))
+      .where(eq(order.orderId, orderId))
+      .limit(1);
+
+    if (!orderRecord) {
+      return null;
+    }
+
+    const [items, payments] = await Promise.all([
+      this.selectOrderItems(eq(orderItem.orderId, orderId)),
+      db.select().from(payment).where(eq(payment.orderId, orderId)),
+    ]);
+
+    return {
+      ...orderRecord,
+      items,
+      payments,
+    };
+  }
+
   async findOrdersByCustomer(
     customerProfileId: string,
     { page, limit, status }: { page: number; limit: number; status?: OrderStatus },

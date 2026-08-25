@@ -23,6 +23,13 @@ orderRouter.get(
 );
 
 orderRouter.get(
+  "/admin/:id",
+  requireAuth,
+  authorizeRoles("Super_Admin", "Operational_Admin"),
+  asyncHandler(orderController.getOrderByIdForAdmin),
+);
+
+orderRouter.get(
   "/:id",
   requireAuth,
   authorizeRoles("Customer"),

@@ -83,6 +83,16 @@ export class OrderController {
     );
   };
 
+  getOrderByIdForAdmin = async (req: Request, res: Response) => {
+    const orderId = req.params.id;
+
+    if (!isUuid(orderId)) {
+      throw new AppError("Invalid order ID", 400);
+    }
+
+    res.json({ data: await this.orderService.getOrderByIdForAdmin(orderId) });
+  };
+
   createOrder = async (req: Request, res: Response) => {
     const userId = req.user!.userId;
     const { cartId } = req.body as { cartId?: unknown };

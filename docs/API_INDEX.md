@@ -93,6 +93,10 @@ Chi tiet: [ORDER_API.md](ORDER_API.md)
 
 | Method | Path |
 | --- | --- |
+| `GET` | `/api/orders` |
+| `GET` | `/api/orders/admin` |
+| `GET` | `/api/orders/admin/:id` |
+| `GET` | `/api/orders/:id` |
 | `POST` | `/api/orders` |
 | `PATCH` | `/api/orders/:id/cancel` |
 | `PUT` | `/api/orders/:id` |

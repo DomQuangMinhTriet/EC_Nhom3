@@ -239,6 +239,17 @@ export class OrderService {
     return { data: orders, pagination: toPagination(page, limit, total) };
   }
 
+  async getOrderByIdForAdmin(orderId: string) {
+    const orderDetail =
+      await this.orderRepository.getOrderDetailForAdmin(orderId);
+
+    if (!orderDetail) {
+      throw new AppError("Order not found", 404);
+    }
+
+    return orderDetail;
+  }
+
   private async createOrderWithReservedStock(
     input: Parameters<OrderRepository["createOrderFromCart"]>[0],
   ) {

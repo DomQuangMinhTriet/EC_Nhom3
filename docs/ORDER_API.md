@@ -25,7 +25,7 @@ Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 ```
 
 `GET /api/orders`, `GET /api/orders/:id` can bearer token cua `Customer`.
-`GET /api/orders/admin` can bearer token cua `Super_Admin` hoac
+`GET /api/orders/admin`, `GET /api/orders/admin/:id` can bearer token cua `Super_Admin` hoac
 `Operational_Admin`.
 
 ## Tong quan
@@ -34,13 +34,14 @@ Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 | --- | --- | --- |
 | `GET` | `/` | Customer xem danh sach order cua chinh minh (phan trang) |
 | `GET` | `/admin` | Admin xem tat ca order (phan trang, loc), phuc vu dashboard |
+| `GET` | `/admin/:id` | Admin xem chi tiet bat ky order nao |
 | `GET` | `/:id` | Customer xem chi tiet 1 order cua chinh minh |
 | `POST` | `/` | Tao order tu cart |
 | `PUT` | `/:id` | Internal/payment callback cap nhat order |
 | `PATCH` | `/:id/cancel` | Customer huy order dang cho thanh toan |
 
-`:id` la `orderId`. Route `/admin` duoc dang ky truoc route `/:id` trong
-Express de tranh bi hieu nham la mot `orderId`.
+`:id` la `orderId`. Cac route `/admin` va `/admin/:id` duoc dang ky truoc
+route `/:id` trong Express de tranh bi hieu nham la mot `orderId`.
 
 ## Trang thai order
 
@@ -140,6 +141,21 @@ gioi han theo customer va moi phan tu co them field `customer`:
   "pagination": { "page": 1, "limit": 20, "total": 42, "totalPages": 3 }
 }
 ```
+
+## Admin xem chi tiet 1 order bat ky
+
+```http
+GET /api/orders/admin/:id
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
+```
+
+Role: `Super_Admin`, `Operational_Admin`. Admin co the xem order theo
+`orderId` cua bat ky customer nao, khong bi gioi han theo customer dang dang
+nhap.
+
+Response `200 OK`: `{"data": {...}}` - cung shape voi 1 phan tu trong
+`GET /api/orders/admin`, bao gom field `customer`, `items`, va `payments`.
+Neu `orderId` khong hop le tra `400`. Neu order khong ton tai tra `404`.
 
 ## Tao order tu cart
 
@@ -369,7 +385,7 @@ Payment failed se duoc luu voi `payments.status = failed`.
 | --- | --- |
 | `400` | `cartId`/`orderId` khong hop le, cart rong, status/payment invalid, voucher khong active, vuot stock, query param (`page`/`limit`/`status`/`from`/`to`/`customerProfileId`) khong hop le |
 | `401` | Thieu/sai bearer token, hoac thieu/sai `ec-voucher-api-key` o endpoint update order |
-| `403` | Role khong phu hop (Customer o endpoint tao order/xem order cua minh; Super_Admin/Operational_Admin o `GET /admin`) |
+| `403` | Role khong phu hop (Customer o endpoint tao order/xem order cua minh; Super_Admin/Operational_Admin o `GET /admin` va `GET /admin/:id`) |
 | `404` | Khong tim thay customer profile, cart, order |
 | `409` | `transactionId` da thuoc order khac |
 | `500` | Khong tao duoc order hoac voucher code |

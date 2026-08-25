@@ -59,6 +59,12 @@ const createRepository = (overrides: Partial<OrderRepository> = {}) =>
     findOrderByIdAndCustomer: async () => orderRecord,
     findOrderById: async () => orderRecord,
     getOrderDetail: async () => ({ ...orderRecord, items: [], payments: [] }),
+    getOrderDetailForAdmin: async () => ({
+      ...orderRecord,
+      customer: { fullName: "Nguyen Van A", email: "customer@example.com" },
+      items: [],
+      payments: [],
+    }),
     updateOrder: async () => orderRecord,
     findOrdersByCustomer: async () => ({
       orders: [{ ...orderRecord, items: [], payments: [] }],
@@ -324,6 +330,51 @@ test("getOrdersForAdmin returns paginated orders across all customers", async ()
   assert.equal(captured?.status, "completed");
   assert.equal(captured?.customerProfileId, customerProfileId);
   assert.deepEqual(result.pagination, { page: 1, limit: 20, total: 1, totalPages: 1 });
+});
+
+test("getOrderByIdForAdmin returns any order detail with customer info", async () => {
+  let capturedOrderId: string | undefined;
+  const service = new OrderService(
+    createRepository({
+      getCustomerProfileIdByUserId: async () => {
+        throw new Error("customer lookup should not be required for admin detail");
+      },
+      getOrderDetailForAdmin: async (requestedOrderId) => {
+        capturedOrderId = requestedOrderId;
+        return {
+          ...orderRecord,
+          customer: { fullName: "Nguyen Van A", email: "customer@example.com" },
+          items: [],
+          payments: [],
+        };
+      },
+    }),
+  );
+
+  const result = await service.getOrderByIdForAdmin(orderId);
+
+  assert.equal(capturedOrderId, orderId);
+  assert.equal(result.orderId, orderId);
+  assert.deepEqual(result.customer, {
+    fullName: "Nguyen Van A",
+    email: "customer@example.com",
+  });
+});
+
+test("getOrderByIdForAdmin throws 404 when order does not exist", async () => {
+  const service = new OrderService(
+    createRepository({
+      getOrderDetailForAdmin: async () => null,
+    }),
+  );
+
+  await assert.rejects(
+    service.getOrderByIdForAdmin(orderId),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
+      error.message === "Order not found",
+  );
 });
 
 test("updateOrder does not allow failed orders to be completed", async () => {
