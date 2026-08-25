@@ -42,6 +42,14 @@ export const parseOptionalStringQuery = (value: unknown, field: string) => {
   return value;
 };
 
+export const parseRequiredTrimmedString = (value: unknown, field: string) => {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new AppError(`${field} is required`, 400);
+  }
+
+  return value.trim();
+};
+
 export const parsePositiveIntegerQuery = (
   value: unknown,
   field: string,

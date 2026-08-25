@@ -7,14 +7,27 @@ export const voucherInstanceRouter = Router();
 const voucherInstanceController = new VoucherInstanceController();
 
 voucherInstanceRouter.use(requireAuth);
-voucherInstanceRouter.use(authorizeRoles("Customer"));
 
 voucherInstanceRouter.get(
-    "/",
-    asyncHandler(voucherInstanceController.getMyVouchers)
+  "/redeem/:code",
+  authorizeRoles("Branch"),
+  asyncHandler(voucherInstanceController.lookupVoucherForRedemption),
+);
+
+voucherInstanceRouter.patch(
+  "/redeem/:code",
+  authorizeRoles("Branch"),
+  asyncHandler(voucherInstanceController.redeemVoucher),
 );
 
 voucherInstanceRouter.get(
-    "/:id",
-    asyncHandler(voucherInstanceController.getVoucherDetail)
+  "/",
+  authorizeRoles("Customer"),
+  asyncHandler(voucherInstanceController.getMyVouchers),
+);
+
+voucherInstanceRouter.get(
+  "/:id",
+  authorizeRoles("Customer"),
+  asyncHandler(voucherInstanceController.getVoucherDetail),
 );
