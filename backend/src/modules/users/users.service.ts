@@ -67,6 +67,18 @@ export class UsersService {
       throw new AppError("Only Super Admin can update user roles", 403);
     }
 
+    if (actorRole === "Operational_Admin") {
+      const targetUser = await this.usersRepository.findById(userId);
+
+      if (!targetUser) {
+        throw new AppError("User not found", 404);
+      }
+
+      if (targetUser.roleCode !== "Partner" && targetUser.roleCode !== "Branch") {
+        throw new AppError("Operational Admin can only update Partner and Branch users", 403);
+      }
+    }
+
     const updatedUser = await this.usersRepository.updateUser(userId, {
       status,
       roleCode,

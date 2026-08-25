@@ -30,6 +30,16 @@ export class UsersRepository {
     return { users, total: totals[0]?.total ?? 0 };
   }
 
+  async findById(userId: string) {
+    const [record] = await db
+      .select()
+      .from(user)
+      .where(eq(user.userId, userId))
+      .limit(1);
+
+    return record ?? null;
+  }
+
   async updateUser(
     userId: string,
     updates: { status?: UserStatus; roleCode?: AppRole },
