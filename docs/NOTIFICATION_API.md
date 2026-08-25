@@ -16,10 +16,12 @@ Thay `<PORT>` bang port backend trong file `.env`. Request body su dung JSON.
 | Endpoint | Muc dich | Quyen truy cap |
 | --- | --- | --- |
 | `GET /` | Lay tat ca notification cua customer dang dang nhap | Customer |
+| `PATCH /:id/read` | Danh dau 1 notification cua chinh minh la da doc | Customer |
 | `POST /email` | Gui email notification va luu notification neu email thuoc Customer | Internal service co `ec-voucher-api-key` |
 
-`GET /` dung bearer token cua Customer. `POST /email` khong dung bearer token,
-ma dung header noi bo `ec-voucher-api-key` de tranh bi spam.
+`GET /` va `PATCH /:id/read` dung bearer token cua Customer. `POST /email`
+khong dung bearer token, ma dung header noi bo `ec-voucher-api-key` de tranh
+bi spam.
 
 ## Cau hinh moi truong
 
@@ -86,7 +88,44 @@ Neu customer chua co profile, API tra HTTP `404 Not Found`:
 }
 ```
 
-## 2. Gui email notification
+## 2. Danh dau notification la da doc
+
+### Muc dich
+
+Danh dau 1 notification cua Customer dang dang nhap la da doc (`isRead =
+true`).
+
+### Request
+
+```http
+PATCH /api/notifications/:id/read
+Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
+```
+
+`:id` la `notificationId`.
+
+### Response thanh cong
+
+HTTP `200 OK`:
+
+```json
+{
+  "notification": {
+    "notificationId": "d429190f-cd71-4263-b007-052b232e6d38",
+    "customerProfileId": "fb692f71-a5cd-4b64-a744-5d24d539a85d",
+    "title": "Voucher approved",
+    "body": "Your voucher is ready.",
+    "isRead": true,
+    "createdAt": "2026-08-20T14:52:27.732Z"
+  }
+}
+```
+
+Neu `notificationId` khong hop le (khong phai UUID), tra ve `400`. Neu
+notification khong ton tai hoac khong thuoc customer dang dang nhap, tra ve
+`404` (khong tra `403`, de khong lo notification do co ton tai hay khong).
+
+## 3. Gui email notification
 
 ### Muc dich
 
@@ -197,9 +236,9 @@ Response loi co format:
 
 | HTTP status | Y nghia |
 | --- | --- |
-| `400` | Thieu field bat buoc hoac email khong hop le |
+| `400` | Thieu field bat buoc, email khong hop le, hoac `notificationId` khong hop le |
 | `401` | Thieu bearer token, bearer token khong hop le, hoac sai `ec-voucher-api-key` |
-| `403` | Role khong phai Customer khi goi `GET /api/notifications` |
-| `404` | Customer chua co profile |
+| `403` | Role khong phai Customer khi goi `GET /api/notifications` hoac `PATCH /:id/read` |
+| `404` | Customer chua co profile, hoac notification khong ton tai/khong thuoc customer |
 | `500` | Backend thieu bien moi truong bat buoc |
 | `502` | Supabase Edge Function hoac email provider tra loi loi |

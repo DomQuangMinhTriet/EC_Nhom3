@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { AppError } from "../../shared/errors/AppError";
+import { isUuid } from "../../shared/http/requestParsers";
 import { NotificationService } from "./notification.service";
 
 export class NotificationController {
@@ -38,6 +39,25 @@ export class NotificationController {
 
     const result = await this.notificationService.getMyNotifications(
       req.user.userId,
+    );
+
+    res.json(result);
+  };
+
+  markAsRead = async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const notificationId = req.params.id;
+
+    if (!isUuid(notificationId)) {
+      throw new AppError("Invalid notification ID", 400);
+    }
+
+    const result = await this.notificationService.markAsRead(
+      req.user.userId,
+      notificationId,
     );
 
     res.json(result);

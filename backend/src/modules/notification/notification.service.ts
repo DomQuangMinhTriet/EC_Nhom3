@@ -124,4 +124,24 @@ export class NotificationService {
 
     return { notifications };
   }
+
+  async markAsRead(userId: string, notificationId: string) {
+    const customerProfileId =
+      await this.notificationRepository.findCustomerProfileIdByUserId(userId);
+
+    if (!customerProfileId) {
+      throw new AppError("Customer profile not found", 404);
+    }
+
+    const updated = await this.notificationRepository.markAsRead(
+      notificationId,
+      customerProfileId,
+    );
+
+    if (!updated) {
+      throw new AppError("Notification not found", 404);
+    }
+
+    return { notification: updated };
+  }
 }
