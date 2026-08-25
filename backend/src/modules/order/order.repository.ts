@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from "drizzle-orm";
 import { db } from "../../db/client";
 import {
   branchVoucherProduct,
@@ -9,6 +9,7 @@ import {
   order,
   orderItem,
   payment,
+  user,
   voucherCode,
   voucherProduct,
 } from "../../db/schema";
@@ -206,40 +207,7 @@ export class OrderRepository {
     }
 
     const [items, payments] = await Promise.all([
-      db
-        .select({
-          orderItemId: orderItem.orderItemId,
-          voucherProductId: orderItem.voucherProductId,
-          voucherCodeId: orderItem.voucherCodeId,
-          quantity: orderItem.quantity,
-          unitPrice: orderItem.unitPrice,
-          createdAt: orderItem.createdAt,
-          updatedAt: orderItem.updatedAt,
-          voucherProduct: {
-            voucherProductId: voucherProduct.voucherProductId,
-            title: voucherProduct.title,
-            imageUrl: voucherProduct.imageUrl,
-            originalPrice: voucherProduct.originalPrice,
-            discountType: voucherProduct.discountType,
-            discountValue: voucherProduct.discountValue,
-          },
-          voucherCode: {
-            voucherCodeId: voucherCode.voucherCodeId,
-            code: voucherCode.code,
-            status: voucherCode.status,
-            expiredAt: voucherCode.expiredAt,
-          },
-        })
-        .from(orderItem)
-        .innerJoin(
-          voucherProduct,
-          eq(orderItem.voucherProductId, voucherProduct.voucherProductId),
-        )
-        .leftJoin(
-          voucherCode,
-          eq(orderItem.voucherCodeId, voucherCode.voucherCodeId),
-        )
-        .where(eq(orderItem.orderId, orderId)),
+      this.selectOrderItems(eq(orderItem.orderId, orderId)),
       db.select().from(payment).where(eq(payment.orderId, orderId)),
     ]);
 
@@ -248,6 +216,161 @@ export class OrderRepository {
       items,
       payments,
     };
+  }
+
+  async findOrdersByCustomer(
+    customerProfileId: string,
+    { page, limit, status }: { page: number; limit: number; status?: OrderStatus },
+  ) {
+    const offset = (page - 1) * limit;
+    const filters = and(
+      eq(order.customerProfileId, customerProfileId),
+      status ? eq(order.status, status) : undefined,
+    );
+
+    const [orders, totals] = await Promise.all([
+      db
+        .select()
+        .from(order)
+        .where(filters)
+        .orderBy(desc(order.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ total: count() }).from(order).where(filters),
+    ]);
+
+    return await this.attachItemsAndPayments(orders, totals[0]?.total ?? 0);
+  }
+
+  async findOrdersForAdmin({
+    page,
+    limit,
+    status,
+    from,
+    to,
+    customerProfileId,
+  }: {
+    page: number;
+    limit: number;
+    status?: OrderStatus;
+    from?: Date;
+    to?: Date;
+    customerProfileId?: string;
+  }) {
+    const offset = (page - 1) * limit;
+    const filters = and(
+      status ? eq(order.status, status) : undefined,
+      customerProfileId ? eq(order.customerProfileId, customerProfileId) : undefined,
+      from ? gte(order.createdAt, from) : undefined,
+      to ? lte(order.createdAt, to) : undefined,
+    );
+
+    const [orders, totals] = await Promise.all([
+      db
+        .select({
+          orderId: order.orderId,
+          customerProfileId: order.customerProfileId,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          reason: order.reason,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          customer: {
+            fullName: customerProfile.fullName,
+            email: user.email,
+          },
+        })
+        .from(order)
+        .innerJoin(
+          customerProfile,
+          eq(order.customerProfileId, customerProfile.customerProfileId),
+        )
+        .innerJoin(user, eq(customerProfile.userId, user.userId))
+        .where(filters)
+        .orderBy(desc(order.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ total: count() }).from(order).where(filters),
+    ]);
+
+    return await this.attachItemsAndPayments(orders, totals[0]?.total ?? 0);
+  }
+
+  private async attachItemsAndPayments<T extends { orderId: string }>(
+    orders: T[],
+    total: number,
+  ) {
+    if (orders.length === 0) {
+      return { orders: [], total };
+    }
+
+    const orderIds = orders.map((orderRecord) => orderRecord.orderId);
+
+    const [items, payments] = await Promise.all([
+      this.selectOrderItems(inArray(orderItem.orderId, orderIds)),
+      db.select().from(payment).where(inArray(payment.orderId, orderIds)),
+    ]);
+
+    const itemsByOrder = new Map<string, typeof items>();
+    for (const item of items) {
+      const list = itemsByOrder.get(item.orderId) ?? [];
+      list.push(item);
+      itemsByOrder.set(item.orderId, list);
+    }
+
+    const paymentsByOrder = new Map<string, typeof payments>();
+    for (const paymentRecord of payments) {
+      const list = paymentsByOrder.get(paymentRecord.orderId) ?? [];
+      list.push(paymentRecord);
+      paymentsByOrder.set(paymentRecord.orderId, list);
+    }
+
+    return {
+      orders: orders.map((orderRecord) => ({
+        ...orderRecord,
+        items: itemsByOrder.get(orderRecord.orderId) ?? [],
+        payments: paymentsByOrder.get(orderRecord.orderId) ?? [],
+      })),
+      total,
+    };
+  }
+
+  private selectOrderItems(where: SQL) {
+    return db
+      .select({
+        orderItemId: orderItem.orderItemId,
+        orderId: orderItem.orderId,
+        voucherProductId: orderItem.voucherProductId,
+        voucherCodeId: orderItem.voucherCodeId,
+        quantity: orderItem.quantity,
+        unitPrice: orderItem.unitPrice,
+        createdAt: orderItem.createdAt,
+        updatedAt: orderItem.updatedAt,
+        voucherProduct: {
+          voucherProductId: voucherProduct.voucherProductId,
+          title: voucherProduct.title,
+          imageUrl: voucherProduct.imageUrl,
+          originalPrice: voucherProduct.originalPrice,
+          discountType: voucherProduct.discountType,
+          discountValue: voucherProduct.discountValue,
+        },
+        voucherCode: {
+          voucherCodeId: voucherCode.voucherCodeId,
+          code: voucherCode.code,
+          status: voucherCode.status,
+          expiredAt: voucherCode.expiredAt,
+        },
+      })
+      .from(orderItem)
+      .innerJoin(
+        voucherProduct,
+        eq(orderItem.voucherProductId, voucherProduct.voucherProductId),
+      )
+      .leftJoin(
+        voucherCode,
+        eq(orderItem.voucherCodeId, voucherCode.voucherCodeId),
+      )
+      .where(where);
   }
 
   async updateOrder(data: UpdateOrderRecord) {

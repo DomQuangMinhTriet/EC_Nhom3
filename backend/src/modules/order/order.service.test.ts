@@ -60,6 +60,14 @@ const createRepository = (overrides: Partial<OrderRepository> = {}) =>
     findOrderById: async () => orderRecord,
     getOrderDetail: async () => ({ ...orderRecord, items: [], payments: [] }),
     updateOrder: async () => orderRecord,
+    findOrdersByCustomer: async () => ({
+      orders: [{ ...orderRecord, items: [], payments: [] }],
+      total: 1,
+    }),
+    findOrdersForAdmin: async () => ({
+      orders: [{ ...orderRecord, items: [], payments: [] }],
+      total: 1,
+    }),
     ...overrides,
   }) as unknown as OrderRepository;
 
@@ -226,6 +234,96 @@ test("cancelOrder changes a customer order to failed", async () => {
     reason: "Changed my mind",
     payment: undefined,
   });
+});
+
+test("getMyOrders returns the customer's paginated orders", async () => {
+  let captured: { page: number; limit: number; status?: string } | undefined;
+  const service = new OrderService(
+    createRepository({
+      findOrdersByCustomer: async (_customerProfileId, params) => {
+        captured = params;
+        return { orders: [{ ...orderRecord, items: [], payments: [] }], total: 1 };
+      },
+    }),
+  );
+
+  const result = await service.getMyOrders(userId, { page: 1, limit: 20, status: "completed" });
+
+  assert.deepEqual(captured, { page: 1, limit: 20, status: "completed" });
+  assert.equal(result.data.length, 1);
+  assert.deepEqual(result.pagination, { page: 1, limit: 20, total: 1, totalPages: 1 });
+});
+
+test("getMyOrders rejects an invalid status filter", async () => {
+  const service = new OrderService(createRepository());
+
+  await assert.rejects(
+    service.getMyOrders(userId, { page: 1, limit: 20, status: "not-a-status" }),
+    (error: unknown) => error instanceof AppError && error.statusCode === 400,
+  );
+});
+
+test("getOrderById returns the order detail for its owner", async () => {
+  const service = new OrderService(
+    createRepository({
+      getOrderDetail: async () => ({ ...orderRecord, items: [], payments: [] }),
+    }),
+  );
+
+  const result = await service.getOrderById(userId, orderId);
+
+  assert.equal(result.orderId, orderId);
+});
+
+test("getOrderById throws 404 when the order does not belong to the customer", async () => {
+  const service = new OrderService(
+    createRepository({
+      getOrderDetail: async () => null,
+    }),
+  );
+
+  await assert.rejects(
+    service.getOrderById(userId, orderId),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
+      error.message === "Order not found",
+  );
+});
+
+test("getOrdersForAdmin returns paginated orders across all customers", async () => {
+  let captured:
+    | { page: number; limit: number; status?: string; customerProfileId?: string }
+    | undefined;
+  const service = new OrderService(
+    createRepository({
+      findOrdersForAdmin: async (params) => {
+        captured = params;
+        return {
+          orders: [
+            {
+              ...orderRecord,
+              items: [],
+              payments: [],
+              customer: { fullName: "Nguyen Van A", email: "customer@example.com" },
+            },
+          ],
+          total: 1,
+        };
+      },
+    }),
+  );
+
+  const result = await service.getOrdersForAdmin({
+    page: 1,
+    limit: 20,
+    status: "completed",
+    customerProfileId,
+  });
+
+  assert.equal(captured?.status, "completed");
+  assert.equal(captured?.customerProfileId, customerProfileId);
+  assert.deepEqual(result.pagination, { page: 1, limit: 20, total: 1, totalPages: 1 });
 });
 
 test("updateOrder does not allow failed orders to be completed", async () => {
