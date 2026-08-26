@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { customerProfile, notification, user } from "../../db/schema";
 
@@ -36,5 +36,20 @@ export class NotificationRepository {
       .from(notification)
       .where(eq(notification.customerProfileId, customerProfileId))
       .orderBy(desc(notification.createdAt));
+  }
+
+  async markAsRead(notificationId: string, customerProfileId: string) {
+    const [record] = await db
+      .update(notification)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notification.notificationId, notificationId),
+          eq(notification.customerProfileId, customerProfileId),
+        ),
+      )
+      .returning();
+
+    return record ?? null;
   }
 }

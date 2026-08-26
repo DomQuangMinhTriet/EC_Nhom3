@@ -20,3 +20,10 @@ notificationRouter.get(
   authorizeRoles("Customer"),
   asyncHandler(notificationController.getMyNotifications),
 );
+
+notificationRouter.patch(
+  "/:id/read",
+  requireAuth,
+  authorizeRoles("Customer"),
+  asyncHandler(notificationController.markAsRead),
+);

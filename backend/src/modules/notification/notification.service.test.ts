@@ -37,6 +37,14 @@ const createRepository = (overrides = {}) => ({
       createdAt: new Date(),
     },
   ],
+  markAsRead: async (notificationId: string) => ({
+    notificationId,
+    customerProfileId,
+    title: input.title,
+    body: input.body,
+    isRead: true,
+    createdAt: new Date(),
+  }),
   ...overrides,
 });
 
@@ -110,6 +118,40 @@ test("getMyNotifications throws 404 if customer profile is missing", async () =>
 
   await assert.rejects(
     service.getMyNotifications("missing-user"),
+    (error) => error instanceof AppError && error.statusCode === 404,
+  );
+});
+
+test("markAsRead marks a customer's own notification as read", async () => {
+  const service = new NotificationService(createRepository(), async () => {});
+
+  const result = await service.markAsRead("user-1", "notification-1");
+
+  assert.equal(result.notification.isRead, true);
+});
+
+test("markAsRead throws 404 if the notification does not belong to the customer", async () => {
+  const service = new NotificationService(
+    createRepository({ markAsRead: async () => null }),
+    async () => {},
+  );
+
+  await assert.rejects(
+    service.markAsRead("user-1", "notification-1"),
+    (error) => error instanceof AppError && error.statusCode === 404,
+  );
+});
+
+test("markAsRead throws 404 if customer profile is missing", async () => {
+  const service = new NotificationService(
+    createRepository({
+      findCustomerProfileIdByUserId: async () => null,
+    }),
+    async () => {},
+  );
+
+  await assert.rejects(
+    service.markAsRead("missing-user", "notification-1"),
     (error) => error instanceof AppError && error.statusCode === 404,
   );
 });

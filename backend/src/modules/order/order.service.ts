@@ -27,6 +27,37 @@ const isOrderStatus = (value: string): value is OrderStatus =>
 const isPaymentMethod = (value: string): value is PaymentMethod =>
   paymentMethods.includes(value as PaymentMethod);
 
+type ListOrdersInput = {
+  page: number;
+  limit: number;
+  status?: string;
+};
+
+type ListOrdersForAdminInput = ListOrdersInput & {
+  from?: Date;
+  to?: Date;
+  customerProfileId?: string;
+};
+
+const toPagination = (page: number, limit: number, total: number) => ({
+  page,
+  limit,
+  total,
+  totalPages: Math.ceil(total / limit),
+});
+
+const parseStatusFilter = (status?: string): OrderStatus | undefined => {
+  if (status === undefined) {
+    return undefined;
+  }
+
+  if (!isOrderStatus(status)) {
+    throw new AppError("Invalid status", 400);
+  }
+
+  return status;
+};
+
 const toMoney = (amount: number) => Math.max(0, amount).toFixed(2);
 
 const parseMoney = (value: string | number, field: string) => {
@@ -158,6 +189,65 @@ export class OrderService {
       reason:
         typeof reason === "string" ? reason : "Customer cancelled order",
     });
+  }
+
+  async getMyOrders(userId: string, { page, limit, status }: ListOrdersInput) {
+    const customerProfileId = await this.getCustomerProfileId(userId);
+    const statusFilter = parseStatusFilter(status);
+
+    const { orders, total } = await this.orderRepository.findOrdersByCustomer(
+      customerProfileId,
+      { page, limit, status: statusFilter },
+    );
+
+    return { data: orders, pagination: toPagination(page, limit, total) };
+  }
+
+  async getOrderById(userId: string, orderId: string) {
+    const customerProfileId = await this.getCustomerProfileId(userId);
+    const orderDetail = await this.orderRepository.getOrderDetail(
+      orderId,
+      customerProfileId,
+    );
+
+    if (!orderDetail) {
+      throw new AppError("Order not found", 404);
+    }
+
+    return orderDetail;
+  }
+
+  async getOrdersForAdmin({
+    page,
+    limit,
+    status,
+    from,
+    to,
+    customerProfileId,
+  }: ListOrdersForAdminInput) {
+    const statusFilter = parseStatusFilter(status);
+
+    const { orders, total } = await this.orderRepository.findOrdersForAdmin({
+      page,
+      limit,
+      status: statusFilter,
+      from,
+      to,
+      customerProfileId,
+    });
+
+    return { data: orders, pagination: toPagination(page, limit, total) };
+  }
+
+  async getOrderByIdForAdmin(orderId: string) {
+    const orderDetail =
+      await this.orderRepository.getOrderDetailForAdmin(orderId);
+
+    if (!orderDetail) {
+      throw new AppError("Order not found", 404);
+    }
+
+    return orderDetail;
   }
 
   private async createOrderWithReservedStock(

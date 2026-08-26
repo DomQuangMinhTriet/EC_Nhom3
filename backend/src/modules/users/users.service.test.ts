@@ -14,9 +14,24 @@ const existingUser = {
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
 };
 
+const partnerUser = {
+  ...existingUser,
+  userId: "00000000-0000-4000-8000-000000000002",
+  email: "partner@example.com",
+  roleCode: "Partner" as const,
+};
+
+const superAdminUser = {
+  ...existingUser,
+  userId: "00000000-0000-4000-8000-000000000003",
+  email: "super-admin@example.com",
+  roleCode: "Super_Admin" as const,
+};
+
 const createRepository = (overrides: Partial<UsersRepository> = {}) =>
   ({
     findAll: async () => ({ users: [], total: 0 }),
+    findById: async () => existingUser,
     updateUser: async () => undefined,
     ...overrides,
   }) as UsersRepository;
@@ -98,11 +113,77 @@ test("updates a user's status", async () => {
   const result = await service.updateUser({
     userId: existingUser.userId,
     status: "banned",
+    actorRole: "Super_Admin",
+  });
+
+  assert.equal(result.message, "User updated successfully.");
+  assert.equal(result.user.status, "banned");
+});
+
+test("allows Operational Admin to update a Partner user's status", async () => {
+  const repository = createRepository({
+    findById: async () => partnerUser,
+    updateUser: async (userId, updates) => ({
+      ...partnerUser,
+      userId,
+      ...updates,
+      updatedAt: new Date("2026-02-01T00:00:00.000Z"),
+    }),
+  });
+  const service = new UsersService(repository);
+
+  const result = await service.updateUser({
+    userId: partnerUser.userId,
+    status: "banned",
     actorRole: "Operational_Admin",
   });
 
   assert.equal(result.message, "User updated successfully.");
   assert.equal(result.user.status, "banned");
+});
+
+test("prevents Operational Admin from updating a Super Admin's status", async () => {
+  const service = new UsersService(createRepository({ findById: async () => superAdminUser }));
+
+  await assert.rejects(
+    service.updateUser({
+      userId: superAdminUser.userId,
+      status: "banned",
+      actorRole: "Operational_Admin",
+    }),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 403,
+  );
+});
+
+test("prevents Operational Admin from updating a Customer's status", async () => {
+  const service = new UsersService(createRepository({ findById: async () => existingUser }));
+
+  await assert.rejects(
+    service.updateUser({
+      userId: existingUser.userId,
+      status: "banned",
+      actorRole: "Operational_Admin",
+    }),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 403,
+  );
+});
+
+test("throws 404 when Operational Admin updates a missing user", async () => {
+  const service = new UsersService(createRepository({ findById: async () => null }));
+
+  await assert.rejects(
+    service.updateUser({
+      userId: "00000000-0000-4000-8000-000000000099",
+      status: "banned",
+      actorRole: "Operational_Admin",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
+      error.message === "User not found",
+  );
 });
 
 test("allows Super Admin to update a user's role", async () => {
