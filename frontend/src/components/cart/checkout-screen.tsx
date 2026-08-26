@@ -31,6 +31,7 @@ export function CheckoutScreen() {
   const confirmPayment = useConfirmOrderPayment();
   const cancelOrder = useCancelOrder();
   const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CheckoutValues>({ resolver: zodResolver(checkoutSchema), defaultValues: { payment: "card" } });
 
   const items = cartQuery.data?.items ?? [];
@@ -64,6 +65,7 @@ export function CheckoutScreen() {
       await cancelOrder.mutateAsync(pendingOrder.orderId);
       toast("Đã hủy đơn hàng.");
       setPendingOrder(null);
+      setConfirmingCancel(false);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Không thể hủy đơn hàng.", "error");
     }
@@ -96,14 +98,25 @@ export function CheckoutScreen() {
             </div>
             <p className="text-xs text-slate-500">Phương thức: <b>{paymentLabels[paymentMethod]}</b></p>
             <p className="text-[11px] text-slate-400">Bước thanh toán được mô phỏng cho môi trường demo.</p>
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="ghost" fullWidth disabled={cancelOrder.isPending || confirmPayment.isPending} onClick={cancelPending}>
-                {cancelOrder.isPending ? "Đang hủy..." : "Hủy đơn"}
-              </Button>
-              <Button type="button" fullWidth disabled={cancelOrder.isPending || confirmPayment.isPending} onClick={confirmSuccess}>
-                {confirmPayment.isPending ? "Đang xử lý..." : "Xác nhận đã thanh toán"}
-              </Button>
-            </div>
+
+            {confirmingCancel ? (
+              <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-xs font-semibold text-red-800">Hủy đơn sẽ xóa các voucher đã chọn khỏi giỏ hàng và không thể khôi phục. Bạn cần thêm lại từ đầu nếu muốn mua tiếp.</p>
+                <div className="flex gap-3">
+                  <Button type="button" variant="ghost" fullWidth disabled={cancelOrder.isPending} onClick={() => setConfirmingCancel(false)}>Quay lại</Button>
+                  <Button type="button" variant="danger" fullWidth disabled={cancelOrder.isPending} onClick={cancelPending}>
+                    {cancelOrder.isPending ? "Đang hủy..." : "Xác nhận hủy đơn"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="ghost" fullWidth disabled={confirmPayment.isPending} onClick={() => setConfirmingCancel(true)}>Hủy đơn</Button>
+                <Button type="button" fullWidth disabled={confirmPayment.isPending} onClick={confirmSuccess}>
+                  {confirmPayment.isPending ? "Đang xử lý..." : "Xác nhận đã thanh toán"}
+                </Button>
+              </div>
+            )}
           </section>
         </div>
       </main>
