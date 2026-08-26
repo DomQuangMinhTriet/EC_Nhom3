@@ -7,7 +7,11 @@ import {
 } from "../../shared/http/requestParsers";
 import { OrderService } from "./order.service";
 
-const parseDateQuery = (value: unknown, field: string): Date | undefined => {
+const parseDateQuery = (
+  value: unknown,
+  field: string,
+  endOfDay = false,
+): Date | undefined => {
   const raw = parseOptionalStringQuery(value, field);
 
   if (raw === undefined) {
@@ -18,6 +22,13 @@ const parseDateQuery = (value: unknown, field: string): Date | undefined => {
 
   if (Number.isNaN(parsed.getTime())) {
     throw new AppError(`${field} must be a valid date`, 400);
+  }
+
+  // A date-only string (e.g. "2026-08-31") parses to that day's UTC midnight.
+  // Used as an inclusive upper bound, that would exclude nearly the entire
+  // day, so extend it to the end of that day.
+  if (endOfDay && !raw.includes("T")) {
+    parsed.setUTCHours(23, 59, 59, 999);
   }
 
   return parsed;
@@ -61,7 +72,7 @@ export class OrderController {
 
     const status = parseOptionalStringQuery(req.query.status, "status");
     const from = parseDateQuery(req.query.from, "from");
-    const to = parseDateQuery(req.query.to, "to");
+    const to = parseDateQuery(req.query.to, "to", true);
     const customerProfileId = parseOptionalStringQuery(
       req.query.customerProfileId,
       "customerProfileId",
