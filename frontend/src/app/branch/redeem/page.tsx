@@ -9,17 +9,21 @@ import { Button } from "@/components/ui/button";
 import { BranchShell } from "@/components/branch/branch-shell";
 import { useToast } from "@/components/common/toast";
 import { useCheckVoucherCode, useConfirmVoucherCode } from "@/hooks/queries/use-redemption";
-import type { RedemptionDetail, RedemptionStatus } from "@/features/redemption/redemption-api";
+import type { RedemptionDetail, RedemptionVoucherStatus } from "@/features/redemption/redemption-api";
 
 const schema = z.object({ code: z.string().min(6, "Nhập mã voucher hợp lệ") });
 type Values = z.infer<typeof schema>;
 
-const statusLabel: Record<RedemptionStatus, string> = { available: "Còn hiệu lực", used: "Đã sử dụng", expired: "Hết hạn", cancelled: "Đã hủy" };
-const statusStyle: Record<RedemptionStatus, string> = {
+const statusLabel: Record<RedemptionVoucherStatus, string> = { available: "Còn hiệu lực", used: "Đã sử dụng", expired: "Hết hạn", cancelled: "Đã hủy" };
+const statusStyle: Record<RedemptionVoucherStatus, string> = {
   available: "bg-emerald-50 text-success",
   used: "bg-slate-100 text-slate-500",
   expired: "bg-red-50 text-danger",
   cancelled: "bg-red-50 text-danger",
+};
+const reasonLabel: Record<string, string> = {
+  "Voucher has already been used": "Voucher này đã được sử dụng.",
+  "Voucher has expired": "Voucher này đã hết hạn.",
 };
 
 export default function RedeemPage() { return <RedeemContent/>; }
@@ -99,16 +103,17 @@ function RedeemContent() {
               <p className="font-mono text-xs text-slate-500">{detail.code}</p>
               <p className="text-xs text-slate-500">Hết hạn: {new Date(detail.expiredAt).toLocaleDateString("vi-VN")}</p>
               {detail.usedAt && <p className="text-xs text-slate-500">Đã dùng lúc: {new Date(detail.usedAt).toLocaleString("vi-VN")}</p>}
+              {detail.reason && <p className="text-xs font-semibold text-danger">{reasonLabel[detail.reason] ?? detail.reason}</p>}
 
-              {detail.status === "available" ? (
-                <Button type="button" fullWidth size="lg" onClick={confirmUse} disabled={confirmCode.isPending}>
-                  {confirmCode.isPending ? "Đang xác nhận..." : "Xác nhận sử dụng"}
-                </Button>
+              {detail.redeemable ? (
+                <>
+                  <Button type="button" fullWidth size="lg" onClick={confirmUse} disabled={confirmCode.isPending}>
+                    {confirmCode.isPending ? "Đang xác nhận..." : "Xác nhận sử dụng"}
+                  </Button>
+                  <button type="button" onClick={checkAnother} className="w-full text-center text-[11px] font-semibold text-primary">Kiểm tra mã khác</button>
+                </>
               ) : (
                 <Button type="button" fullWidth size="lg" variant="ghost" onClick={checkAnother}>Kiểm tra mã khác</Button>
-              )}
-              {detail.status === "available" && (
-                <button type="button" onClick={checkAnother} className="w-full text-center text-[11px] font-semibold text-primary">Kiểm tra mã khác</button>
               )}
             </div>
           )}
