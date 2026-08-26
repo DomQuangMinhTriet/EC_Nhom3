@@ -54,9 +54,3 @@ export async function removeCartItem(cartItemId: string) {
     headers: authHeaders(),
   });
 }
-
-export function computeUnitPrice(voucher: Pick<CartItemVoucherProduct, "originalPrice" | "discountType" | "discountValue">) {
-  const original = Number(voucher.originalPrice);
-  const value = Number(voucher.discountValue);
-  return voucher.discountType === "percentage" ? original * (1 - value / 100) : Math.max(original - value, 0);
-}

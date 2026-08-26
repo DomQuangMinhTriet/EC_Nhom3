@@ -16,7 +16,6 @@ export type VoucherInstanceProduct = {
 export type VoucherInstance = {
   voucherCodeId: string;
   code: string;
-  qr: string;
   status: VoucherInstanceStatus;
   expiredAt: string;
   createdAt: string;

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addCartItem, computeUnitPrice, getCart, removeCartItem, updateCartItemQuantity } from "@/features/cart/cart-api";
+import { addCartItem, getCart, removeCartItem, updateCartItemQuantity } from "@/features/cart/cart-api";
 
 const session = {
   user: { userId: "customer-1", email: "customer@example.com", roleCode: "Customer", status: "active" },
@@ -64,15 +64,5 @@ describe("cart api", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.method).toBe("DELETE");
-  });
-});
-
-describe("computeUnitPrice", () => {
-  it("applies a percentage discount", () => {
-    expect(computeUnitPrice({ originalPrice: "100000", discountType: "percentage", discountValue: "20" })).toBe(80000);
-  });
-
-  it("applies a direct discount and floors at zero", () => {
-    expect(computeUnitPrice({ originalPrice: "10000", discountType: "direct", discountValue: "20000" })).toBe(0);
   });
 });
