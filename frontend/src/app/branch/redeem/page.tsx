@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,10 +21,11 @@ const statusStyle: Record<RedemptionVoucherStatus, string> = {
   expired: "bg-red-50 text-danger",
   cancelled: "bg-red-50 text-danger",
 };
-const reasonLabel: Record<string, string> = {
-  "Voucher has already been used": "Voucher này đã được sử dụng.",
-  "Voucher has expired": "Voucher này đã hết hạn.",
-};
+function describeReason(reason: string, status: RedemptionVoucherStatus) {
+  if (reason === "Voucher has already been used") return "Voucher này đã được sử dụng.";
+  if (reason === "Voucher has expired") return "Voucher này đã hết hạn.";
+  return `Trạng thái voucher: ${statusLabel[status]}.`;
+}
 
 export default function RedeemPage() { return <RedeemContent/>; }
 
@@ -35,17 +36,20 @@ function RedeemContent() {
   const checkCode = useCheckVoucherCode();
   const confirmCode = useConfirmVoucherCode();
   const { register, handleSubmit, formState: { errors }, reset } = useForm<Values>({ resolver: zodResolver(schema) });
+  const scanLockRef = useRef(false);
 
   function runCheck(code: string) {
     checkCode.mutate(code, {
       onSuccess: (data) => setDetail(data),
       onError: (error) => toast(error instanceof Error ? error.message : "Không kiểm tra được mã.", "error"),
+      onSettled: () => { scanLockRef.current = false; },
     });
   }
 
   function handleScan(codes: { rawValue: string }[]) {
     const value = codes[0]?.rawValue;
-    if (!value || checkCode.isPending || detail) return;
+    if (!value || scanLockRef.current || detail) return;
+    scanLockRef.current = true;
     runCheck(value);
   }
 
@@ -103,7 +107,7 @@ function RedeemContent() {
               <p className="font-mono text-xs text-slate-500">{detail.code}</p>
               <p className="text-xs text-slate-500">Hết hạn: {new Date(detail.expiredAt).toLocaleDateString("vi-VN")}</p>
               {detail.usedAt && <p className="text-xs text-slate-500">Đã dùng lúc: {new Date(detail.usedAt).toLocaleString("vi-VN")}</p>}
-              {detail.reason && <p className="text-xs font-semibold text-danger">{reasonLabel[detail.reason] ?? detail.reason}</p>}
+              {detail.reason && <p className="text-xs font-semibold text-danger">{describeReason(detail.reason, detail.status)}</p>}
 
               {detail.redeemable ? (
                 <>

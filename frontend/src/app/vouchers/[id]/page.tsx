@@ -33,7 +33,7 @@ export default function VoucherDetailPage() {
               {voucher.imageUrl && <img src={voucher.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80"/>}
               <div className="relative text-center">
                 {categoryName && <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">{categoryName}</span>}
-                <h1 className="mt-5 text-3xl font-extrabold tracking-[-1px]">{voucher.title}</h1>
+                <p className="mt-5 text-5xl">🎟</p>
               </div>
             </div>
             <article className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-brand-sm">
