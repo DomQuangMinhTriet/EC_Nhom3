@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cancelOrder, confirmOrderPayment, createOrder } from "@/features/order/order-api";
+import { cancelOrder, confirmOrderPayment, createOrder, getMyOrders, getOrderById } from "@/features/order/order-api";
 
 const session = {
   user: { userId: "customer-1", email: "customer@example.com", roleCode: "Customer", status: "active" },
@@ -71,5 +71,40 @@ describe("order api", () => {
     mockFetchOnce(400, { error: "Order khong o trang thai pending_payment" });
 
     await expect(confirmOrderPayment("o1", { status: "completed" })).rejects.toThrow("Order khong o trang thai pending_payment");
+  });
+
+  it("fetches the current customer's paginated orders with the bearer token", async () => {
+    const listResponse = { data: [{ orderId: "o1", customerProfileId: "cp1", totalAmount: "100000.00", status: "completed", reason: null, createdAt: "2026-08-20T00:00:00.000Z", updatedAt: "2026-08-20T00:00:00.000Z", items: [], payments: [] }], pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const fetchMock = mockFetchOnce(200, listResponse);
+
+    const result = await getMyOrders();
+
+    expect(result).toEqual(listResponse);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/orders");
+    expect(url).not.toContain("?");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer token-order");
+  });
+
+  it("builds the query string from page/limit/status filters", async () => {
+    const fetchMock = mockFetchOnce(200, { data: [], pagination: { page: 2, limit: 5, total: 0, totalPages: 0 } });
+
+    await getMyOrders({ page: 2, limit: 5, status: "completed" });
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("page=2");
+    expect(url).toContain("limit=5");
+    expect(url).toContain("status=completed");
+  });
+
+  it("fetches a single order's detail by id", async () => {
+    const order = { orderId: "o1", customerProfileId: "cp1", totalAmount: "100000.00", status: "completed", reason: null, createdAt: "2026-08-20T00:00:00.000Z", updatedAt: "2026-08-20T00:00:00.000Z", items: [], payments: [] };
+    const fetchMock = mockFetchOnce(200, { data: order });
+
+    const result = await getOrderById("o1");
+
+    expect(result).toEqual(order);
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/orders/o1");
   });
 });

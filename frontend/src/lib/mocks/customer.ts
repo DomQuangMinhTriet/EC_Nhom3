@@ -1,2 +1,0 @@
-// TODO(API): replace with /customers/me/orders — no GET endpoint exists yet for order history.
-export const orderMocks = [{ id: "ECO-853920", date: "06/08/2026", status: "completed", total: 190000, items: "CGV Cinema, Lotteria" }, { id: "ECO-742183", date: "24/07/2026", status: "completed", total: 45000, items: "Sendo" }, { id: "ECO-658471", date: "12/07/2026", status: "refunded", total: 70000, items: "Galaxy Studio" }];

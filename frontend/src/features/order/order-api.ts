@@ -46,8 +46,15 @@ export type Order = {
   totalAmount: string;
   status: OrderStatus;
   reason: string | null;
+  createdAt: string;
+  updatedAt: string;
   items: OrderItem[];
   payments: OrderPayment[];
+};
+
+export type OrderListResponse = {
+  data: Order[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
 export async function createOrder(cartId: string) {
@@ -56,6 +63,22 @@ export async function createOrder(cartId: string) {
     headers: authHeaders(),
     body: JSON.stringify({ cartId }),
   });
+  return res.data;
+}
+
+export async function getMyOrders(params?: { page?: number; limit?: number; status?: OrderStatus }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.status) query.set("status", params.status);
+  const queryString = query.toString();
+  return await apiClient<OrderListResponse>(`/orders${queryString ? `?${queryString}` : ""}`, {
+    headers: authHeaders(),
+  });
+}
+
+export async function getOrderById(orderId: string) {
+  const res = await apiClient<{ data: Order }>(`/orders/${orderId}`, { headers: authHeaders() });
   return res.data;
 }
 
