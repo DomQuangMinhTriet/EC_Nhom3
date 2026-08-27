@@ -1,6 +1,7 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  capturePaypalOrder,
   confirmPaymentCallback,
   initiatePayment,
   type PaymentCallbackStatus,
@@ -16,6 +17,18 @@ export function useInitiatePayment() {
       orderId: string;
       paymentMethod: PaymentMethod;
     }) => initiatePayment(orderId, paymentMethod),
+  });
+}
+
+export function useCapturePaypalOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (orderId: string) => capturePaypalOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["voucherInstances"] });
+    },
   });
 }
 

@@ -33,6 +33,19 @@ export async function initiatePayment(
   return res.data;
 }
 
+export async function capturePaypalOrder(orderId: string) {
+  const res = await apiClient<{ data: { message: string; order: Order } }>(
+    "/payments/paypal/capture",
+    {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ orderId }),
+    },
+  );
+
+  return res.data.order;
+}
+
 export async function confirmPaymentCallback(
   orderId: string,
   params: {
