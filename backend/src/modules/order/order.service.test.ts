@@ -22,6 +22,7 @@ const orderRecord = {
   customerProfileId,
   totalAmount: "200.00",
   status: "pending_payment" as const,
+  paymentCode: null,
   reason: null,
   createdAt,
   updatedAt: createdAt,

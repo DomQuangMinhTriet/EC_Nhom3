@@ -23,7 +23,7 @@ export type VoucherInstance = {
   voucherProduct: VoucherInstanceProduct;
 };
 
-export type VoucherInstanceDetail = VoucherInstance & { qrDataUri: string };
+export type VoucherInstanceDetail = VoucherInstance & { qrDataUri?: string };
 
 export async function getMyVoucherInstances(status?: VoucherInstanceStatus) {
   const query = status ? `?status=${status}` : "";

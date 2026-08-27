@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -10,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { State } from "@/components/common/state";
 import { useToast } from "@/components/common/toast";
 import { useCart } from "@/hooks/queries/use-cart";
-import { useCancelOrder, useConfirmOrderPayment, useCreateOrder } from "@/hooks/queries/use-order";
+import { useCancelOrder, useCreateOrder, useOrderById } from "@/hooks/queries/use-order";
+import { useConfirmPaymentCallback, useInitiatePayment } from "@/hooks/queries/use-payment";
 import type { Order, PaymentMethod } from "@/features/order/order-api";
+import type { PaymentRequest } from "@/features/payment/payment-api";
 
 const checkoutSchema = z.object({
   name: z.string().min(2, "Nhập họ tên người nhận"),
@@ -28,43 +31,63 @@ export function CheckoutScreen() {
   const toast = useToast();
   const cartQuery = useCart();
   const createOrder = useCreateOrder();
-  const confirmPayment = useConfirmOrderPayment();
+  const initiatePayment = useInitiatePayment();
+  const confirmPayment = useConfirmPaymentCallback();
   const cancelOrder = useCancelOrder();
-  const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{ order: Order; payment: PaymentRequest } | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const isWaitingForSepay = pendingPayment?.payment.paymentMethod === "bank_transfer";
+  const pendingOrderQuery = useOrderById(pendingPayment?.order.orderId, {
+    enabled: Boolean(pendingPayment),
+    refetchInterval: isWaitingForSepay ? 4000 : false,
+  });
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CheckoutValues>({ resolver: zodResolver(checkoutSchema), defaultValues: { payment: "card" } });
 
   const items = cartQuery.data?.items ?? [];
   const total = items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
+
+  useEffect(() => {
+    if (pendingOrderQuery.data?.status === "completed") {
+      router.push(`/order-confirmation/${pendingOrderQuery.data.orderId}`);
+    }
+  }, [pendingOrderQuery.data, router]);
 
   async function submit(values: CheckoutValues) {
     const cart = cartQuery.data;
     if (!cart) return;
     try {
       const order = await createOrder.mutateAsync(cart.cartId);
-      setPendingOrder({ ...order, payments: order.payments.length ? order.payments : [{ paymentId: "", transactionId: "", paymentMethod: values.payment, amount: order.totalAmount, currency: "VND", status: "pending" }] });
+      const payment = await initiatePayment.mutateAsync({
+        orderId: order.orderId,
+        paymentMethod: values.payment,
+      });
+      setPendingPayment({ order, payment });
     } catch (error) {
       toast(error instanceof Error ? error.message : "Không thể tạo đơn hàng.", "error");
     }
   }
 
   async function confirmSuccess() {
-    if (!pendingOrder) return;
-    const paymentMethod = pendingOrder.payments[0]?.paymentMethod ?? "card";
+    if (!pendingPayment) return;
     try {
-      await confirmPayment.mutateAsync({ orderId: pendingOrder.orderId, transactionId: `SIM-${Date.now()}`, paymentMethod });
-      router.push(`/order-confirmation/${pendingOrder.orderId}`);
+      await confirmPayment.mutateAsync({
+        orderId: pendingPayment.order.orderId,
+        status: "success",
+        transactionId: pendingPayment.payment.transactionId,
+        paymentMethod: pendingPayment.payment.paymentMethod,
+      });
+      router.push(`/order-confirmation/${pendingPayment.order.orderId}`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Không thể xác nhận thanh toán.", "error");
     }
   }
 
   async function cancelPending() {
-    if (!pendingOrder) return;
+    if (!pendingPayment) return;
     try {
-      await cancelOrder.mutateAsync(pendingOrder.orderId);
+      await cancelOrder.mutateAsync(pendingPayment.order.orderId);
       toast("Đã hủy đơn hàng.");
-      setPendingOrder(null);
+      setPendingPayment(null);
       setConfirmingCancel(false);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Không thể hủy đơn hàng.", "error");
@@ -75,8 +98,9 @@ export function CheckoutScreen() {
     return <main className="min-h-screen bg-slate-50"><TopNav/><div className="mx-auto mt-16 h-72 max-w-[1000px] animate-pulse rounded-2xl bg-slate-200"/></main>;
   }
 
-  if (pendingOrder) {
-    const paymentMethod = pendingOrder.payments[0]?.paymentMethod ?? "card";
+  if (pendingPayment) {
+    const { order: pendingOrder, payment } = pendingPayment;
+    const paymentMethod = payment.paymentMethod;
     return (
       <main className="min-h-screen bg-slate-50">
         <TopNav/>
@@ -97,7 +121,25 @@ export function CheckoutScreen() {
               <b className="text-primary">{Number(pendingOrder.totalAmount).toLocaleString("vi-VN")}đ</b>
             </div>
             <p className="text-xs text-slate-500">Phương thức: <b>{paymentLabels[paymentMethod]}</b></p>
-            <p className="text-[11px] text-slate-400">Bước thanh toán được mô phỏng cho môi trường demo.</p>
+
+            {paymentMethod === "bank_transfer" ? (
+              <div className="space-y-4 rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
+                {payment.qrUrl && <Image src={payment.qrUrl} alt="SePay QR" width={256} height={256} unoptimized className="mx-auto h-64 w-64 rounded-lg border border-slate-200 bg-white object-contain p-2"/>}
+                <div className="grid gap-2 text-xs text-slate-700">
+                  <div className="flex justify-between gap-4"><span>Ngân hàng</span><b>{payment.bankAccount?.bank}</b></div>
+                  <div className="flex justify-between gap-4"><span>Số tài khoản</span><b>{payment.bankAccount?.accountNumber}</b></div>
+                  <div className="flex justify-between gap-4"><span>Chủ tài khoản</span><b>{payment.bankAccount?.accountName}</b></div>
+                  <div className="flex justify-between gap-4"><span>Nội dung</span><b className="font-mono text-primary">{payment.paymentCode}</b></div>
+                </div>
+                <p className="text-[11px] font-semibold text-primary">Đang chờ SePay xác nhận giao dịch. Trang này tự kiểm tra trạng thái mỗi 4 giây.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-[11px] text-slate-400">Transaction: <b>{payment.transactionId}</b></p>
+                <a className="break-all text-[11px] font-semibold text-primary" href={payment.paymentUrl} target="_blank" rel="noreferrer">{payment.paymentUrl}</a>
+                <p className="text-[11px] text-slate-400">Bước thanh toán được mô phỏng cho môi trường demo.</p>
+              </>
+            )}
 
             {confirmingCancel ? (
               <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
@@ -112,9 +154,11 @@ export function CheckoutScreen() {
             ) : (
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="ghost" fullWidth disabled={confirmPayment.isPending} onClick={() => setConfirmingCancel(true)}>Hủy đơn</Button>
-                <Button type="button" fullWidth disabled={confirmPayment.isPending} onClick={confirmSuccess}>
-                  {confirmPayment.isPending ? "Đang xử lý..." : "Xác nhận đã thanh toán"}
-                </Button>
+                {paymentMethod !== "bank_transfer" && (
+                  <Button type="button" fullWidth disabled={confirmPayment.isPending} onClick={confirmSuccess}>
+                    {confirmPayment.isPending ? "Đang xử lý..." : "Xác nhận thanh toán demo"}
+                  </Button>
+                )}
               </div>
             )}
           </section>
@@ -166,7 +210,7 @@ export function CheckoutScreen() {
                 <b>Tổng cộng</b>
                 <b className="text-primary">{total.toLocaleString("vi-VN")}đ</b>
               </div>
-              <Button type="submit" size="lg" fullWidth disabled={isSubmitting || createOrder.isPending}>{isSubmitting || createOrder.isPending ? "Đang tạo đơn..." : "Xác nhận thanh toán"}</Button>
+              <Button type="submit" size="lg" fullWidth disabled={isSubmitting || createOrder.isPending || initiatePayment.isPending}>{isSubmitting || createOrder.isPending || initiatePayment.isPending ? "Đang tạo đơn..." : "Xác nhận thanh toán"}</Button>
             </aside>
           </form>
         )}
