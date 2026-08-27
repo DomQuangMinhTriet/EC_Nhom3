@@ -20,7 +20,16 @@ export const createApp = () => {
     next();
   });
 
-  app.use(express.json());
+  app.use(
+    express.json({
+      verify: (req, res, buf) => {
+        if (req.originalUrl.startsWith("/api/payments/stripe/webhook")) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (req as any).rawBody = buf;
+        }
+      },
+    }),
+  );
   app.use(apiRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);

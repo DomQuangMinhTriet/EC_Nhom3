@@ -24,3 +24,8 @@ paymentRouter.post(
   "/sepay/webhook",
   asyncHandler(paymentController.handleSepayWebhook),
 );
+
+paymentRouter.post(
+  "/stripe/webhook",
+  asyncHandler(paymentController.handleStripeWebhook),
+);

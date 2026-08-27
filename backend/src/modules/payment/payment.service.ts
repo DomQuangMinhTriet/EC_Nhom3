@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import Stripe from "stripe";
 import { AppError } from "../../shared/errors/AppError";
 import { NotificationRepository } from "../notification/notification.repository";
 import type { PaymentMethod } from "../order/order.repository";
@@ -39,7 +40,7 @@ type SepayPaymentStore = Pick<
   "setPaymentCodeForOrder" | "findOrderByPaymentCode"
 >;
 
-const paymentMethods = ["bank_transfer", "card"] as const;
+const paymentMethods = ["bank_transfer", "card", "stripe"] as const;
 const callbackStatuses = ["success", "failed"] as const;
 
 const isPaymentMethod = (value: string): value is PaymentMethod =>
@@ -224,6 +225,27 @@ const buildMockPaymentUrl = ({
   return url.toString();
 };
 
+const getStripeConfig = () => {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!secretKey || !webhookSecret) {
+    throw new AppError("Stripe is not configured", 500);
+  }
+
+  return { secretKey, webhookSecret };
+};
+
+const getAppBaseUrl = () => {
+  const baseUrl = process.env.APP_BASE_URL;
+
+  if (!baseUrl) {
+    throw new AppError("APP_BASE_URL is not configured", 500);
+  }
+
+  return baseUrl.replace(/\/+$/, "");
+};
+
 export class PaymentService {
   constructor(
     private readonly orderService: OrderWorkflow = new OrderService(),
@@ -277,6 +299,53 @@ export class PaymentService {
           accountNumber: bankAccount,
           accountName,
         },
+      };
+    }
+
+    if (paymentMethod === "stripe") {
+      const { secretKey } = getStripeConfig();
+      const stripe = new Stripe(secretKey);
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "vnd",
+              product_data: {
+                name: `Đơn hàng ${order.orderId}`,
+              },
+              unit_amount: toVndInteger(order.totalAmount),
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${getAppBaseUrl()}/checkout/stripe-return?orderId=${order.orderId}`,
+        cancel_url: `${getAppBaseUrl()}/checkout/stripe-return?orderId=${order.orderId}&cancelled=1`,
+      });
+
+      if (!session.url) {
+        throw new AppError("Could not create Stripe checkout session", 502);
+      }
+
+      const updatedOrder = await this.paymentRepository.setPaymentCodeForOrder({
+        orderId: order.orderId,
+        customerProfileId: order.customerProfileId,
+        paymentCode: session.id,
+      });
+
+      if (!updatedOrder) {
+        throw new AppError("Order not found", 404);
+      }
+
+      return {
+        orderId: order.orderId,
+        transactionId: session.id,
+        paymentMethod,
+        amount: order.totalAmount,
+        currency,
+        paymentUrl: session.url,
       };
     }
 
@@ -426,6 +495,58 @@ export class PaymentService {
       ignored: false,
       order: updatedOrder,
     };
+  }
+
+  async handleStripeWebhook(signature: string | undefined, rawBody: Buffer | undefined) {
+    if (!signature || !rawBody) {
+      throw new AppError("Missing Stripe signature or raw body", 400);
+    }
+
+    const { secretKey, webhookSecret } = getStripeConfig();
+    const stripe = new Stripe(secretKey);
+    let event: Stripe.Event;
+
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    } catch (err) {
+      throw new AppError("Invalid Stripe signature", 401);
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const paymentCode = session.id;
+
+      if (!paymentCode) {
+        return { success: true, ignored: true, reason: "payment_code_not_found" };
+      }
+
+      const order = await this.paymentRepository.findOrderByPaymentCode(paymentCode);
+
+      if (!order) {
+        return { success: true, ignored: true, reason: "unknown_payment_code" };
+      }
+
+      if (order.status === "failed") {
+        return { success: true, ignored: true, reason: "order_already_failed" };
+      }
+
+      if (order.status === "completed") {
+        return { success: true, ignored: true, reason: "order_already_completed" };
+      }
+
+      const updatedOrder = await this.processPaymentResult({
+        orderId: order.orderId,
+        status: "completed",
+        transactionId: (session.payment_intent as string) || session.id,
+        paymentMethod: "stripe",
+        amount: String(session.amount_total),
+        currency: session.currency || "VND",
+      });
+
+      return { success: true, ignored: false, order: updatedOrder };
+    }
+
+    return { success: true, ignored: true, reason: "unhandled_event_type" };
   }
 
   private async processPaymentResult(input: {

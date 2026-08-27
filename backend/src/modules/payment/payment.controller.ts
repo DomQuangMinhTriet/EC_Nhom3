@@ -51,4 +51,14 @@ export class PaymentController {
       }),
     );
   };
+
+  handleStripeWebhook = async (req: Request, res: Response) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawBody = (req as any).rawBody;
+    const signature = req.header("Stripe-Signature");
+
+    res.json(
+      await this.paymentService.handleStripeWebhook(signature, rawBody),
+    );
+  };
 }

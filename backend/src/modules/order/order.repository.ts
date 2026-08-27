@@ -16,7 +16,7 @@ import {
 import { getAvailableStock } from "../../shared/inventory/inventory.repository";
 
 export type OrderStatus = "pending_payment" | "completed" | "failed";
-export type PaymentMethod = "bank_transfer" | "card";
+export type PaymentMethod = "bank_transfer" | "card" | "stripe";
 
 export type CreateOrderItemRecord = {
   voucherProductId: string;
