@@ -1118,3 +1118,292 @@ test("handleSepayWebhook acknowledges a second transfer for an already-completed
     assert.equal(updateCalled, false);
   });
 });
+// ---------------------------------------------------------------------------
+// Stripe
+// ---------------------------------------------------------------------------
+
+const withStripeEnv = async (callback: () => Promise<void>) => {
+  const previous = {
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    APP_BASE_URL: process.env.APP_BASE_URL,
+  };
+
+  process.env.STRIPE_SECRET_KEY = "sk_test_stripe_secret_key";
+  process.env.STRIPE_WEBHOOK_SECRET = "whsec_stripe_webhook_secret";
+  process.env.APP_BASE_URL = "https://ec-voucher-demo.example";
+
+  try {
+    await callback();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+};
+
+const mockStripeFetch = (t: import("node:test").TestContext, options: {
+  checkoutStatus?: number;
+  checkoutBody?: unknown;
+} = {}) => {
+  t.mock.method(globalThis, "fetch", async (input: Request | string | URL) => {
+    let href = "";
+    if (typeof input === "string") {
+      href = input;
+    } else if (input instanceof URL) {
+      href = input.toString();
+    } else if (input && typeof input === "object" && "url" in input) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      href = (input as any).url;
+    }
+
+    if (href.includes("/v1/checkout/sessions")) {
+      return new Response(
+        JSON.stringify(
+          options.checkoutBody ?? {
+            id: "cs_test_stripe123",
+            url: "https://checkout.stripe.com/pay/cs_test_stripe123",
+          },
+        ),
+        { status: options.checkoutStatus ?? 200 },
+      );
+    }
+
+    throw new Error(`Unexpected fetch call in test: ${href}`);
+  });
+};
+
+test("initiatePayment converts VND to USD and returns Stripe's checkout session url", async (t) => {
+  await withStripeEnv(async () => {
+    mockStripeFetch(t);
+    let captured: { orderId: string; paymentCode: string } | undefined;
+    const service = new PaymentService(
+      createOrderService(),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        setPaymentCodeForOrder: async (input: {
+          orderId: string;
+          customerProfileId: string;
+          paymentCode: string;
+        }) => {
+          captured = input;
+          return { ...orderRecord, paymentCode: input.paymentCode };
+        },
+      }),
+    );
+
+    const result = await service.initiatePayment(userId, {
+      orderId,
+      paymentMethod: "stripe",
+    });
+
+    assert.equal(result.amount, "8.00");
+    assert.equal(result.currency, "USD");
+    assert.equal(result.transactionId, "cs_test_stripe123");
+    assert.equal(result.paymentUrl, "https://checkout.stripe.com/pay/cs_test_stripe123");
+    assert.equal(captured?.paymentCode, "cs_test_stripe123");
+  });
+});
+
+test("initiatePayment throws if Stripe is not configured", async () => {
+  const previous = process.env.STRIPE_SECRET_KEY;
+  delete process.env.STRIPE_SECRET_KEY;
+  const service = new PaymentService(createOrderService(), createNotificationRepository());
+
+  try {
+    await assert.rejects(
+      service.initiatePayment(userId, { orderId, paymentMethod: "stripe" }),
+      (error: unknown) =>
+        error instanceof AppError &&
+        error.statusCode === 500 &&
+        error.message === "Stripe is not configured",
+    );
+  } finally {
+    process.env.STRIPE_SECRET_KEY = previous;
+  }
+});
+
+test("handleStripeWebhook completes the order on paid session", async () => {
+  await withStripeEnv(async () => {
+    let capturedUpdate: unknown[] | undefined;
+    const notifications: unknown[] = [];
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async (
+          requestedOrderId: string,
+          input: Record<string, unknown>,
+        ) => {
+          capturedUpdate = [requestedOrderId, input];
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository({
+        create: async (record: unknown) => {
+          notifications.push(record);
+          return record;
+        },
+      }),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          paymentCode: "cs_test_stripe123",
+        }),
+      }),
+    );
+
+    const payload = Buffer.from(JSON.stringify({
+      id: "evt_test_123",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_stripe123",
+          payment_status: "paid",
+          payment_intent: "pi_test_123",
+          amount_total: 800,
+        },
+      },
+    }));
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signedPayload = `${timestamp}.${payload.toString()}`;
+    const signature = createHmac("sha256", "whsec_stripe_webhook_secret").update(signedPayload).digest("hex");
+    const header = `t=${timestamp},v1=${signature}`;
+
+    const result = await service.handleStripeWebhook(header, payload);
+
+    assert.equal(result.success, true);
+    assert.equal(result.ignored, false);
+    assert.deepEqual(capturedUpdate, [
+      orderId,
+      {
+        status: "completed",
+        transactionId: "stripe_pi_test_123",
+        paymentMethod: "stripe",
+        amount: "8",
+        currency: "USD",
+        reason: undefined,
+      },
+    ]);
+    assert.equal(notifications.length, 1);
+  });
+});
+
+test("handleStripeWebhook rejects invalid signature", async () => {
+  await withStripeEnv(async () => {
+    const service = new PaymentService(
+      createOrderService(),
+      createNotificationRepository(),
+    );
+
+    const payload = Buffer.from(JSON.stringify({}));
+    const header = `t=123,v1=invalid_signature`;
+
+    await assert.rejects(
+      service.handleStripeWebhook(header, payload),
+      (error: unknown) =>
+        error instanceof AppError &&
+        error.statusCode === 401 &&
+        error.message === "Invalid Stripe signature",
+    );
+  });
+});
+
+test("handleStripeWebhook idempotency: ignores an already completed order", async () => {
+  await withStripeEnv(async () => {
+    let updateCalled = false;
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async () => {
+          updateCalled = true;
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          status: "completed" as const,
+          paymentCode: "cs_test_stripe123",
+        }),
+      }),
+    );
+
+    const payload = Buffer.from(JSON.stringify({
+      id: "evt_test_123",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_stripe123",
+          payment_status: "paid",
+          payment_intent: "pi_test_123",
+          amount_total: 800,
+        },
+      },
+    }));
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signedPayload = `${timestamp}.${payload.toString()}`;
+    const signature = createHmac("sha256", "whsec_stripe_webhook_secret").update(signedPayload).digest("hex");
+    const header = `t=${timestamp},v1=${signature}`;
+
+    const result = await service.handleStripeWebhook(header, payload);
+
+    assert.equal(result.ignored, true);
+    assert.equal(result.reason, "order_already_completed");
+    assert.equal(updateCalled, false);
+  });
+});
+
+test("handleStripeWebhook idempotency: ignores an already failed order", async () => {
+  await withStripeEnv(async () => {
+    let updateCalled = false;
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async () => {
+          updateCalled = true;
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          status: "failed" as const,
+          paymentCode: "cs_test_stripe123",
+        }),
+      }),
+    );
+
+    const payload = Buffer.from(JSON.stringify({
+      id: "evt_test_123",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_stripe123",
+          payment_status: "paid",
+          payment_intent: "pi_test_123",
+          amount_total: 800,
+        },
+      },
+    }));
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signedPayload = `${timestamp}.${payload.toString()}`;
+    const signature = createHmac("sha256", "whsec_stripe_webhook_secret").update(signedPayload).digest("hex");
+    const header = `t=${timestamp},v1=${signature}`;
+
+    const result = await service.handleStripeWebhook(header, payload);
+
+    assert.equal(result.ignored, true);
+    assert.equal(result.reason, "order_already_failed");
+    assert.equal(updateCalled, false);
+  });
+});

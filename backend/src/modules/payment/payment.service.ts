@@ -483,6 +483,14 @@ const getStripeConfig = () => {
   return { secretKey, webhookSecret };
 };
 
+const getStripeClient = () => {
+  const { secretKey } = getStripeConfig();
+  return new Stripe(secretKey, {
+    apiVersion: "2026-08-26.dahlia",
+    httpClient: Stripe.createFetchHttpClient(globalThis.fetch),
+  });
+};
+
 const createStripeCheckoutSession = async ({
   orderId,
   amountUsd,
@@ -490,8 +498,7 @@ const createStripeCheckoutSession = async ({
   orderId: string;
   amountUsd: string;
 }) => {
-  const { secretKey } = getStripeConfig();
-  const stripe = new Stripe(secretKey, { apiVersion: "2026-08-26.dahlia" });
+  const stripe = getStripeClient();
   const appBaseUrl = getAppBaseUrl();
 
   const session = await stripe.checkout.sessions.create({
@@ -813,8 +820,8 @@ export class PaymentService {
   }
 
   async handleStripeWebhook(signature: string | undefined, payload: Buffer) {
-    const { secretKey, webhookSecret } = getStripeConfig();
-    const stripe = new Stripe(secretKey, { apiVersion: "2026-08-26.dahlia" });
+    const { webhookSecret } = getStripeConfig();
+    const stripe = getStripeClient();
 
     if (!signature) {
       throw new AppError("Missing Stripe signature", 401);
