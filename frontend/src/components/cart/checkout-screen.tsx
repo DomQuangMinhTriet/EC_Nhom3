@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -11,11 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { State } from "@/components/common/state";
 import { useToast } from "@/components/common/toast";
+import { useAuthSession } from "@/features/auth/auth-session-provider";
 import { useCart } from "@/hooks/queries/use-cart";
 import { useCancelOrder, useCreateOrder, useOrderById } from "@/hooks/queries/use-order";
 import { useConfirmPaymentCallback, useInitiatePayment } from "@/hooks/queries/use-payment";
+import { useMyProfile } from "@/hooks/queries/use-profile";
 import type { Order, PaymentMethod } from "@/features/order/order-api";
 import type { PaymentRequest } from "@/features/payment/payment-api";
+import type { CustomerProfile } from "@/features/profile/profile-api";
 
 const checkoutSchema = z.object({
   name: z.string().min(2, "Nhập họ tên người nhận"),
@@ -31,6 +34,8 @@ export function CheckoutScreen() {
   const router = useRouter();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { session } = useAuthSession();
+  const profileQuery = useMyProfile<CustomerProfile>();
   const cartQuery = useCart();
   const createOrder = useCreateOrder();
   const initiatePayment = useInitiatePayment();
@@ -43,7 +48,19 @@ export function CheckoutScreen() {
     enabled: Boolean(pendingPayment),
     refetchInterval: isWaitingForSepay ? 4000 : false,
   });
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CheckoutValues>({ resolver: zodResolver(checkoutSchema), defaultValues: { payment: "card" } });
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CheckoutValues>({ resolver: zodResolver(checkoutSchema), defaultValues: { payment: "card" } });
+
+  const autofilledRef = useRef(false);
+  useEffect(() => {
+    if (autofilledRef.current || !session || profileQuery.isLoading) return;
+    autofilledRef.current = true;
+    reset({
+      payment: "card",
+      name: profileQuery.data?.fullName ?? "",
+      email: session.user.email ?? "",
+      phone: profileQuery.data?.phone ?? "",
+    });
+  }, [session, profileQuery.data, profileQuery.isLoading, reset]);
 
   const items = cartQuery.data?.items ?? [];
   const total = items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
