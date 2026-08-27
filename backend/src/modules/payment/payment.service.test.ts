@@ -221,6 +221,9 @@ test("handleCallback completes the order and creates a notification on success",
     title: "Payment successful",
     body: `Order ${orderId} has been paid successfully. Voucher codes are ready.`,
   });
+  // wasNewlyCompleted is internal-only (used above to decide whether to
+  // notify) and must not leak into the public payment/order API response.
+  assert.equal("wasNewlyCompleted" in result.order, false);
 });
 
 test("handleCallback does not duplicate notification for an already completed order", async () => {
@@ -563,5 +566,91 @@ test("handleSepayWebhook completes a matching inbound transaction", async () => 
       },
     ]);
     assert.equal(notifications.length, 1);
+  });
+});
+
+test("handleSepayWebhook acknowledges (does not throw) a transfer for an already-failed order", async () => {
+  await withSepayEnv(async () => {
+    let updateCalled = false;
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async () => {
+          updateCalled = true;
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          status: "failed" as const,
+          paymentCode: "ECV0000000000004000",
+        }),
+      }),
+    );
+
+    const result = await service.handleSepayWebhook({
+      authorization: "Apikey sepay-test-key",
+      payload: {
+        id: 92704,
+        transferType: "in",
+        transferAmount: 200000,
+        content: "Thanh toan ECV0000000000004000",
+      },
+    });
+
+    // Matches the sibling ignored-cases (transfer_not_inbound,
+    // unknown_payment_code, amount_mismatch): ack with 200 instead of
+    // throwing, so SePay's delivery system doesn't retry indefinitely.
+    assert.deepEqual(result, {
+      success: true,
+      ignored: true,
+      reason: "order_already_failed",
+    });
+    assert.equal(updateCalled, false);
+  });
+});
+
+test("handleSepayWebhook acknowledges a second transfer for an already-completed order without inserting a duplicate payment", async () => {
+  await withSepayEnv(async () => {
+    let updateCalled = false;
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async () => {
+          updateCalled = true;
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          status: "completed" as const,
+          paymentCode: "ECV0000000000004000",
+        }),
+      }),
+    );
+
+    const result = await service.handleSepayWebhook({
+      authorization: "Apikey sepay-test-key",
+      payload: {
+        id: 92705,
+        transferType: "in",
+        transferAmount: 200000,
+        content: "Thanh toan lan 2 ECV0000000000004000",
+      },
+    });
+
+    assert.deepEqual(result, {
+      success: true,
+      ignored: true,
+      reason: "order_already_completed",
+    });
+    // Must not call back into updateOrderBySystem at all for an
+    // already-completed order, or a second matching transfer would insert
+    // an extra payment row for an order that's already fully paid.
+    assert.equal(updateCalled, false);
   });
 });

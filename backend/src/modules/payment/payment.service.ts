@@ -391,8 +391,25 @@ export class PaymentService {
       };
     }
 
+    // Match the sibling ignored-cases above: acknowledge with 200 instead of
+    // throwing, so SePay's delivery system marks this delivered rather than
+    // retrying money that requires manual reconciliation regardless. Also
+    // covers the (already-)completed case, so a second genuine transfer for
+    // the same paymentCode doesn't insert a duplicate payment row.
     if (order.status === "failed") {
-      throw new AppError("Failed orders cannot be completed", 409);
+      return {
+        success: true,
+        ignored: true,
+        reason: "order_already_failed",
+      };
+    }
+
+    if (order.status === "completed") {
+      return {
+        success: true,
+        ignored: true,
+        reason: "order_already_completed",
+      };
     }
 
     const updatedOrder = await this.processPaymentResult({
@@ -445,6 +462,9 @@ export class PaymentService {
       });
     }
 
-    return order;
+    // wasNewlyCompleted is internal-only — used above to decide whether to
+    // notify, but not part of the documented order/payment API contract.
+    const { wasNewlyCompleted: _wasNewlyCompleted, ...publicOrder } = order;
+    return publicOrder;
   }
 }

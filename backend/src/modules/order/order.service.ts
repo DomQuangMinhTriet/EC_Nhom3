@@ -5,6 +5,7 @@ import {
   type OrderStatus,
   type PaymentMethod,
   DuplicateTransactionError,
+  OrderAlreadyFinalizedError,
   OrderRepository,
   StockReservationError,
 } from "./order.repository";
@@ -166,7 +167,17 @@ export class OrderService {
       throw new AppError("Order not found", 404);
     }
 
-    return await this.updateExistingOrder(existingOrder, input);
+    const result = await this.updateExistingOrder(existingOrder, input);
+
+    if (!result) {
+      return result;
+    }
+
+    // wasNewlyCompleted is an internal signal for PaymentService's
+    // duplicate-notification guard — it isn't part of the documented Order
+    // API contract and must not leak into this customer-facing response.
+    const { wasNewlyCompleted: _wasNewlyCompleted, ...orderDetail } = result;
+    return orderDetail;
   }
 
   async updateOrderBySystem(orderId: string, input: UpdateOrderInput) {
@@ -351,6 +362,10 @@ export class OrderService {
     } catch (error) {
       if (error instanceof DuplicateTransactionError) {
         throw new AppError(error.message, 409);
+      }
+
+      if (error instanceof OrderAlreadyFinalizedError) {
+        throw new AppError(error.message, 400);
       }
 
       throw error;
