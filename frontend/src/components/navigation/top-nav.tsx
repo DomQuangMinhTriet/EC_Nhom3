@@ -7,11 +7,15 @@ import { Logo } from "@/components/common/logo";
 import { Button } from "@/components/ui/button";
 import { dashboardForRole } from "@/features/auth/auth-api";
 import { useAuthSession } from "@/features/auth/auth-session-provider";
+import { useCart } from "@/hooks/queries/use-cart";
 
 export function TopNav() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const { session, signOut } = useAuthSession();
+  const isCustomer = session?.user.roleCode === "Customer";
+  const { data: cart } = useCart({ enabled: isCustomer });
+  const cartItemCount = cart?.items.length ?? 0;
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -30,6 +34,16 @@ export function TopNav() {
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm voucher..." className="w-full bg-transparent py-2 text-xs outline-none placeholder:text-slate-400" />
         </form>
         <div className="flex items-center gap-2">
+          {isCustomer && (
+            <Link href="/cart" className="relative mr-1 text-lg text-slate-500 hover:text-primary" aria-label="Giỏ hàng">
+              🛒
+              {cartItemCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">
+                  {cartItemCount}
+                </span>
+              )}
+            </Link>
+          )}
           {session ? (
             <>
               <Link href={dashboardForRole(session.user.roleCode)}><Button variant="link" size="sm">Tài khoản</Button></Link>
