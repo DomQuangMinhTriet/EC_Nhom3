@@ -30,6 +30,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "pg": "^8.13.1",
+    "stripe": "^22.6.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {

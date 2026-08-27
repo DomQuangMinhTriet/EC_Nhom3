@@ -83,4 +83,13 @@ export class PaymentController {
       }),
     );
   };
+
+  handleStripeWebhook = async (req: Request, res: Response) => {
+    res.json(
+      await this.paymentService.handleStripeWebhook(
+        req.header("stripe-signature"),
+        req.body,
+      ),
+    );
+  };
 }
