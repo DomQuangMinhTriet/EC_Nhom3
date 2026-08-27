@@ -23,13 +23,10 @@ const orderRecord = {
 
 const createOrderService = (overrides = {}) => ({
   getOrderById: async () => orderRecord,
-  getOrderByIdForAdmin: async () => ({
-    ...orderRecord,
-    customer: { fullName: "Nguyen Van A", email: "customer@example.com" },
-  }),
   updateOrderBySystem: async () => ({
     ...orderRecord,
     status: "completed" as const,
+    wasNewlyCompleted: true,
   }),
   ...overrides,
 });
@@ -187,7 +184,7 @@ test("handleCallback completes the order and creates a notification on success",
         input: Record<string, unknown>,
       ) => {
         capturedUpdate = [requestedOrderId, input];
-        return { ...orderRecord, status: "completed" as const };
+        return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
       },
     }),
     createNotificationRepository({
@@ -230,14 +227,13 @@ test("handleCallback does not duplicate notification for an already completed or
   let createCalled = false;
   const service = new PaymentService(
     createOrderService({
-      getOrderByIdForAdmin: async () => ({
-        ...orderRecord,
-        status: "completed" as const,
-        customer: { fullName: "Nguyen Van A", email: "customer@example.com" },
-      }),
+      // wasNewlyCompleted: false simulates a retried/duplicate callback for
+      // an order OrderRepository.updateOrder's own locked transaction has
+      // already determined was completed before this call.
       updateOrderBySystem: async () => ({
         ...orderRecord,
         status: "completed" as const,
+        wasNewlyCompleted: false,
       }),
     }),
     createNotificationRepository({
@@ -271,6 +267,7 @@ test("handleCallback fails the order with a payment reason", async () => {
           ...orderRecord,
           status: "failed" as const,
           reason: "Gateway rejected transaction",
+          wasNewlyCompleted: false,
         };
       },
     }),
@@ -297,6 +294,56 @@ test("handleCallback fails the order with a payment reason", async () => {
     },
   ]);
   assert.ok(result.order);
+  assert.equal(result.order.status, "failed");
+});
+
+test("handleCallback refuses to self-complete a bank_transfer order (must go through the SePay webhook)", async () => {
+  let updateCalled = false;
+  const service = new PaymentService(
+    createOrderService({
+      updateOrderBySystem: async () => {
+        updateCalled = true;
+        return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+      },
+    }),
+    createNotificationRepository(),
+  );
+
+  await assert.rejects(
+    service.handleCallback({
+      orderId,
+      status: "success",
+      transactionId: "self-declared-txn",
+      paymentMethod: "bank_transfer",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message ===
+        "bank_transfer payments must be confirmed via the SePay webhook",
+  );
+  assert.equal(updateCalled, false);
+});
+
+test("handleCallback still allows declaring a bank_transfer attempt as failed", async () => {
+  const service = new PaymentService(
+    createOrderService({
+      updateOrderBySystem: async () => ({
+        ...orderRecord,
+        status: "failed" as const,
+        wasNewlyCompleted: false,
+      }),
+    }),
+    createNotificationRepository(),
+  );
+
+  const result = await service.handleCallback({
+    orderId,
+    status: "failed",
+    transactionId: "self-declared-txn",
+    paymentMethod: "bank_transfer",
+  });
+
   assert.equal(result.order.status, "failed");
 });
 
@@ -404,7 +451,7 @@ test("handleSepayWebhook does not complete an order with the wrong amount", asyn
       createOrderService({
         updateOrderBySystem: async () => {
           updateCalled = true;
-          return { ...orderRecord, status: "completed" as const };
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
         },
       }),
       createNotificationRepository(),
@@ -428,7 +475,7 @@ test("handleSepayWebhook does not complete an order with the wrong amount", asyn
   });
 });
 
-test("handleSepayWebhook completes a matching inbound transaction", async () => {
+test("handleSepayWebhook finds the payment code even with no separator before it", async () => {
   await withSepayEnv(async () => {
     let capturedUpdate: unknown[] | undefined;
     const service = new PaymentService(
@@ -438,10 +485,50 @@ test("handleSepayWebhook completes a matching inbound transaction", async () => 
           input: Record<string, unknown>,
         ) => {
           capturedUpdate = [requestedOrderId, input];
-          return { ...orderRecord, status: "completed" as const };
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
         },
       }),
       createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository(),
+    );
+
+    const result = await service.handleSepayWebhook({
+      authorization: "Apikey sepay-test-key",
+      payload: {
+        id: 92704,
+        transferType: "in",
+        transferAmount: 200000,
+        // No space/separator before the code, as some bank apps produce.
+        content: "CHUYENTIENECV0000000000004000",
+      },
+    });
+
+    assert.equal(result.ignored, false);
+    assert.ok(capturedUpdate);
+  });
+});
+
+test("handleSepayWebhook completes a matching inbound transaction", async () => {
+  await withSepayEnv(async () => {
+    let capturedUpdate: unknown[] | undefined;
+    const notifications: unknown[] = [];
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async (
+          requestedOrderId: string,
+          input: Record<string, unknown>,
+        ) => {
+          capturedUpdate = [requestedOrderId, input];
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository({
+        create: async (record: unknown) => {
+          notifications.push(record);
+          return record;
+        },
+      }),
       () => "mock-txn-1",
       createPaymentRepository(),
     );
@@ -475,5 +562,6 @@ test("handleSepayWebhook completes a matching inbound transaction", async () => 
         reason: undefined,
       },
     ]);
+    assert.equal(notifications.length, 1);
   });
 });

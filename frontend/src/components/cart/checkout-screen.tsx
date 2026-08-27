@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -29,6 +30,7 @@ const paymentLabels: Record<PaymentMethod, string> = { card: "Thẻ tín dụng/
 export function CheckoutScreen() {
   const router = useRouter();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const cartQuery = useCart();
   const createOrder = useCreateOrder();
   const initiatePayment = useInitiatePayment();
@@ -48,21 +50,34 @@ export function CheckoutScreen() {
 
   useEffect(() => {
     if (pendingOrderQuery.data?.status === "completed") {
+      // The mock/card path invalidates these caches itself on confirm, but a
+      // real bank_transfer completes via the SePay webhook + this poll
+      // detecting it — nothing else invalidates the cache for that path, so
+      // /orders and /my-vouchers would otherwise show stale data.
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["voucherInstances"] });
       router.push(`/order-confirmation/${pendingOrderQuery.data.orderId}`);
     }
-  }, [pendingOrderQuery.data, router]);
+  }, [pendingOrderQuery.data, queryClient, router]);
 
   async function submit(values: CheckoutValues) {
     const cart = cartQuery.data;
     if (!cart) return;
+    let createdOrder: Order | null = null;
     try {
-      const order = await createOrder.mutateAsync(cart.cartId);
+      createdOrder = await createOrder.mutateAsync(cart.cartId);
       const payment = await initiatePayment.mutateAsync({
-        orderId: order.orderId,
+        orderId: createdOrder.orderId,
         paymentMethod: values.payment,
       });
-      setPendingPayment({ order, payment });
+      setPendingPayment({ order: createdOrder, payment });
     } catch (error) {
+      if (createdOrder) {
+        // The order was created but starting payment failed — cancel it so
+        // it doesn't linger as an orphaned pending order (holding reserved
+        // stock) with no way to interact with it from this screen.
+        await cancelOrder.mutateAsync(createdOrder.orderId).catch(() => {});
+      }
       toast(error instanceof Error ? error.message : "Không thể tạo đơn hàng.", "error");
     }
   }

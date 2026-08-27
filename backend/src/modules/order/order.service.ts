@@ -333,10 +333,14 @@ export class OrderService {
       throw new AppError("Order not found", 404);
     }
 
-    return await this.orderRepository.getOrderDetail(
+    const orderDetail = await this.orderRepository.getOrderDetail(
       existingOrder.orderId,
       existingOrder.customerProfileId,
     );
+
+    return orderDetail
+      ? { ...orderDetail, wasNewlyCompleted: updatedOrder.wasNewlyCompleted }
+      : orderDetail;
   }
 
   private async updateOrderRecord(

@@ -33,7 +33,9 @@ export function useCreateOrder() {
 }
 
 export function useCancelOrder() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (orderId: string) => cancelOrder(orderId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
   });
 }

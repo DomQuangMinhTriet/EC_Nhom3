@@ -29,7 +29,7 @@ type SepayWebhookInput = {
 
 type OrderWorkflow = Pick<
   OrderService,
-  "getOrderById" | "getOrderByIdForAdmin" | "updateOrderBySystem"
+  "getOrderById" | "updateOrderBySystem"
 >;
 
 type NotificationWriter = Pick<NotificationRepository, "create">;
@@ -89,7 +89,11 @@ const extractSepayPaymentCode = (...values: unknown[]) => {
   for (const value of values) {
     if (typeof value !== "string") continue;
 
-    const matched = value.toUpperCase().match(/\bECV[A-Z0-9]{6,32}\b/);
+    // No \b anchor: bank transfer content is free text and often has no
+    // separator before the code (e.g. "CHUYENTIENECV..."), which \b would
+    // fail to match. buildSepayPaymentCode always emits exactly 16 hex
+    // chars after "ECV", so an exact-length match stays precise without it.
+    const matched = value.toUpperCase().match(/ECV[0-9A-F]{16}/);
     if (matched) {
       return matched[0];
     }
@@ -302,6 +306,20 @@ export class PaymentService {
     const paymentMethod = parsePaymentMethod(input.paymentMethod);
     const callbackStatus = parseCallbackStatus(input.status);
 
+    // This callback is the mock/demo confirmation path — a customer's own
+    // client can call it with a self-declared status. bank_transfer has a
+    // real confirmation mechanism (the SePay webhook, amount-verified against
+    // the order), so a self-declared "success" must never complete a
+    // bank_transfer order here, or a customer could "pay" without ever
+    // transferring money. Declaring one's own bank_transfer attempt failed is
+    // harmless (equivalent to cancelling), so only "success" is blocked.
+    if (paymentMethod === "bank_transfer" && callbackStatus === "success") {
+      throw new AppError(
+        "bank_transfer payments must be confirmed via the SePay webhook",
+        400,
+      );
+    }
+
     const reason =
       callbackStatus === "failed"
         ? input.reason ?? "Payment failed"
@@ -402,10 +420,6 @@ export class PaymentService {
     currency?: string;
     reason?: string | null;
   }) {
-    const existingOrder = await this.orderService.getOrderByIdForAdmin(
-      input.orderId,
-    );
-
     const order = await this.orderService.updateOrderBySystem(input.orderId, {
       status: input.status,
       transactionId: input.transactionId,
@@ -419,11 +433,11 @@ export class PaymentService {
       throw new AppError("Order not found", 404);
     }
 
-    if (
-      input.status === "completed" &&
-      existingOrder.status !== "completed" &&
-      order.status === "completed"
-    ) {
+    // wasNewlyCompleted is computed inside OrderRepository.updateOrder's own
+    // row-locked transaction, so it's safe against concurrent/retried
+    // webhook deliveries for the same order — unlike comparing a separate,
+    // unlocked pre-read of order status against the post-update result.
+    if (order.wasNewlyCompleted) {
       await this.notificationRepository.create({
         customerProfileId: order.customerProfileId,
         title: "Payment successful",

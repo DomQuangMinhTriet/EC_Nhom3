@@ -139,7 +139,7 @@ test("updateOrder completes a pending order and records successful payment detai
     createRepository({
       updateOrder: async (input) => {
         captured = input;
-        return { ...orderRecord, status: "completed" };
+        return { ...orderRecord, status: "completed", wasNewlyCompleted: true };
       },
     }),
   );
@@ -172,7 +172,7 @@ test("updateOrderBySystem completes a pending order without a customer token", a
     createRepository({
       updateOrder: async (input) => {
         captured = input;
-        return { ...orderRecord, status: "completed" };
+        return { ...orderRecord, status: "completed", wasNewlyCompleted: true };
       },
     }),
   );
@@ -227,7 +227,7 @@ test("cancelOrder changes a customer order to failed", async () => {
     createRepository({
       updateOrder: async (input) => {
         captured = input;
-        return { ...orderRecord, status: "failed" };
+        return { ...orderRecord, status: "failed", wasNewlyCompleted: false };
       },
     }),
   );

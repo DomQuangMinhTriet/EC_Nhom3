@@ -449,7 +449,10 @@ export class OrderRepository {
         }
       }
 
-      if (data.status === "completed" && existingOrder.status !== "completed") {
+      const wasNewlyCompleted =
+        data.status === "completed" && existingOrder.status !== "completed";
+
+      if (wasNewlyCompleted) {
         const itemsMissingCodes = await tx
           .select({
             orderItemId: orderItem.orderItemId,
@@ -554,7 +557,7 @@ export class OrderRepository {
         });
       }
 
-      return updatedOrder ?? null;
+      return updatedOrder ? { ...updatedOrder, wasNewlyCompleted } : null;
     });
   }
 
