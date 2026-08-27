@@ -18,6 +18,10 @@ import { paymentRouter } from "../modules/payment/payment.routes";
 
 export const apiRouter = Router();
 
+apiRouter.get("/", (_req, res) => {
+  res.json({ status: "ok", service: "EC_Nhom3 API" });
+});
+
 apiRouter.use("/api/auth", authRouter);
 apiRouter.use("/api/profile", profileRouter);
 apiRouter.use("/api/users", usersRouter);
