@@ -63,6 +63,11 @@ export const orderStatusEnum = pgEnum("order_status", [
 export const paymentMethodEnum = pgEnum("payment_method", [
   "bank_transfer",
   "card",
+  "paypal",
+  "vnpay",
+  // Reserved for Dương's Stripe integration — added now so it ships in this
+  // same migration and no second ALTER TYPE migration is needed later.
+  "stripe",
 ]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [

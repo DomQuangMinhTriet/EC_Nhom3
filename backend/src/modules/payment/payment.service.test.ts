@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 import { AppError } from "../../shared/errors/AppError";
 import { PaymentService } from "./payment.service";
@@ -70,6 +71,59 @@ const withSepayEnv = async (callback: () => Promise<void>) => {
   process.env.SEPAY_BANK_NAME = "MBBank";
   process.env.SEPAY_ACCOUNT_NAME = "EC VOUCHER DEMO";
   process.env.SEPAY_WEBHOOK_API_KEY = "sepay-test-key";
+
+  try {
+    await callback();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+};
+
+const withPaypalEnv = async (callback: () => Promise<void>) => {
+  const previous = {
+    PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
+    PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+    PAYPAL_API_BASE: process.env.PAYPAL_API_BASE,
+    APP_BASE_URL: process.env.APP_BASE_URL,
+  };
+
+  process.env.PAYPAL_CLIENT_ID = "paypal-test-client-id";
+  process.env.PAYPAL_CLIENT_SECRET = "paypal-test-secret";
+  process.env.PAYPAL_API_BASE = "https://api-m.sandbox.paypal.com";
+  process.env.APP_BASE_URL = "https://ec-voucher-demo.example";
+
+  try {
+    await callback();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+};
+
+const withVnpayEnv = async (callback: () => Promise<void>) => {
+  const previous = {
+    VNPAY_TMN_CODE: process.env.VNPAY_TMN_CODE,
+    VNPAY_HASH_SECRET: process.env.VNPAY_HASH_SECRET,
+    VNPAY_PAYMENT_URL: process.env.VNPAY_PAYMENT_URL,
+    APP_BASE_URL: process.env.APP_BASE_URL,
+  };
+
+  process.env.VNPAY_TMN_CODE = "VNPAYTEST";
+  process.env.VNPAY_HASH_SECRET = "vnpay-test-hash-secret";
+  process.env.VNPAY_PAYMENT_URL =
+    "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+  process.env.APP_BASE_URL = "https://ec-voucher-demo.example";
 
   try {
     await callback();
@@ -566,6 +620,416 @@ test("handleSepayWebhook completes a matching inbound transaction", async () => 
       },
     ]);
     assert.equal(notifications.length, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PayPal
+// ---------------------------------------------------------------------------
+
+const mockPaypalFetch = (t: import("node:test").TestContext, options: {
+  createOrderStatus?: number;
+  captureStatus?: number;
+  captureBody?: unknown;
+} = {}) => {
+  t.mock.method(globalThis, "fetch", async (url: string | URL) => {
+    const href = url.toString();
+
+    if (href.endsWith("/v1/oauth2/token")) {
+      return new Response(JSON.stringify({ access_token: "mock-access-token" }), {
+        status: 200,
+      });
+    }
+
+    if (href.endsWith("/v2/checkout/orders")) {
+      return new Response(
+        JSON.stringify({
+          id: "PAYPAL-ORDER-1",
+          links: [{ rel: "approve", href: "https://sandbox.paypal.com/approve/PAYPAL-ORDER-1" }],
+        }),
+        { status: options.createOrderStatus ?? 201 },
+      );
+    }
+
+    if (href.includes("/capture")) {
+      return new Response(
+        JSON.stringify(
+          options.captureBody ?? {
+            status: "COMPLETED",
+            purchase_units: [
+              { payments: { captures: [{ id: "CAPTURE-1", amount: { value: "4.00" } }] } },
+            ],
+          },
+        ),
+        { status: options.captureStatus ?? 200 },
+      );
+    }
+
+    throw new Error(`Unexpected fetch call in test: ${href}`);
+  });
+};
+
+test("initiatePayment converts VND to USD and returns PayPal's approval link", async (t) => {
+  await withPaypalEnv(async () => {
+    mockPaypalFetch(t);
+    let captured: { orderId: string; paymentCode: string } | undefined;
+    const service = new PaymentService(
+      createOrderService(),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        setPaymentCodeForOrder: async (input: {
+          orderId: string;
+          customerProfileId: string;
+          paymentCode: string;
+        }) => {
+          captured = input;
+          return { ...orderRecord, paymentCode: input.paymentCode };
+        },
+      }),
+    );
+
+    const result = await service.initiatePayment(userId, {
+      orderId,
+      paymentMethod: "paypal",
+    });
+
+    // orderRecord.totalAmount is "200000.00" VND; VND_PER_USD is 25000.
+    assert.equal(result.amount, "8.00");
+    assert.equal(result.currency, "USD");
+    assert.equal(result.transactionId, "PAYPAL-ORDER-1");
+    assert.equal(result.paymentUrl, "https://sandbox.paypal.com/approve/PAYPAL-ORDER-1");
+    assert.equal(captured?.paymentCode, "PAYPAL-ORDER-1");
+  });
+});
+
+test("initiatePayment throws if PayPal is not configured", async () => {
+  const service = new PaymentService(createOrderService(), createNotificationRepository());
+
+  await assert.rejects(
+    service.initiatePayment(userId, { orderId, paymentMethod: "paypal" }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 500 &&
+      error.message === "PayPal is not configured",
+  );
+});
+
+test("capturePaypalPayment captures and completes the order", async (t) => {
+  await withPaypalEnv(async () => {
+    mockPaypalFetch(t);
+    const notifications: unknown[] = [];
+    const service = new PaymentService(
+      createOrderService({
+        getOrderById: async () => ({
+          ...orderRecord,
+          paymentCode: "PAYPAL-ORDER-1",
+        }),
+        updateOrderBySystem: async () => ({
+          ...orderRecord,
+          status: "completed" as const,
+          wasNewlyCompleted: true,
+        }),
+      }),
+      createNotificationRepository({
+        create: async (record: unknown) => {
+          notifications.push(record);
+          return record;
+        },
+      }),
+    );
+
+    const result = await service.capturePaypalPayment(userId, orderId);
+
+    assert.equal(result.order.status, "completed");
+    assert.equal(notifications.length, 1);
+    assert.equal("wasNewlyCompleted" in result.order, false);
+  });
+});
+
+test("capturePaypalPayment is idempotent for an already-completed order (does not call PayPal again)", async (t) => {
+  await withPaypalEnv(async () => {
+    let fetchCalled = false;
+    t.mock.method(globalThis, "fetch", async () => {
+      fetchCalled = true;
+      throw new Error("should not be called");
+    });
+
+    const service = new PaymentService(
+      createOrderService({
+        getOrderById: async () => ({
+          ...orderRecord,
+          status: "completed" as const,
+          paymentCode: "PAYPAL-ORDER-1",
+        }),
+      }),
+      createNotificationRepository(),
+    );
+
+    const result = await service.capturePaypalPayment(userId, orderId);
+
+    assert.equal(result.message, "Order already completed.");
+    assert.equal(fetchCalled, false);
+  });
+});
+
+test("capturePaypalPayment rejects a failed order", async () => {
+  const service = new PaymentService(
+    createOrderService({
+      getOrderById: async () => ({ ...orderRecord, status: "failed" as const }),
+    }),
+    createNotificationRepository(),
+  );
+
+  await assert.rejects(
+    service.capturePaypalPayment(userId, orderId),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "Failed orders cannot be completed",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// VNPay
+// ---------------------------------------------------------------------------
+
+const signVnpayQuery = (params: Record<string, string>, hashSecret: string) => {
+  const sorted = Object.fromEntries(
+    Object.entries(params).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
+  return createHmac("sha512", hashSecret)
+    .update(new URLSearchParams(sorted).toString())
+    .digest("hex");
+};
+
+test("initiatePayment builds a signed VNPay redirect URL", async () => {
+  await withVnpayEnv(async () => {
+    let captured: { orderId: string; paymentCode: string } | undefined;
+    const service = new PaymentService(
+      createOrderService(),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        setPaymentCodeForOrder: async (input: {
+          orderId: string;
+          customerProfileId: string;
+          paymentCode: string;
+        }) => {
+          captured = input;
+          return { ...orderRecord, paymentCode: input.paymentCode };
+        },
+      }),
+    );
+
+    const result = await service.initiatePayment(userId, {
+      orderId,
+      paymentMethod: "vnpay",
+      ipAddr: "203.0.113.5",
+    });
+
+    const url = new URL(result.paymentUrl);
+    assert.equal(url.origin + url.pathname, "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
+    assert.equal(url.searchParams.get("vnp_Amount"), "20000000"); // 200000.00 VND * 100
+    assert.equal(url.searchParams.get("vnp_TxnRef"), result.transactionId);
+    assert.ok(url.searchParams.get("vnp_SecureHash"));
+    assert.match(result.transactionId, /^VNP[0-9A-F]+$/);
+    assert.equal(captured?.paymentCode, result.transactionId);
+  });
+});
+
+test("handleVnpayIpn rejects an invalid signature", async () => {
+  await withVnpayEnv(async () => {
+    const service = new PaymentService(createOrderService(), createNotificationRepository());
+
+    const result = await service.handleVnpayIpn({
+      vnp_TxnRef: "VNP0000000000000003",
+      vnp_Amount: "20000000",
+      vnp_ResponseCode: "00",
+      vnp_SecureHash: "not-a-real-signature",
+    });
+
+    assert.deepEqual(result, { RspCode: "97", Message: "Invalid signature" });
+  });
+});
+
+test("handleVnpayIpn completes a matching order on responseCode 00", async () => {
+  await withVnpayEnv(async () => {
+    const hashSecret = process.env.VNPAY_HASH_SECRET!;
+    const notifications: unknown[] = [];
+    let capturedUpdate: unknown[] | undefined;
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async (requestedOrderId: string, input: Record<string, unknown>) => {
+          capturedUpdate = [requestedOrderId, input];
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository({
+        create: async (record: unknown) => {
+          notifications.push(record);
+          return record;
+        },
+      }),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          paymentCode: "VNP0000000000000003",
+        }),
+      }),
+    );
+
+    const params = {
+      vnp_TxnRef: "VNP0000000000000003",
+      vnp_Amount: "20000000",
+      vnp_ResponseCode: "00",
+      vnp_TransactionNo: "14000123",
+    };
+    const result = await service.handleVnpayIpn({
+      ...params,
+      vnp_SecureHash: signVnpayQuery(params, hashSecret),
+    });
+
+    assert.deepEqual(result, { RspCode: "00", Message: "Confirm Success" });
+    assert.equal((capturedUpdate?.[1] as Record<string, unknown>).status, "completed");
+    assert.equal((capturedUpdate?.[1] as Record<string, unknown>).amount, "200000");
+    assert.equal(notifications.length, 1);
+  });
+});
+
+test("handleVnpayIpn marks the order failed on a non-success responseCode", async () => {
+  await withVnpayEnv(async () => {
+    const hashSecret = process.env.VNPAY_HASH_SECRET!;
+    let capturedUpdate: unknown[] | undefined;
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async (requestedOrderId: string, input: Record<string, unknown>) => {
+          capturedUpdate = [requestedOrderId, input];
+          return { ...orderRecord, status: "failed" as const, wasNewlyCompleted: false };
+        },
+      }),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          paymentCode: "VNP0000000000000003",
+        }),
+      }),
+    );
+
+    const params = {
+      vnp_TxnRef: "VNP0000000000000003",
+      vnp_Amount: "20000000",
+      vnp_ResponseCode: "24", // VNPay's "customer cancelled" code
+    };
+    const result = await service.handleVnpayIpn({
+      ...params,
+      vnp_SecureHash: signVnpayQuery(params, hashSecret),
+    });
+
+    assert.deepEqual(result, { RspCode: "00", Message: "Confirm Success" });
+    assert.equal((capturedUpdate?.[1] as Record<string, unknown>).status, "failed");
+  });
+});
+
+test("handleVnpayIpn ignores an unknown vnp_TxnRef", async () => {
+  await withVnpayEnv(async () => {
+    const hashSecret = process.env.VNPAY_HASH_SECRET!;
+    const service = new PaymentService(
+      createOrderService(),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({ findOrderByPaymentCode: async () => null }),
+    );
+
+    const params = { vnp_TxnRef: "VNP-UNKNOWN", vnp_Amount: "20000000", vnp_ResponseCode: "00" };
+    const result = await service.handleVnpayIpn({
+      ...params,
+      vnp_SecureHash: signVnpayQuery(params, hashSecret),
+    });
+
+    assert.deepEqual(result, { RspCode: "01", Message: "Order not found" });
+  });
+});
+
+test("handleVnpayIpn rejects a mismatched amount", async () => {
+  await withVnpayEnv(async () => {
+    const hashSecret = process.env.VNPAY_HASH_SECRET!;
+    const service = new PaymentService(
+      createOrderService(),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          paymentCode: "VNP0000000000000003",
+        }),
+      }),
+    );
+
+    const params = {
+      vnp_TxnRef: "VNP0000000000000003",
+      vnp_Amount: "1", // orderRecord total is 200000.00 VND -> expects 20000000
+      vnp_ResponseCode: "00",
+    };
+    const result = await service.handleVnpayIpn({
+      ...params,
+      vnp_SecureHash: signVnpayQuery(params, hashSecret),
+    });
+
+    assert.deepEqual(result, { RspCode: "04", Message: "Invalid amount" });
+  });
+});
+
+test("handleVnpayIpn ignores a re-delivery for an already-completed order", async () => {
+  await withVnpayEnv(async () => {
+    const hashSecret = process.env.VNPAY_HASH_SECRET!;
+    let updateCalled = false;
+    const service = new PaymentService(
+      createOrderService({
+        updateOrderBySystem: async () => {
+          updateCalled = true;
+          return { ...orderRecord, status: "completed" as const, wasNewlyCompleted: true };
+        },
+      }),
+      createNotificationRepository(),
+      () => "mock-txn-1",
+      createPaymentRepository({
+        findOrderByPaymentCode: async () => ({
+          ...orderRecord,
+          status: "completed" as const,
+          paymentCode: "VNP0000000000000003",
+        }),
+      }),
+    );
+
+    const params = { vnp_TxnRef: "VNP0000000000000003", vnp_Amount: "20000000", vnp_ResponseCode: "00" };
+    const result = await service.handleVnpayIpn({
+      ...params,
+      vnp_SecureHash: signVnpayQuery(params, hashSecret),
+    });
+
+    assert.deepEqual(result, { RspCode: "02", Message: "Order already confirmed" });
+    assert.equal(updateCalled, false);
+  });
+});
+
+test("handleVnpayReturn reports validity and success without mutating the order", async () => {
+  await withVnpayEnv(async () => {
+    const hashSecret = process.env.VNPAY_HASH_SECRET!;
+    const service = new PaymentService(createOrderService(), createNotificationRepository());
+
+    const params = { vnp_TxnRef: "VNP0000000000000003", vnp_ResponseCode: "00" };
+    const validResult = service.handleVnpayReturn({
+      ...params,
+      vnp_SecureHash: signVnpayQuery(params, hashSecret),
+    });
+    assert.deepEqual(validResult, { valid: true, success: true });
+
+    const tamperedResult = service.handleVnpayReturn({ ...params, vnp_SecureHash: "wrong" });
+    assert.deepEqual(tamperedResult, { valid: false, success: false });
   });
 });
 
