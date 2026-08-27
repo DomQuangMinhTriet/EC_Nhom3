@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Thiếu hoặc sai orderId." }, { status: 400 });
   }
 
-  // This proxy holds a privileged, ownership-blind API key (the backend's PUT
-  // /api/orders/:id has no ownership check of its own — only the API key gate).
+  // This proxy holds a privileged, ownership-blind API key (the backend's
+  // payment callback has no ownership check of its own, only the API key gate).
   // Verify the caller's own bearer token actually owns this order via the
   // ownership-checked customer endpoint before forwarding the privileged call,
   // otherwise anyone with any non-empty Authorization header could complete
@@ -34,10 +34,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorBody ?? { error: "Không thể xác minh đơn hàng." }, { status: ownershipCheck.status });
   }
 
-  const response = await fetch(`${backendUrl}/api/orders/${orderId}`, {
-    method: "PUT",
+  const response = await fetch(`${backendUrl}/api/payments/callback`, {
+    method: "POST",
     headers: { "Content-Type": "application/json", "ec-voucher-api-key": apiKey },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ orderId, ...payload }),
   });
   const body: unknown = await response.json().catch(() => undefined);
 

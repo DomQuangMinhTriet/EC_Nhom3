@@ -101,6 +101,16 @@ Chi tiet: [ORDER_API.md](ORDER_API.md)
 | `PATCH` | `/api/orders/:id/cancel` |
 | `PUT`   | `/api/orders/:id`        |
 
+## Payments
+
+Chi tiet: [PAYMENT_API.md](PAYMENT_API.md)
+
+| Method | Path                     |
+| ------ | ------------------------ |
+| `POST` | `/api/payments/initiate` |
+| `POST` | `/api/payments/callback` |
+| `POST` | `/api/payments/sepay/webhook` |
+
 ## Voucher Instances
 
 Chi tiet: [VOUCHER_INSTANCE_API.md](VOUCHER_INSTANCE_API.md)

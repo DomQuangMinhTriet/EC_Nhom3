@@ -45,8 +45,8 @@ describe("voucher instance api", () => {
     expect(url).toContain("status=used");
   });
 
-  it("returns the voucher detail including the generated QR data URI", async () => {
-    const detail = { voucherCodeId: "vc1", code: "EC-1234", qrDataUri: "data:image/png;base64,xyz" };
+  it("returns the voucher detail by id", async () => {
+    const detail = { voucherCodeId: "vc1", code: "EC-1234" };
     mockFetchOnce(200, { data: detail });
 
     const result = await getVoucherInstanceDetail("vc1");

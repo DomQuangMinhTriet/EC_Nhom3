@@ -1,12 +1,27 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cancelOrder, confirmOrderPayment, createOrder, getMyOrders, type OrderStatus, type PaymentMethod } from "@/features/order/order-api";
+import { cancelOrder, createOrder, getMyOrders, getOrderById, type OrderStatus } from "@/features/order/order-api";
 import { cartKeys } from "@/hooks/queries/use-cart";
 
-export const orderKeys = { mine: (status?: OrderStatus) => ["orders", "mine", status ?? "all"] as const };
+export const orderKeys = {
+  mine: (status?: OrderStatus) => ["orders", "mine", status ?? "all"] as const,
+  detail: (orderId?: string) => ["orders", "detail", orderId ?? ""] as const,
+};
 
 export function useMyOrders(status?: OrderStatus) {
   return useQuery({ queryKey: orderKeys.mine(status), queryFn: () => getMyOrders({ status }) });
+}
+
+export function useOrderById(
+  orderId?: string,
+  options: { enabled?: boolean; refetchInterval?: number | false } = {},
+) {
+  return useQuery({
+    queryKey: orderKeys.detail(orderId),
+    queryFn: () => getOrderById(orderId!),
+    enabled: Boolean(orderId) && (options.enabled ?? true),
+    refetchInterval: options.refetchInterval,
+  });
 }
 
 export function useCreateOrder() {
@@ -17,17 +32,10 @@ export function useCreateOrder() {
   });
 }
 
-export function useConfirmOrderPayment() {
+export function useCancelOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ orderId, transactionId, paymentMethod }: { orderId: string; transactionId: string; paymentMethod: PaymentMethod }) =>
-      confirmOrderPayment(orderId, { status: "completed", transactionId, paymentMethod }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["voucherInstances"] }),
-  });
-}
-
-export function useCancelOrder() {
-  return useMutation({
     mutationFn: (orderId: string) => cancelOrder(orderId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
   });
 }

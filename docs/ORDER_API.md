@@ -12,7 +12,8 @@ http://localhost:<PORT>/api/orders
 Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 ```
 
-`PUT /api/orders/:id` la endpoint internal/payment callback, dung API key:
+`PUT /api/orders/:id` la endpoint internal/legacy de cap nhat order, dung API key.
+Payment callback moi nen dung [PAYMENT_API.md](PAYMENT_API.md):
 
 ```http
 ec-voucher-api-key: <EC_VOUCHER_API_KEY>
@@ -37,7 +38,7 @@ Authorization: Bearer <CUSTOMER_ACCESS_TOKEN>
 | `GET` | `/admin/:id` | Admin xem chi tiet bat ky order nao |
 | `GET` | `/:id` | Customer xem chi tiet 1 order cua chinh minh |
 | `POST` | `/` | Tao order tu cart |
-| `PUT` | `/:id` | Internal/payment callback cap nhat order |
+| `PUT` | `/:id` | Internal/legacy cap nhat order |
 | `PATCH` | `/:id/cancel` | Customer huy order dang cho thanh toan |
 
 `:id` la `orderId`. Cac route `/admin` va `/admin/:id` duoc dang ky truoc
@@ -227,7 +228,10 @@ Tong tien:
 totalAmount = sum(cart_item.unitPrice * quantity)
 ```
 
-## Cap nhat order completed
+## Cap nhat order completed (internal/legacy)
+
+Payment callback nen dung `POST /api/payments/callback`. Endpoint nay van duoc
+giu cho internal tooling can cap nhat order truc tiep.
 
 ```http
 PUT /api/orders/:id
@@ -341,7 +345,9 @@ tru `branch_voucher_products.soldQuantity` theo so luong order item. Neu order
 da `completed`, API tra loi loi vi completed order khong duoc chuyen sang
 failed.
 
-## Thanh toan that bai tu internal callback
+## Thanh toan that bai tu internal/legacy update
+
+Payment callback nen dung `POST /api/payments/callback`.
 
 ```http
 PUT /api/orders/:id

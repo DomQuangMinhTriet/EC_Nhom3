@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { CustomerShell } from "@/components/customer/customer-shell";
 import { PageHeader } from "@/components/common/page-header";
@@ -65,6 +66,7 @@ function MyVouchersContent() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link href={`/my-vouchers/${voucher.voucherCodeId}`} className="text-[11px] font-semibold text-primary">QR / Chi tiết</Link>
                   {voucher.status === "used" && !reviewed.has(voucher.voucherCodeId) && (
                     <button className="text-[11px] font-semibold text-primary" onClick={() => setReviewing(voucher.voucherCodeId)}>Đánh giá</button>
                   )}

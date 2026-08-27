@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { AppError } from "../../shared/errors/AppError";
 import { VoucherInstanceRepository } from "./voucherInstance.repository";
 
@@ -46,13 +45,9 @@ export class VoucherInstanceService {
       throw new AppError("Voucher not found", 404);
     }
 
-    // Generate QR code on-the-fly from the code string
-    const qrDataUri = await QRCode.toDataURL(voucher.code);
-
-    return {
-      ...voucher,
-      qrDataUri,
-    };
+    // QR is rendered client-side from `code` (see VoucherInstanceQr) — no
+    // need to also encode it here.
+    return voucher;
   }
 
   async lookupVoucherForRedemption(userId: string, code: string) {

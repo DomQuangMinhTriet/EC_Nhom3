@@ -3,6 +3,7 @@ import test from "node:test";
 import { AppError } from "../../shared/errors/AppError";
 import {
   DuplicateTransactionError,
+  OrderAlreadyFinalizedError,
   type CreateOrderRecord,
   type OrderRepository,
   StockReservationError,
@@ -22,6 +23,7 @@ const orderRecord = {
   customerProfileId,
   totalAmount: "200.00",
   status: "pending_payment" as const,
+  paymentCode: null,
   reason: null,
   createdAt,
   updatedAt: createdAt,
@@ -138,16 +140,20 @@ test("updateOrder completes a pending order and records successful payment detai
     createRepository({
       updateOrder: async (input) => {
         captured = input;
-        return { ...orderRecord, status: "completed" };
+        return { ...orderRecord, status: "completed", wasNewlyCompleted: true };
       },
     }),
   );
 
-  await service.updateOrder(userId, orderId, {
+  const result = await service.updateOrder(userId, orderId, {
     status: "completed",
     transactionId: "txn-123",
     paymentMethod: "card",
   });
+
+  // wasNewlyCompleted is an internal signal for PaymentService's
+  // duplicate-notification guard, not part of the public Order API contract.
+  assert.equal("wasNewlyCompleted" in (result ?? {}), false);
 
   assert.deepEqual(captured, {
     orderId,
@@ -171,16 +177,20 @@ test("updateOrderBySystem completes a pending order without a customer token", a
     createRepository({
       updateOrder: async (input) => {
         captured = input;
-        return { ...orderRecord, status: "completed" };
+        return { ...orderRecord, status: "completed", wasNewlyCompleted: true };
       },
     }),
   );
 
-  await service.updateOrderBySystem(orderId, {
+  const result = await service.updateOrderBySystem(orderId, {
     status: "completed",
     transactionId: "txn-system-123",
     paymentMethod: "bank_transfer",
   });
+
+  // Unlike updateOrder, this system-facing method keeps wasNewlyCompleted —
+  // PaymentService relies on it to decide whether to send a notification.
+  assert.equal(result?.wasNewlyCompleted, true);
 
   assert.deepEqual(captured, {
     orderId,
@@ -220,13 +230,36 @@ test("updateOrderBySystem returns 409 if transactionId belongs to another order"
   );
 });
 
+test("updateOrderBySystem returns 400 if the repository detects the order was finalized under the row lock", async () => {
+  // Simulates OrderRepository.updateOrder losing a race: the caller's
+  // pre-lock read saw "pending_payment", but by the time the transaction
+  // acquired the row lock, a concurrent request had already finalized it.
+  const service = new OrderService(
+    createRepository({
+      updateOrder: async () => {
+        throw new OrderAlreadyFinalizedError(
+          "Completed orders cannot be changed to another status",
+        );
+      },
+    }),
+  );
+
+  await assert.rejects(
+    service.updateOrderBySystem(orderId, { status: "failed" }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "Completed orders cannot be changed to another status",
+  );
+});
+
 test("cancelOrder changes a customer order to failed", async () => {
   let captured: Parameters<OrderRepository["updateOrder"]>[0] | undefined;
   const service = new OrderService(
     createRepository({
       updateOrder: async (input) => {
         captured = input;
-        return { ...orderRecord, status: "failed" };
+        return { ...orderRecord, status: "failed", wasNewlyCompleted: false };
       },
     }),
   );

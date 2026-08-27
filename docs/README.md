@@ -197,6 +197,7 @@ open each detailed module document:
 - [BRANCH_QUOTA_API.md](BRANCH_QUOTA_API.md) - branch allocation quotas
 - [CART_API.md](CART_API.md) - customer cart operations
 - [ORDER_API.md](ORDER_API.md) - order creation, payment update, voucher code generation
+- [PAYMENT_API.md](PAYMENT_API.md) - mock payment initiate/callback workflow
 - [VOUCHER_INSTANCE_API.md](VOUCHER_INSTANCE_API.md) - customer voucher instances
 - [REVIEW_API.md](REVIEW_API.md) - voucher reviews
 - [NOTIFICATION_API.md](NOTIFICATION_API.md) - notifications

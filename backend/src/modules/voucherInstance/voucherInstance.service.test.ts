@@ -85,12 +85,11 @@ test("getMyVouchers throws 404 if customer profile not found", async () => {
   );
 });
 
-test("getVoucherDetail successfully returns voucher with QR code data URI", async () => {
+test("getVoucherDetail successfully returns the voucher owned by the customer", async () => {
   const service = new VoucherInstanceService(createRepository());
 
   const result = await service.getVoucherDetail(mockUserId, mockVoucherCodeId);
   assert.equal(result.voucherCodeId, mockVoucherCodeId);
-  assert.ok(result.qrDataUri.startsWith("data:image/png;base64,"));
 });
 
 test("getVoucherDetail throws 404 if voucher does not exist or doesn't belong to owner", async () => {

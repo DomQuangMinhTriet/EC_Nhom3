@@ -1,15 +1,14 @@
 "use client";
-import { useState } from "react";
 import { CustomerShell } from "@/components/customer/customer-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { State } from "@/components/common/state";
-import { useMyNotifications } from "@/hooks/queries/use-notifications";
+import { useMarkNotificationAsRead, useMyNotifications } from "@/hooks/queries/use-notifications";
 
 export default function NotificationsPage() { return <NotificationsContent/>; }
 
 function NotificationsContent() {
-  const [read, setRead] = useState<string[]>([]);
   const notificationsQuery = useMyNotifications();
+  const markAsRead = useMarkNotificationAsRead();
   const notifications = notificationsQuery.data ?? [];
 
   return (
@@ -29,10 +28,12 @@ function NotificationsContent() {
       {!notificationsQuery.isLoading && !notificationsQuery.isError && notifications.length > 0 && (
         <div className="space-y-3">
           {notifications.map((notification) => {
-            const unread = !notification.isRead && !read.includes(notification.notificationId);
+            const unread = !notification.isRead;
             return (
               <button
-                onClick={() => setRead((items) => [...items, notification.notificationId])}
+                onClick={() => {
+                  if (unread) markAsRead.mutate(notification.notificationId);
+                }}
                 className={`flex w-full gap-4 rounded-xl border p-4 text-left shadow-brand-sm ${unread ? "border-indigo-100 bg-indigo-50/50" : "border-slate-200 bg-white"}`}
                 key={notification.notificationId}
               >

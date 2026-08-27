@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from "@/lib/api/client";
+import { apiClient } from "@/lib/api/client";
 import { authHeaders } from "@/lib/api/auth-headers";
 import type { DiscountType } from "@/features/vouchers/voucher-product-api";
 
@@ -91,21 +91,3 @@ export async function cancelOrder(orderId: string, reason = "Customer cancelled 
   return res.data;
 }
 
-export async function confirmOrderPayment(
-  orderId: string,
-  params: { status: "completed" | "failed"; transactionId?: string; paymentMethod?: PaymentMethod; reason?: string },
-) {
-  const response = await fetch("/api/payments/confirm", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ orderId, ...params }),
-  });
-  const body: unknown = await response.json().catch(() => undefined);
-
-  if (!response.ok) {
-    const error = body as { error?: string; message?: string } | undefined;
-    throw new ApiError(error?.error ?? error?.message ?? "Không thể xác nhận thanh toán.", response.status, body);
-  }
-
-  return (body as { data: Order }).data;
-}

@@ -14,3 +14,10 @@ export async function getMyNotifications() {
   const res = await apiClient<{ notifications: Notification[] }>("/notifications", { headers: authHeaders() });
   return res.notifications;
 }
+
+export async function markNotificationAsRead(notificationId: string) {
+  return await apiClient<Notification>(`/notifications/${notificationId}/read`, {
+    method: "PATCH",
+    headers: authHeaders(),
+  });
+}

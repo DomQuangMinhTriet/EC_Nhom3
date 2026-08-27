@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cancelOrder, confirmOrderPayment, createOrder, getMyOrders, getOrderById } from "@/features/order/order-api";
+import { cancelOrder, createOrder, getMyOrders, getOrderById } from "@/features/order/order-api";
 
 const session = {
   user: { userId: "customer-1", email: "customer@example.com", roleCode: "Customer", status: "active" },
@@ -52,25 +52,6 @@ describe("order api", () => {
     expect(url).toContain("/orders/o1/cancel");
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body as string)).toEqual({ reason: "Customer cancelled order" });
-  });
-
-  it("confirms payment through the local payment-confirm route, not the backend directly", async () => {
-    const order = { orderId: "o1", customerProfileId: "cp1", totalAmount: "100000.00", status: "completed", reason: null, items: [], payments: [] };
-    const fetchMock = mockFetchOnce(200, { data: order });
-
-    const result = await confirmOrderPayment("o1", { status: "completed", transactionId: "txn-1", paymentMethod: "card" });
-
-    expect(result).toEqual(order);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("/api/payments/confirm");
-    expect(JSON.parse(init.body as string)).toEqual({ orderId: "o1", status: "completed", transactionId: "txn-1", paymentMethod: "card" });
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer token-order");
-  });
-
-  it("throws with the backend error message when payment confirmation fails", async () => {
-    mockFetchOnce(400, { error: "Order khong o trang thai pending_payment" });
-
-    await expect(confirmOrderPayment("o1", { status: "completed" })).rejects.toThrow("Order khong o trang thai pending_payment");
   });
 
   it("fetches the current customer's paginated orders with the bearer token", async () => {

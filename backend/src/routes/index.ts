@@ -14,6 +14,7 @@ import { orderRouter } from "../modules/order/order.routes";
 import { voucherInstanceRouter } from "../modules/voucherInstance/voucherInstance.routes";
 import { reviewRouter } from "../modules/review/review.routes";
 import { notificationRouter } from "../modules/notification/notification.routes";
+import { paymentRouter } from "../modules/payment/payment.routes";
 
 export const apiRouter = Router();
 
@@ -43,6 +44,9 @@ apiRouter.use("/api/carts", cartRouter);
 
 // Orders
 apiRouter.use("/api/orders", orderRouter);
+
+// Payments
+apiRouter.use("/api/payments", paymentRouter);
 
 // Voucher Instances (My Vouchers)
 apiRouter.use("/api/voucher-instances", voucherInstanceRouter);

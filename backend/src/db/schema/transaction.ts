@@ -68,6 +68,7 @@ export const order = pgTable("orders", {
     .notNull()
     .default("0"),
   status: orderStatusEnum("status").notNull(),
+  paymentCode: text("paymentCode").unique(),
   reason: text("reason"),
   createdAt: timestamp("createdAt", { withTimezone: true })
     .notNull()

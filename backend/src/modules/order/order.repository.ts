@@ -69,6 +69,8 @@ export class DuplicateTransactionError extends Error {
   }
 }
 
+export class OrderAlreadyFinalizedError extends Error {}
+
 const generateVoucherCode = () => randomBytes(18).toString("base64url");
 
 const calculateExpiredAt = (
@@ -431,6 +433,23 @@ export class OrderRepository {
         return null;
       }
 
+      // Re-check against the row we just locked, not the caller's pre-lock
+      // snapshot: a concurrent transaction (e.g. the SePay webhook) may have
+      // already finalized this order between the caller's read and this
+      // lock acquisition. Without this, whichever transaction commits last
+      // wins unconditionally, silently overwriting a completed/paid order.
+      if (existingOrder.status === "completed" && data.status !== "completed") {
+        throw new OrderAlreadyFinalizedError(
+          "Completed orders cannot be changed to another status",
+        );
+      }
+
+      if (existingOrder.status === "failed" && data.status === "completed") {
+        throw new OrderAlreadyFinalizedError(
+          "Failed orders cannot be completed",
+        );
+      }
+
       let shouldInsertPayment = Boolean(data.payment);
       if (data.payment) {
         const [existingPayment] = await tx
@@ -449,7 +468,10 @@ export class OrderRepository {
         }
       }
 
-      if (data.status === "completed" && existingOrder.status !== "completed") {
+      const wasNewlyCompleted =
+        data.status === "completed" && existingOrder.status !== "completed";
+
+      if (wasNewlyCompleted) {
         const itemsMissingCodes = await tx
           .select({
             orderItemId: orderItem.orderItemId,
@@ -554,7 +576,7 @@ export class OrderRepository {
         });
       }
 
-      return updatedOrder ?? null;
+      return updatedOrder ? { ...updatedOrder, wasNewlyCompleted } : null;
     });
   }
 
