@@ -24,8 +24,40 @@ export class PaymentController {
       data: await this.paymentService.initiatePayment(req.user!.userId, {
         orderId,
         paymentMethod,
+        ipAddr: req.ip,
       }),
     });
+  };
+
+  capturePaypalPayment = async (req: Request, res: Response) => {
+    const { orderId } = req.body as { orderId?: unknown };
+
+    if (!isUuid(orderId)) {
+      throw new AppError("Invalid orderId", 400);
+    }
+
+    res.json({
+      data: await this.paymentService.capturePaypalPayment(
+        req.user!.userId,
+        orderId,
+      ),
+    });
+  };
+
+  handleVnpayIpn = async (req: Request, res: Response) => {
+    res.json(
+      await this.paymentService.handleVnpayIpn(
+        req.query as Record<string, string>,
+      ),
+    );
+  };
+
+  handleVnpayReturn = async (req: Request, res: Response) => {
+    res.json(
+      this.paymentService.handleVnpayReturn(
+        req.query as Record<string, string>,
+      ),
+    );
   };
 
   handleCallback = async (req: Request, res: Response) => {

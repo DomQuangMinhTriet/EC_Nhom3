@@ -20,7 +20,7 @@ type UpdateOrderInput = {
 };
 
 const orderStatuses = ["pending_payment", "completed", "failed"] as const;
-const paymentMethods = ["bank_transfer", "card"] as const;
+const paymentMethods = ["bank_transfer", "card", "paypal", "vnpay"] as const;
 
 const isOrderStatus = (value: string): value is OrderStatus =>
   orderStatuses.includes(value as OrderStatus);

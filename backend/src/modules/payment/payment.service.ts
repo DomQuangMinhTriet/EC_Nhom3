@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { AppError } from "../../shared/errors/AppError";
 import { NotificationRepository } from "../notification/notification.repository";
 import type { PaymentMethod } from "../order/order.repository";
@@ -8,6 +8,7 @@ import { PaymentRepository } from "./payment.repository";
 type InitiatePaymentInput = {
   orderId: string;
   paymentMethod: string;
+  ipAddr?: string;
 };
 
 type PaymentCallbackInput = {
@@ -39,7 +40,7 @@ type SepayPaymentStore = Pick<
   "setPaymentCodeForOrder" | "findOrderByPaymentCode"
 >;
 
-const paymentMethods = ["bank_transfer", "card"] as const;
+const paymentMethods = ["bank_transfer", "card", "paypal", "vnpay"] as const;
 const callbackStatuses = ["success", "failed"] as const;
 
 const isPaymentMethod = (value: string): value is PaymentMethod =>
@@ -224,6 +225,248 @@ const buildMockPaymentUrl = ({
   return url.toString();
 };
 
+// ---------------------------------------------------------------------------
+// PayPal (Sandbox) — Orders API v2: create order -> customer approves on
+// PayPal's hosted page -> our backend captures on return. Capture (not just
+// approval) is what actually charges the buyer, so completion happens
+// synchronously when the browser comes back — no separate webhook needed
+// the way SePay/VNPay's async bank transfers require one.
+// ---------------------------------------------------------------------------
+
+// PayPal doesn't support VND at all — every amount must be quoted in a
+// currency it supports. There's no free, reliable live FX source appropriate
+// for this coursework demo, so this is a fixed illustrative rate, not a
+// real-time one. Documented in docs/payment-integration/paypal-sandbox.md.
+const VND_PER_USD = 25000;
+
+const toUsdAmount = (vndAmount: string | number) => {
+  const vnd = toVndInteger(vndAmount);
+  return (vnd / VND_PER_USD).toFixed(2);
+};
+
+const getPaypalConfig = () => {
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  const apiBase =
+    process.env.PAYPAL_API_BASE ?? "https://api-m.sandbox.paypal.com";
+
+  if (!clientId || !clientSecret) {
+    throw new AppError("PayPal is not configured", 500);
+  }
+
+  return { clientId, clientSecret, apiBase };
+};
+
+const getAppBaseUrl = () => {
+  const baseUrl = process.env.APP_BASE_URL;
+
+  if (!baseUrl) {
+    throw new AppError("APP_BASE_URL is not configured", 500);
+  }
+
+  return baseUrl.replace(/\/+$/, "");
+};
+
+const getPaypalAccessToken = async () => {
+  const { clientId, clientSecret, apiBase } = getPaypalConfig();
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
+    "base64",
+  );
+
+  const response = await fetch(`${apiBase}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basicAuth}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+
+  const body = (await response.json().catch(() => null)) as {
+    access_token?: string;
+  } | null;
+
+  if (!response.ok || !body?.access_token) {
+    throw new AppError("Could not authenticate with PayPal", 502);
+  }
+
+  return body.access_token;
+};
+
+const createPaypalOrder = async ({
+  orderId,
+  amountUsd,
+}: {
+  orderId: string;
+  amountUsd: string;
+}) => {
+  const { apiBase } = getPaypalConfig();
+  const accessToken = await getPaypalAccessToken();
+  const appBaseUrl = getAppBaseUrl();
+
+  const response = await fetch(`${apiBase}/v2/checkout/orders`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          reference_id: orderId,
+          amount: { currency_code: "USD", value: amountUsd },
+        },
+      ],
+      application_context: {
+        return_url: `${appBaseUrl}/checkout/paypal-return?orderId=${orderId}`,
+        cancel_url: `${appBaseUrl}/checkout/paypal-return?orderId=${orderId}&cancelled=1`,
+        user_action: "PAY_NOW",
+      },
+    }),
+  });
+
+  const body = (await response.json().catch(() => null)) as {
+    id?: string;
+    links?: Array<{ rel: string; href: string }>;
+  } | null;
+
+  const approveUrl = body?.links?.find((link) => link.rel === "approve")
+    ?.href;
+
+  if (!response.ok || !body?.id || !approveUrl) {
+    throw new AppError("Could not create PayPal order", 502);
+  }
+
+  return { paypalOrderId: body.id, approveUrl };
+};
+
+const capturePaypalOrderRequest = async (paypalOrderId: string) => {
+  const { apiBase } = getPaypalConfig();
+  const accessToken = await getPaypalAccessToken();
+
+  const response = await fetch(
+    `${apiBase}/v2/checkout/orders/${paypalOrderId}/capture`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  const body = (await response.json().catch(() => null)) as {
+    status?: string;
+    purchase_units?: Array<{
+      payments?: {
+        captures?: Array<{ id?: string; amount?: { value?: string } }>;
+      };
+    }>;
+  } | null;
+
+  if (!response.ok || body?.status !== "COMPLETED") {
+    throw new AppError("PayPal payment was not completed", 402);
+  }
+
+  const capture = body.purchase_units?.[0]?.payments?.captures?.[0];
+
+  return {
+    captureId: capture?.id ?? paypalOrderId,
+    amountUsd: capture?.amount?.value,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// VNPay (Sandbox) — redirect flow signed with HMAC-SHA512. No API call is
+// needed to start a payment (unlike PayPal): the customer is redirected
+// straight to a signed URL. Completion is confirmed the same way SePay's
+// bank transfer is: an async server-to-server IPN call is the source of
+// truth, while the browser's return redirect is only used for UX (matches
+// processPaymentResult's existing idempotency guarantees).
+// ---------------------------------------------------------------------------
+
+const buildVnpayTxnRef = (orderId: string) =>
+  `VNP${orderId.replaceAll("-", "").slice(0, 16).toUpperCase()}`;
+
+const getVnpayConfig = () => {
+  const tmnCode = process.env.VNPAY_TMN_CODE;
+  const hashSecret = process.env.VNPAY_HASH_SECRET;
+  const paymentUrl =
+    process.env.VNPAY_PAYMENT_URL ??
+    "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+
+  if (!tmnCode || !hashSecret) {
+    throw new AppError("VNPay is not configured", 500);
+  }
+
+  return { tmnCode, hashSecret, paymentUrl };
+};
+
+const formatVnpayDate = (date: Date) =>
+  date
+    .toISOString()
+    .replace(/[-:T]/g, "")
+    .slice(0, 14);
+
+const sortedEntries = (params: Record<string, string>) =>
+  Object.entries(params).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+
+const signVnpayParams = (params: Record<string, string>, hashSecret: string) =>
+  createHmac("sha512", hashSecret)
+    .update(new URLSearchParams(sortedEntries(params)).toString())
+    .digest("hex");
+
+const buildVnpayPaymentUrl = ({
+  orderId,
+  amount,
+  ipAddr,
+}: {
+  orderId: string;
+  amount: string;
+  ipAddr: string;
+}) => {
+  const { tmnCode, hashSecret, paymentUrl } = getVnpayConfig();
+  const appBaseUrl = getAppBaseUrl();
+  const txnRef = buildVnpayTxnRef(orderId);
+
+  const params: Record<string, string> = {
+    vnp_Version: "2.1.0",
+    vnp_Command: "pay",
+    vnp_TmnCode: tmnCode,
+    vnp_Amount: String(toVndInteger(amount) * 100),
+    vnp_CurrCode: "VND",
+    vnp_TxnRef: txnRef,
+    vnp_OrderInfo: `Thanh toan don hang ${orderId}`,
+    vnp_OrderType: "other",
+    vnp_Locale: "vn",
+    vnp_ReturnUrl: `${appBaseUrl}/checkout/vnpay-return?orderId=${orderId}`,
+    vnp_IpAddr: ipAddr,
+    vnp_CreateDate: formatVnpayDate(new Date()),
+  };
+
+  const secureHash = signVnpayParams(params, hashSecret);
+  const url = new URL(paymentUrl);
+  for (const [key, value] of sortedEntries(params)) {
+    url.searchParams.set(key, value);
+  }
+  url.searchParams.set("vnp_SecureHash", secureHash);
+
+  return { paymentUrl: url.toString(), txnRef };
+};
+
+const verifyVnpaySignature = (query: Record<string, string>) => {
+  const { hashSecret } = getVnpayConfig();
+  const { vnp_SecureHash, vnp_SecureHashType: _vnp_SecureHashType, ...rest } =
+    query;
+
+  return (
+    typeof vnp_SecureHash === "string" &&
+    vnp_SecureHash.toLowerCase() ===
+      signVnpayParams(rest, hashSecret).toLowerCase()
+  );
+};
+
 export class PaymentService {
   constructor(
     private readonly orderService: OrderWorkflow = new OrderService(),
@@ -277,6 +520,64 @@ export class PaymentService {
           accountNumber: bankAccount,
           accountName,
         },
+      };
+    }
+
+    if (paymentMethod === "paypal") {
+      const amountUsd = toUsdAmount(order.totalAmount);
+      const { paypalOrderId, approveUrl } = await createPaypalOrder({
+        orderId: order.orderId,
+        amountUsd,
+      });
+
+      const updatedOrder = await this.paymentRepository.setPaymentCodeForOrder(
+        {
+          orderId: order.orderId,
+          customerProfileId: order.customerProfileId,
+          paymentCode: paypalOrderId,
+        },
+      );
+
+      if (!updatedOrder) {
+        throw new AppError("Order not found", 404);
+      }
+
+      return {
+        orderId: order.orderId,
+        transactionId: paypalOrderId,
+        paymentMethod,
+        amount: amountUsd,
+        currency: "USD",
+        paymentUrl: approveUrl,
+      };
+    }
+
+    if (paymentMethod === "vnpay") {
+      const { paymentUrl, txnRef } = buildVnpayPaymentUrl({
+        orderId: order.orderId,
+        amount: order.totalAmount,
+        ipAddr: input.ipAddr ?? "127.0.0.1",
+      });
+
+      const updatedOrder = await this.paymentRepository.setPaymentCodeForOrder(
+        {
+          orderId: order.orderId,
+          customerProfileId: order.customerProfileId,
+          paymentCode: txnRef,
+        },
+      );
+
+      if (!updatedOrder) {
+        throw new AppError("Order not found", 404);
+      }
+
+      return {
+        orderId: order.orderId,
+        transactionId: txnRef,
+        paymentMethod,
+        amount: order.totalAmount,
+        currency,
+        paymentUrl,
       };
     }
 
@@ -426,6 +727,103 @@ export class PaymentService {
       ignored: false,
       order: updatedOrder,
     };
+  }
+
+  async capturePaypalPayment(userId: string, orderId: string) {
+    // getOrderById enforces ownership — only the customer who created this
+    // order can trigger its capture, matching /initiate's auth model.
+    const order = await this.orderService.getOrderById(userId, orderId);
+
+    if (order.status === "completed") {
+      return { message: "Order already completed.", order };
+    }
+
+    if (order.status === "failed") {
+      throw new AppError("Failed orders cannot be completed", 400);
+    }
+
+    if (!order.paymentCode) {
+      throw new AppError(
+        "No PayPal order is associated with this order yet",
+        400,
+      );
+    }
+
+    const capture = await capturePaypalOrderRequest(order.paymentCode);
+
+    const updatedOrder = await this.processPaymentResult({
+      orderId: order.orderId,
+      status: "completed",
+      transactionId: capture.captureId,
+      paymentMethod: "paypal",
+      amount: capture.amountUsd,
+      currency: "USD",
+    });
+
+    return { message: "PayPal payment captured successfully.", order: updatedOrder };
+  }
+
+  async handleVnpayIpn(query: Record<string, string>) {
+    if (!verifyVnpaySignature(query)) {
+      return { RspCode: "97", Message: "Invalid signature" };
+    }
+
+    const order = await this.paymentRepository.findOrderByPaymentCode(
+      query.vnp_TxnRef ?? "",
+    );
+
+    if (!order) {
+      return { RspCode: "01", Message: "Order not found" };
+    }
+
+    const expectedAmount = String(toVndInteger(order.totalAmount) * 100);
+    if (query.vnp_Amount !== expectedAmount) {
+      return { RspCode: "04", Message: "Invalid amount" };
+    }
+
+    // Same idempotency guarantee as the SePay webhook: don't reprocess an
+    // order that's already reached a final state, regardless of how many
+    // times VNPay redelivers the IPN.
+    if (order.status === "completed" || order.status === "failed") {
+      return { RspCode: "02", Message: "Order already confirmed" };
+    }
+
+    const transactionId = `vnpay_${query.vnp_TransactionNo ?? query.vnp_TxnRef}`;
+    const amount = String(Number(query.vnp_Amount) / 100);
+
+    if (query.vnp_ResponseCode !== "00") {
+      await this.processPaymentResult({
+        orderId: order.orderId,
+        status: "failed",
+        transactionId,
+        paymentMethod: "vnpay",
+        amount,
+        currency: "VND",
+        reason: `VNPay responseCode ${query.vnp_ResponseCode}`,
+      });
+      return { RspCode: "00", Message: "Confirm Success" };
+    }
+
+    await this.processPaymentResult({
+      orderId: order.orderId,
+      status: "completed",
+      transactionId,
+      paymentMethod: "vnpay",
+      amount,
+      currency: "VND",
+    });
+
+    return { RspCode: "00", Message: "Confirm Success" };
+  }
+
+  // Purely informational for the browser's redirect-back — verifies the
+  // signature so a tampered URL can't lie to the customer, but never
+  // mutates the order itself. handleVnpayIpn is the only path that
+  // completes an order, matching the SePay webhook's role as sole source
+  // of truth while checkout-screen polls for the result.
+  handleVnpayReturn(query: Record<string, string>) {
+    const valid = verifyVnpaySignature(query);
+    return { valid, success: valid && query.vnp_ResponseCode === "00" };
   }
 
   private async processPaymentResult(input: {

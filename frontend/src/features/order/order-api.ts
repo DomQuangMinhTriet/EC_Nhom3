@@ -3,7 +3,7 @@ import { authHeaders } from "@/lib/api/auth-headers";
 import type { DiscountType } from "@/features/vouchers/voucher-product-api";
 
 export type OrderStatus = "pending_payment" | "completed" | "failed";
-export type PaymentMethod = "bank_transfer" | "card";
+export type PaymentMethod = "bank_transfer" | "card" | "paypal" | "vnpay";
 
 export type OrderItemVoucherProduct = {
   voucherProductId: string;

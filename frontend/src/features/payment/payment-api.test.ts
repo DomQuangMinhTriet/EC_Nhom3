@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  capturePaypalOrder,
   confirmPaymentCallback,
   initiatePayment,
 } from "@/features/payment/payment-api";
@@ -108,5 +109,33 @@ describe("payment api", () => {
         paymentMethod: "card",
       }),
     ).rejects.toThrow("Invalid payment status");
+  });
+
+  it("captures a PayPal order with bearer token", async () => {
+    const order = {
+      orderId: "o1",
+      customerProfileId: "cp1",
+      totalAmount: "200000.00",
+      status: "completed",
+      reason: null,
+      createdAt: "2026-08-20T00:00:00.000Z",
+      updatedAt: "2026-08-20T00:00:00.000Z",
+      items: [],
+      payments: [],
+    };
+    const fetchMock = mockFetchOnce(200, {
+      data: { message: "PayPal payment captured successfully.", order },
+    });
+
+    const result = await capturePaypalOrder("o1");
+
+    expect(result).toEqual(order);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/payments/paypal/capture");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ orderId: "o1" });
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      "Bearer token-payment",
+    );
   });
 });

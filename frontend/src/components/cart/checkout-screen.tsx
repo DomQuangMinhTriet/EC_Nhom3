@@ -21,11 +21,25 @@ const checkoutSchema = z.object({
   name: z.string().min(2, "Nhập họ tên người nhận"),
   email: z.string().email("Nhập email hợp lệ"),
   phone: z.string().regex(/^(0|\+84)\d{9,10}$/, "Số điện thoại không hợp lệ"),
-  payment: z.enum(["card", "bank_transfer"]),
+  payment: z.enum(["card", "bank_transfer", "paypal", "vnpay"]),
 });
 type CheckoutValues = z.infer<typeof checkoutSchema>;
 
-const paymentLabels: Record<PaymentMethod, string> = { card: "Thẻ tín dụng/ghi nợ", bank_transfer: "Chuyển khoản ngân hàng" };
+const paymentLabels: Record<PaymentMethod, string> = {
+  card: "Thẻ tín dụng/ghi nợ",
+  bank_transfer: "Chuyển khoản ngân hàng",
+  paypal: "PayPal (Sandbox)",
+  vnpay: "VNPay",
+};
+
+const paymentBadges: Record<PaymentMethod, string> = {
+  card: "Payment mock",
+  bank_transfer: "SePay",
+  paypal: "PayPal Sandbox",
+  vnpay: "VNPay Sandbox",
+};
+
+const redirectPaymentMethods = new Set<PaymentMethod>(["paypal", "vnpay"]);
 
 export function CheckoutScreen() {
   const router = useRouter();
@@ -148,6 +162,13 @@ export function CheckoutScreen() {
                 </div>
                 <p className="text-[11px] font-semibold text-primary">Đang chờ SePay xác nhận giao dịch. Trang này tự kiểm tra trạng thái mỗi 4 giây.</p>
               </div>
+            ) : redirectPaymentMethods.has(paymentMethod) ? (
+              <div className="space-y-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
+                <p className="text-xs text-slate-600">Bạn sẽ được chuyển tới trang thanh toán của {paymentLabels[paymentMethod]} để hoàn tất giao dịch.</p>
+                <Button type="button" fullWidth onClick={() => { window.location.href = payment.paymentUrl; }}>
+                  Đi tới cổng thanh toán {paymentLabels[paymentMethod]}
+                </Button>
+              </div>
             ) : (
               <>
                 <p className="text-[11px] text-slate-400">Transaction: <b>{payment.transactionId}</b></p>
@@ -169,7 +190,7 @@ export function CheckoutScreen() {
             ) : (
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="ghost" fullWidth disabled={confirmPayment.isPending} onClick={() => setConfirmingCancel(true)}>Hủy đơn</Button>
-                {paymentMethod !== "bank_transfer" && (
+                {paymentMethod === "card" && (
                   <Button type="button" fullWidth disabled={confirmPayment.isPending} onClick={confirmSuccess}>
                     {confirmPayment.isPending ? "Đang xử lý..." : "Xác nhận thanh toán demo"}
                   </Button>
@@ -205,7 +226,7 @@ export function CheckoutScreen() {
                     <label key={value} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
                       <input type="radio" value={value} className="accent-[#4F46E5]" {...register("payment")}/>
                       <span className="font-semibold">{label}</span>
-                      <span className="ml-auto text-xs text-slate-400">Payment mock</span>
+                      <span className="ml-auto text-xs text-slate-400">{paymentBadges[value]}</span>
                     </label>
                   ))}
                 </div>

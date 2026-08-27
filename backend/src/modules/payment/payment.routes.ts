@@ -24,3 +24,23 @@ paymentRouter.post(
   "/sepay/webhook",
   asyncHandler(paymentController.handleSepayWebhook),
 );
+
+paymentRouter.post(
+  "/paypal/capture",
+  requireAuth,
+  authorizeRoles("Customer"),
+  asyncHandler(paymentController.capturePaypalPayment),
+);
+
+// No auth middleware, matching /sepay/webhook: VNPay calls this
+// server-to-server and authenticates via the signed vnp_SecureHash query
+// param instead, verified inline in PaymentService.handleVnpayIpn.
+paymentRouter.get(
+  "/vnpay/ipn",
+  asyncHandler(paymentController.handleVnpayIpn),
+);
+
+paymentRouter.get(
+  "/vnpay/return",
+  asyncHandler(paymentController.handleVnpayReturn),
+);
