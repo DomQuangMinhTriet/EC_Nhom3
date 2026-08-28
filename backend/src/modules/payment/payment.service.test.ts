@@ -704,15 +704,36 @@ test("initiatePayment converts VND to USD and returns PayPal's approval link", a
 });
 
 test("initiatePayment throws if PayPal is not configured", async () => {
-  const service = new PaymentService(createOrderService(), createNotificationRepository());
+  // Explicitly clear (rather than assume clean) PayPal env vars: this test
+  // previously relied on ambient process.env being empty, which made it
+  // flaky whenever it ran interleaved with a withPaypalEnv()-wrapped test
+  // that sets these same keys on the same shared process.env.
+  const previous = {
+    PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
+    PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+  };
+  delete process.env.PAYPAL_CLIENT_ID;
+  delete process.env.PAYPAL_CLIENT_SECRET;
 
-  await assert.rejects(
-    service.initiatePayment(userId, { orderId, paymentMethod: "paypal" }),
-    (error: unknown) =>
-      error instanceof AppError &&
-      error.statusCode === 500 &&
-      error.message === "PayPal is not configured",
-  );
+  try {
+    const service = new PaymentService(createOrderService(), createNotificationRepository());
+
+    await assert.rejects(
+      service.initiatePayment(userId, { orderId, paymentMethod: "paypal" }),
+      (error: unknown) =>
+        error instanceof AppError &&
+        error.statusCode === 500 &&
+        error.message === "PayPal is not configured",
+    );
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
 });
 
 test("capturePaypalPayment captures and completes the order", async (t) => {
