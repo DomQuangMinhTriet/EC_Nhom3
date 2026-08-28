@@ -91,6 +91,12 @@ export async function listVoucherProducts(params: ListVoucherProductsParams = {}
   return apiClient<ListVoucherProductsResult>(`/vouchers${toQuery(params)}`);
 }
 
+export async function listVoucherProductsForAdmin(params: ListVoucherProductsParams = {}) {
+  return apiClient<ListVoucherProductsResult>(`/vouchers/admin${toQuery(params)}`, {
+    headers: authHeaders(),
+  });
+}
+
 export async function getVoucherProductById(voucherProductId: string) {
   const res = await apiClient<{ voucher: VoucherProduct }>(`/vouchers/${voucherProductId}`);
   return res.voucher;

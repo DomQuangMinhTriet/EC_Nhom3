@@ -7,6 +7,7 @@ import {
   getPartnerVouchers,
   getVoucherProductById,
   listVoucherProducts,
+  listVoucherProductsForAdmin,
   updatePartnerVoucher,
   updateVoucherProductStatus,
   type AdminVoucherStatus,
@@ -19,6 +20,7 @@ export const voucherProductKeys = {
   mine: ["voucherProducts", "mine"] as const,
   detail: (id: string) => ["voucherProducts", "detail", id] as const,
   list: (params: ListVoucherProductsParams) => ["voucherProducts", "list", params] as const,
+  adminList: (params: ListVoucherProductsParams) => ["voucherProducts", "adminList", params] as const,
   categories: ["categories"] as const,
 };
 
@@ -39,6 +41,10 @@ export function useVoucherProduct(id: string) {
 
 export function useVoucherProductList(params: ListVoucherProductsParams = {}) {
   return useQuery({ queryKey: voucherProductKeys.list(params), queryFn: () => listVoucherProducts(params) });
+}
+
+export function useVoucherProductListForAdmin(params: ListVoucherProductsParams = {}) {
+  return useQuery({ queryKey: voucherProductKeys.adminList(params), queryFn: () => listVoucherProductsForAdmin(params) });
 }
 
 export function useCategories() {
@@ -71,6 +77,9 @@ export function useUpdateVoucherProductStatus() {
   return useMutation({
     mutationFn: ({ id, status, rejectionReason }: { id: string; status: AdminVoucherStatus; rejectionReason?: string }) =>
       updateVoucherProductStatus(id, status, rejectionReason),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["voucherProducts", "list"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voucherProducts", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["voucherProducts", "adminList"] });
+    },
   });
 }

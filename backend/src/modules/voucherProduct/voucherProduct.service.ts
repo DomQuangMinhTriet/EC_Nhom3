@@ -304,6 +304,34 @@ export class VoucherProductService {
     };
   }
 
+  async getVouchersForAdmin(input: ListVoucherProductsInput = {}) {
+    const page = Math.max(1, input.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 20));
+    const search = input.search?.trim() || undefined;
+
+    if (input.status && !isVoucherStatus(input.status)) {
+      throw new AppError("Invalid voucher status", 400);
+    }
+
+    const { vouchers, total } = await this.voucherProductRepository.findAll({
+      page,
+      pageSize,
+      categoryId: input.categoryId,
+      status: input.status,
+      search,
+    });
+
+    return {
+      vouchers,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    };
+  }
+
   async getVoucherById(voucherProductId: string) {
     const voucher =
       await this.voucherProductRepository.findById(voucherProductId);
