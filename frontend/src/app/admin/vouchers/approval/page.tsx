@@ -5,11 +5,11 @@ import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { State } from "@/components/common/state";
 import { useToast } from "@/components/common/toast";
-import { useUpdateVoucherProductStatus, useVoucherProductList } from "@/hooks/queries/use-voucher-products";
+import { useUpdateVoucherProductStatus, useVoucherProductListForAdmin } from "@/hooks/queries/use-voucher-products";
 
 export default function ApprovalPage() {
   const toast = useToast();
-  const pendingQuery = useVoucherProductList({ status: "pending", pageSize: 100 });
+  const pendingQuery = useVoucherProductListForAdmin({ status: "pending", pageSize: 100 });
   const updateStatus = useUpdateVoucherProductStatus();
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [reason, setReason] = useState("");

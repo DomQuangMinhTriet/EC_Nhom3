@@ -121,6 +121,23 @@ export class VoucherProductController {
     );
   };
 
+  getVouchersForAdmin = async (req: Request, res: Response) => {
+    const status = parseOptionalStringQuery(req.query.status, "status");
+
+    res.json(
+      await this.voucherProductService.getVouchersForAdmin({
+        page: parsePositiveIntegerQuery(req.query.page, "page"),
+        pageSize: parsePositiveIntegerQuery(req.query.pageSize, "pageSize"),
+        categoryId: parseOptionalStringQuery(
+          req.query.categoryId,
+          "categoryId",
+        ),
+        status: status as VoucherProductStatus | undefined,
+        search: parseOptionalStringQuery(req.query.search, "search"),
+      }),
+    );
+  };
+
   getVoucherById = async (req: Request, res: Response) => {
     res.json(
       await this.voucherProductService.getVoucherById(

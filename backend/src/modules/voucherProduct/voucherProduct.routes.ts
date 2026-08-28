@@ -34,6 +34,13 @@ voucherProductRouter.get(
 );
 
 voucherProductRouter.get(
+  "/admin",
+  requireAuth,
+  authorizeRoles("Super_Admin", "Operational_Admin"),
+  asyncHandler(voucherProductController.getVouchersForAdmin),
+);
+
+voucherProductRouter.get(
   "/:id",
   asyncHandler(voucherProductController.getVoucherById),
 );
