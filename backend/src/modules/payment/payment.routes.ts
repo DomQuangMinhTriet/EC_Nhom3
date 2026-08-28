@@ -44,3 +44,8 @@ paymentRouter.get(
   "/vnpay/return",
   asyncHandler(paymentController.handleVnpayReturn),
 );
+
+paymentRouter.post(
+  "/stripe/webhook",
+  asyncHandler(paymentController.handleStripeWebhook),
+);

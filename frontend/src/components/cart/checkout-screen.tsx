@@ -24,7 +24,7 @@ const checkoutSchema = z.object({
   name: z.string().min(2, "Nhập họ tên người nhận"),
   email: z.string().email("Nhập email hợp lệ"),
   phone: z.string().regex(/^(0|\+84)\d{9,10}$/, "Số điện thoại không hợp lệ"),
-  payment: z.enum(["card", "bank_transfer", "paypal", "vnpay"]),
+  payment: z.enum(["card", "bank_transfer", "paypal", "vnpay", "stripe"]),
 });
 type CheckoutValues = z.infer<typeof checkoutSchema>;
 
@@ -33,6 +33,7 @@ const paymentLabels: Record<PaymentMethod, string> = {
   bank_transfer: "Chuyển khoản ngân hàng",
   paypal: "PayPal (Sandbox)",
   vnpay: "VNPay",
+  stripe: "Stripe",
 };
 
 const paymentBadges: Record<PaymentMethod, string> = {
@@ -40,9 +41,10 @@ const paymentBadges: Record<PaymentMethod, string> = {
   bank_transfer: "SePay",
   paypal: "PayPal Sandbox",
   vnpay: "VNPay Sandbox",
+  stripe: "Stripe Sandbox",
 };
 
-const redirectPaymentMethods = new Set<PaymentMethod>(["paypal", "vnpay"]);
+const redirectPaymentMethods = new Set<PaymentMethod>(["paypal", "vnpay", "stripe"]);
 
 export function CheckoutScreen() {
   const router = useRouter();

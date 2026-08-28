@@ -1,4 +1,5 @@
 import { createHmac, randomUUID } from "node:crypto";
+import Stripe from "stripe";
 import { AppError } from "../../shared/errors/AppError";
 import { NotificationRepository } from "../notification/notification.repository";
 import type { PaymentMethod } from "../order/order.repository";
@@ -40,7 +41,7 @@ type SepayPaymentStore = Pick<
   "setPaymentCodeForOrder" | "findOrderByPaymentCode"
 >;
 
-const paymentMethods = ["bank_transfer", "card", "paypal", "vnpay"] as const;
+const paymentMethods = ["bank_transfer", "card", "paypal", "vnpay", "stripe"] as const;
 const callbackStatuses = ["success", "failed"] as const;
 
 const isPaymentMethod = (value: string): value is PaymentMethod =>
@@ -467,6 +468,66 @@ const verifyVnpaySignature = (query: Record<string, string>) => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// Stripe (Sandbox) — Checkout Session
+// ---------------------------------------------------------------------------
+
+const getStripeConfig = () => {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!secretKey || !webhookSecret) {
+    throw new AppError("Stripe is not configured", 500);
+  }
+
+  return { secretKey, webhookSecret };
+};
+
+const getStripeClient = () => {
+  const { secretKey } = getStripeConfig();
+  return new Stripe(secretKey, {
+    apiVersion: "2026-08-26.dahlia",
+    httpClient: Stripe.createFetchHttpClient(globalThis.fetch),
+  });
+};
+
+const createStripeCheckoutSession = async ({
+  orderId,
+  amountUsd,
+}: {
+  orderId: string;
+  amountUsd: string;
+}) => {
+  const stripe = getStripeClient();
+  const appBaseUrl = getAppBaseUrl();
+
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `Order ${orderId}`,
+          },
+          unit_amount: Math.round(Number(amountUsd) * 100),
+        },
+        quantity: 1,
+      },
+    ],
+    mode: "payment",
+    success_url: `${appBaseUrl}/checkout/stripe-return?orderId=${orderId}`,
+    cancel_url: `${appBaseUrl}/checkout/stripe-return?orderId=${orderId}&cancelled=1`,
+    client_reference_id: orderId,
+  });
+
+  if (!session.url) {
+    throw new AppError("Could not create Stripe checkout session", 502);
+  }
+
+  return { stripeSessionId: session.id, checkoutUrl: session.url };
+};
+
 export class PaymentService {
   constructor(
     private readonly orderService: OrderWorkflow = new OrderService(),
@@ -578,6 +639,35 @@ export class PaymentService {
         amount: order.totalAmount,
         currency,
         paymentUrl,
+      };
+    }
+
+    if (paymentMethod === "stripe") {
+      const amountUsd = toUsdAmount(order.totalAmount);
+      const { stripeSessionId, checkoutUrl } = await createStripeCheckoutSession({
+        orderId: order.orderId,
+        amountUsd,
+      });
+
+      const updatedOrder = await this.paymentRepository.setPaymentCodeForOrder(
+        {
+          orderId: order.orderId,
+          customerProfileId: order.customerProfileId,
+          paymentCode: stripeSessionId,
+        },
+      );
+
+      if (!updatedOrder) {
+        throw new AppError("Order not found", 404);
+      }
+
+      return {
+        orderId: order.orderId,
+        transactionId: stripeSessionId,
+        paymentMethod,
+        amount: amountUsd,
+        currency: "USD",
+        paymentUrl: checkoutUrl,
       };
     }
 
@@ -727,6 +817,62 @@ export class PaymentService {
       ignored: false,
       order: updatedOrder,
     };
+  }
+
+  async handleStripeWebhook(signature: string | undefined, payload: Buffer) {
+    const { webhookSecret } = getStripeConfig();
+    const stripe = getStripeClient();
+
+    if (!signature) {
+      throw new AppError("Missing Stripe signature", 401);
+    }
+
+    let event: Stripe.Event;
+
+    try {
+      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch {
+      throw new AppError("Invalid Stripe signature", 401);
+    }
+
+    if (event.type !== "checkout.session.completed") {
+      return { success: true, ignored: true, reason: "event_not_supported" };
+    }
+
+    const session = event.data.object as Stripe.Checkout.Session;
+    
+    if (session.payment_status !== "paid") {
+      return { success: true, ignored: true, reason: "payment_not_paid" };
+    }
+
+    const stripeSessionId = session.id;
+
+    const order = await this.paymentRepository.findOrderByPaymentCode(
+      stripeSessionId,
+    );
+
+    if (!order) {
+      return { success: true, ignored: true, reason: "order_not_found" };
+    }
+
+    if (order.status === "failed") {
+      return { success: true, ignored: true, reason: "order_already_failed" };
+    }
+
+    if (order.status === "completed") {
+      return { success: true, ignored: true, reason: "order_already_completed" };
+    }
+
+    const updatedOrder = await this.processPaymentResult({
+      orderId: order.orderId,
+      status: "completed",
+      transactionId: `stripe_${session.payment_intent ?? stripeSessionId}`,
+      paymentMethod: "stripe",
+      amount: String((session.amount_total ?? 0) / 100),
+      currency: "USD",
+    });
+
+    return { success: true, ignored: false, order: updatedOrder };
   }
 
   async capturePaypalPayment(userId: string, orderId: string) {
