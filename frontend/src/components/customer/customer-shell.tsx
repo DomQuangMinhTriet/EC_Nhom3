@@ -1,5 +1,49 @@
+"use client";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { TopNav } from "@/components/navigation/top-nav";
+import { useMyProfile } from "@/hooks/queries/use-profile";
+import type { CustomerProfile } from "@/features/profile/profile-api";
+
 const links = [["/account", "Hồ sơ của tôi"], ["/my-vouchers", "Voucher của tôi"], ["/orders", "Lịch sử đơn hàng"], ["/notifications", "Thông báo"], ["/settings", "Cài đặt"]] as const;
-export function CustomerShell({ children, active }: { children: ReactNode; active: string }) { return <main className="min-h-screen bg-slate-50"><TopNav/><div className="mx-auto grid max-w-[1200px] gap-6 px-5 py-8 lg:grid-cols-[220px_1fr]"><aside className="h-fit rounded-xl border border-slate-200 bg-white p-3 shadow-brand-sm"><div className="border-b border-slate-100 p-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-indigo-400 text-xs font-bold text-white">NA</div><b className="mt-2 block text-sm">Nguyễn Văn An</b><span className="text-[11px] text-slate-500">Khách hàng</span></div><nav className="mt-2 flex gap-1 overflow-x-auto lg:block">{links.map(([href, label]) => <Link key={href} href={href} className={`block shrink-0 rounded-lg px-3 py-2.5 text-xs font-semibold ${active === href ? "bg-indigo-50 text-primary" : "text-slate-600 hover:bg-slate-50"}`}>{label}{href === "/notifications" && <span className="ml-2 rounded-full bg-danger px-1.5 py-0.5 text-[9px] text-white">2</span>}</Link>)}</nav></aside><section>{children}</section></div></main>; }
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  const last = parts[parts.length - 1]?.[0] ?? "";
+  const first = parts.length > 1 ? parts[0][0] : "";
+  return (first + last).toUpperCase() || "KH";
+}
+
+export function CustomerShell({ children, active }: { children: ReactNode; active: string }) {
+  const { data: profile } = useMyProfile<CustomerProfile>();
+  const displayName = profile?.fullName || "Khách hàng";
+
+  return (
+    <main className="min-h-screen bg-slate-50">
+      <TopNav />
+      <div className="mx-auto grid max-w-[1200px] gap-6 px-5 py-8 lg:grid-cols-[220px_1fr]">
+        <aside className="h-fit rounded-xl border border-slate-200 bg-white p-3 shadow-brand-sm">
+          <div className="border-b border-slate-100 p-3">
+            {profile?.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+            ) : (
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-indigo-400 text-xs font-bold text-white">
+                {getInitials(displayName)}
+              </div>
+            )}
+            <b className="mt-2 block text-sm">{displayName}</b>
+            <span className="text-[11px] text-slate-500">Khách hàng</span>
+          </div>
+          <nav className="mt-2 flex gap-1 overflow-x-auto lg:block">
+            {links.map(([href, label]) => (
+              <Link key={href} href={href} className={`block shrink-0 rounded-lg px-3 py-2.5 text-xs font-semibold ${active === href ? "bg-indigo-50 text-primary" : "text-slate-600 hover:bg-slate-50"}`}>
+                {label}
+              </Link>
+            ))}
+          </nav>
+        </aside>
+        <section>{children}</section>
+      </div>
+    </main>
+  );
+}
