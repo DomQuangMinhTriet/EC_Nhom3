@@ -146,6 +146,38 @@ const normalizeOptionalNullableInteger = (value: unknown, field: string) => {
 const isDiscountType = (value: string): value is DiscountType =>
   discountTypes.includes(value as DiscountType);
 
+/**
+ * RB-02: "Giá bán của voucher phải nhỏ hơn giá gốc." A discount that eats the
+ * entire price (or exceeds it) collapses the sale price to <= 0, which is
+ * rejected here rather than left to slip through as a free/negative voucher.
+ */
+const validateDiscountedPrice = (
+  originalPrice: string,
+  discountType: DiscountType,
+  discountValue: string,
+) => {
+  const original = Number(originalPrice);
+  const discount = Number(discountValue);
+
+  if (discount <= 0) {
+    throw new AppError("discountValue must be greater than 0", 400);
+  }
+
+  if (discountType === "percentage" && discount >= 100) {
+    throw new AppError("discountValue must be less than 100 for a percentage discount", 400);
+  }
+
+  const salePrice =
+    discountType === "direct" ? original - discount : original * (1 - discount / 100);
+
+  if (salePrice <= 0 || salePrice >= original) {
+    throw new AppError(
+      "The discounted sale price must be greater than 0 and less than originalPrice",
+      400,
+    );
+  }
+};
+
 const isVoucherStatus = (value: string): value is VoucherProductStatus =>
   voucherStatuses.includes(value as VoucherProductStatus);
 
@@ -377,13 +409,18 @@ export class VoucherProductService {
       throw new AppError("maxLimit must be greater than or equal to minLimit", 400);
     }
 
+    const originalPrice = normalizeMoney(input.originalPrice, "originalPrice");
+    const discountValue = normalizeMoney(input.discountValue, "discountValue");
+
+    validateDiscountedPrice(originalPrice, input.discountType, discountValue);
+
     return {
       categoryId: input.categoryId,
       title,
       description,
-      originalPrice: normalizeMoney(input.originalPrice, "originalPrice"),
+      originalPrice,
       discountType: input.discountType,
-      discountValue: normalizeMoney(input.discountValue, "discountValue"),
+      discountValue,
       startDate,
       endDate,
       validDurationDays,
@@ -400,6 +437,9 @@ export class VoucherProductService {
       endDate: Date;
       minLimit: number;
       maxLimit: number | null;
+      originalPrice: string;
+      discountType: DiscountType;
+      discountValue: string;
     },
   ) {
     const updates: UpdateVoucherProductRecord = {};
@@ -491,6 +531,12 @@ export class VoucherProductService {
     if (nextMaxLimit !== null && nextMaxLimit < nextMinLimit) {
       throw new AppError("maxLimit must be greater than or equal to minLimit", 400);
     }
+
+    const nextOriginalPrice = updates.originalPrice ?? existing.originalPrice;
+    const nextDiscountType = updates.discountType ?? existing.discountType;
+    const nextDiscountValue = updates.discountValue ?? existing.discountValue;
+
+    validateDiscountedPrice(nextOriginalPrice, nextDiscountType, nextDiscountValue);
 
     if (input.imageUrl !== undefined) {
       updates.imageUrl = normalizeOptionalNullableString(input.imageUrl, "imageUrl");
