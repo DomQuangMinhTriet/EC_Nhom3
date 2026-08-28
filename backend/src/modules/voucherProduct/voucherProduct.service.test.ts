@@ -236,6 +236,71 @@ test("updatePartnerVoucher validates partial limits against existing voucher", a
   );
 });
 
+test("createVoucher rejects a direct discount that consumes the entire original price", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.createVoucher(partnerUserId, {
+      ...createInput,
+      originalPrice: "100000",
+      discountType: "direct",
+      discountValue: "100000",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message ===
+        "The discounted sale price must be greater than 0 and less than originalPrice",
+  );
+});
+
+test("createVoucher rejects a percentage discount of 100 or more", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.createVoucher(partnerUserId, {
+      ...createInput,
+      discountType: "percentage",
+      discountValue: "100",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "discountValue must be less than 100 for a percentage discount",
+  );
+});
+
+test("createVoucher rejects a zero discountValue", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.createVoucher(partnerUserId, {
+      ...createInput,
+      discountValue: "0",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "discountValue must be greater than 0",
+  );
+});
+
+test("updatePartnerVoucher rejects an update that would drop the sale price to 0", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.updatePartnerVoucher(partnerUserId, voucherProductId, {
+      discountType: "direct",
+      discountValue: "100000",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message ===
+        "The discounted sale price must be greater than 0 and less than originalPrice",
+  );
+});
+
 test("createVoucher rejects empty numeric strings before DB write", async () => {
   const service = new VoucherProductService(createRepository());
 

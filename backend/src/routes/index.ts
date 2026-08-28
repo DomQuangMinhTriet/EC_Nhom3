@@ -15,6 +15,7 @@ import { voucherInstanceRouter } from "../modules/voucherInstance/voucherInstanc
 import { reviewRouter } from "../modules/review/review.routes";
 import { notificationRouter } from "../modules/notification/notification.routes";
 import { paymentRouter } from "../modules/payment/payment.routes";
+import { dashboardRouter } from "../modules/dashboard/dashboard.routes";
 
 export const apiRouter = Router();
 
@@ -57,3 +58,6 @@ apiRouter.use("/api/voucher-instances", voucherInstanceRouter);
 
 // Reviews
 apiRouter.use("/api/reviews", reviewRouter);
+
+// Admin dashboard / reports
+apiRouter.use("/api/dashboard", dashboardRouter);
