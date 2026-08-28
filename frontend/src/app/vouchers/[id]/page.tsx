@@ -5,6 +5,7 @@ import { TopNav } from "@/components/navigation/top-nav";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { useCategoryNameMap, useVoucherProduct } from "@/hooks/queries/use-voucher-products";
 import { State } from "@/components/common/state";
+import { getCategoryIcon } from "@/lib/category-icon";
 
 export default function VoucherDetailPage() {
   const params = useParams<{ id: string }>();
@@ -33,7 +34,7 @@ export default function VoucherDetailPage() {
               {voucher.imageUrl && <img src={voucher.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80"/>}
               <div className="relative text-center">
                 {categoryName && <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">{categoryName}</span>}
-                <p className="mt-5 text-5xl">🎟</p>
+                <p className="mt-5 text-5xl">{getCategoryIcon(categoryName)}</p>
               </div>
             </div>
             <article className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-brand-sm">

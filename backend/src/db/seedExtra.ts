@@ -18,144 +18,125 @@ import {
 
 /**
  * Adds more demo depth on top of seed.ts: extra categories, extra voucher
- * products with real (Lorem Picsum) images instead of the placeholder
- * example.com URL, and a handful of completed orders + reviews so the
+ * products, and a handful of completed orders + reviews so the
  * Dashboard/Reports pages and public voucher pages don't look empty during
- * grading. Idempotent — safe to re-run.
+ * grading. No imageUrl is set — voucher cards fall back to a category icon
+ * (frontend/src/lib/category-icon.ts) instead of a stock photo that doesn't
+ * match the product. Idempotent — safe to re-run.
  */
 
-function picsum(seed: string) {
-  return `https://picsum.photos/seed/${seed}/800/600`;
-}
-
-const extraCategoryNames = ["Thoi trang", "Suc khoe", "Cong nghe", "The thao"];
+const extraCategoryNames = ["Thời trang", "Sức khỏe", "Công nghệ", "Thể thao"];
 
 const extraVoucherSeeds = [
   {
-    title: "Ao Thun Basic Unisex",
-    description: "Giam 25% cho tat ca ao thun basic unisex, nhieu mau sac",
-    categoryName: "Thoi trang",
+    title: "Áo Thun Basic Unisex",
+    description: "Giảm 25% cho tất cả áo thun basic unisex, nhiều màu sắc",
+    categoryName: "Thời trang",
     originalPrice: "250000",
     discountType: "percentage" as const,
     discountValue: "25",
     validDurationDays: 60,
     totalQuantity: 80,
-    imageSeed: "ao-thun-basic",
   },
   {
-    title: "Giay Sneaker The Thao",
-    description: "Uu dai 100.000d cho giay sneaker the thao chinh hang",
-    categoryName: "Thoi trang",
+    title: "Giày Sneaker Thể Thao",
+    description: "Ưu đãi 100.000đ cho giày sneaker thể thao chính hãng",
+    categoryName: "Thời trang",
     originalPrice: "890000",
     discountType: "direct" as const,
     discountValue: "100000",
     validDurationDays: 45,
     totalQuantity: 40,
-    imageSeed: "sneaker",
   },
   {
-    title: "Goi Kham Suc Khoe Tong Quat",
-    description: "Giam 30% goi kham suc khoe tong quat tai phong kham doi tac",
-    categoryName: "Suc khoe",
+    title: "Gói Khám Sức Khỏe Tổng Quát",
+    description: "Giảm 30% gói khám sức khỏe tổng quát tại phòng khám đối tác",
+    categoryName: "Sức khỏe",
     originalPrice: "1200000",
     discountType: "percentage" as const,
     discountValue: "30",
     validDurationDays: 90,
     totalQuantity: 25,
-    imageSeed: "kham-suc-khoe",
   },
   {
-    title: "The Tap Gym 1 Thang",
-    description: "The tap gym 1 thang khong gioi han, tang 2 buoi PT",
-    categoryName: "Suc khoe",
+    title: "Thẻ Tập Gym 1 Tháng",
+    description: "Thẻ tập gym 1 tháng không giới hạn, tặng 2 buổi PT",
+    categoryName: "Sức khỏe",
     originalPrice: "600000",
     discountType: "percentage" as const,
     discountValue: "20",
     validDurationDays: 30,
     totalQuantity: 60,
-    imageSeed: "gym-membership",
   },
   {
-    title: "Tai Nghe Bluetooth Chinh Hang",
-    description: "Giam 150.000d cho tai nghe bluetooth chinh hang",
-    categoryName: "Cong nghe",
+    title: "Tai Nghe Bluetooth Chính Hãng",
+    description: "Giảm 150.000đ cho tai nghe bluetooth chính hãng",
+    categoryName: "Công nghệ",
     originalPrice: "990000",
     discountType: "direct" as const,
     discountValue: "150000",
     validDurationDays: 60,
     totalQuantity: 35,
-    imageSeed: "bluetooth-headphone",
   },
   {
-    title: "Sac Du Phong 10000mAh",
-    description: "Uu dai 20% cho sac du phong dung luong 10000mAh",
-    categoryName: "Cong nghe",
+    title: "Sạc Dự Phòng 10000mAh",
+    description: "Ưu đãi 20% cho sạc dự phòng dung lượng 10000mAh",
+    categoryName: "Công nghệ",
     originalPrice: "450000",
     discountType: "percentage" as const,
     discountValue: "20",
     validDurationDays: 60,
     totalQuantity: 50,
-    imageSeed: "power-bank",
   },
   {
-    title: "Ve San Bong Da Mini",
-    description: "Giam 15% chi phi thue san bong da mini theo gio",
-    categoryName: "The thao",
+    title: "Vé Sân Bóng Đá Mini",
+    description: "Giảm 15% chi phí thuê sân bóng đá mini theo giờ",
+    categoryName: "Thể thao",
     originalPrice: "300000",
     discountType: "percentage" as const,
     discountValue: "15",
     validDurationDays: 45,
     totalQuantity: 45,
-    imageSeed: "football-field",
   },
   {
-    title: "Combo Buffet Hai San",
-    description: "Giam 25% combo buffet hai san cho 2 nguoi",
-    categoryName: "Am thuc",
+    title: "Combo Buffet Hải Sản",
+    description: "Giảm 25% combo buffet hải sản cho 2 người",
+    categoryName: "Ẩm thực",
     originalPrice: "798000",
     discountType: "percentage" as const,
     discountValue: "25",
     validDurationDays: 30,
     totalQuantity: 40,
-    imageSeed: "seafood-buffet",
   },
   {
-    title: "Tour Du Lich Da Lat 2N1D",
-    description: "Uu dai 500.000d cho tour du lich Da Lat 2 ngay 1 dem",
-    categoryName: "Du lich",
+    title: "Tour Du Lịch Đà Lạt 2N1Đ",
+    description: "Ưu đãi 500.000đ cho tour du lịch Đà Lạt 2 ngày 1 đêm",
+    categoryName: "Du lịch",
     originalPrice: "2500000",
     discountType: "direct" as const,
     discountValue: "500000",
     validDurationDays: 120,
     totalQuantity: 20,
-    imageSeed: "dalat-tour",
   },
   {
-    title: "Ve Cong Vien Nuoc",
-    description: "Giam 20% ve vao cong vien nuoc, ap dung ca cuoi tuan",
-    categoryName: "Giai tri",
+    title: "Vé Công Viên Nước",
+    description: "Giảm 20% vé vào công viên nước, áp dụng cả cuối tuần",
+    categoryName: "Giải trí",
     originalPrice: "220000",
     discountType: "percentage" as const,
     discountValue: "20",
     validDurationDays: 60,
     totalQuantity: 70,
-    imageSeed: "water-park",
   },
 ];
 
-const existingVoucherImageSeeds: Record<string, string> = {
-  "Combo Lau Nuong 2 Nguoi": "hotpot-combo",
-  "Goi Cham Soc Da Co Ban": "facial-spa",
-  "Ve Xem Phim 2D": "cinema-ticket",
-};
-
 const reviewSeeds = [
-  { title: "Combo Lau Nuong 2 Nguoi", rating: 5, comment: "Do an ngon, nhan vien phuc vu nhiet tinh, se quay lai." },
-  { title: "Ve Xem Phim 2D", rating: 4, comment: "Doi mua khong lau, ghe ngoi thoai mai." },
-  { title: "Ao Thun Basic Unisex", rating: 5, comment: "Vai mat, form dep, gia hop ly voi voucher giam gia." },
-  { title: "The Tap Gym 1 Thang", rating: 4, comment: "May moc day du, PT huong dan tan tinh." },
-  { title: "Tai Nghe Bluetooth Chinh Hang", rating: 5, comment: "Am thanh tot, pin trau, dong goi can than." },
-  { title: "Tour Du Lich Da Lat 2N1D", rating: 5, comment: "Lich trinh hop ly, huong dan vien vui tinh, rat dang tien." },
+  { title: "Combo Lẩu Nướng 2 Người", rating: 5, comment: "Đồ ăn ngon, nhân viên phục vụ nhiệt tình, sẽ quay lại." },
+  { title: "Vé Xem Phim 2D", rating: 4, comment: "Đợi mua không lâu, ghế ngồi thoải mái." },
+  { title: "Áo Thun Basic Unisex", rating: 5, comment: "Vải mát, form đẹp, giá hợp lý với voucher giảm giá." },
+  { title: "Thẻ Tập Gym 1 Tháng", rating: 4, comment: "Máy móc đầy đủ, PT hướng dẫn tận tình." },
+  { title: "Tai Nghe Bluetooth Chính Hãng", rating: 5, comment: "Âm thanh tốt, pin trâu, đóng gói cẩn thận." },
+  { title: "Tour Du Lịch Đà Lạt 2N1Đ", rating: 5, comment: "Lịch trình hợp lý, hướng dẫn viên vui tính, rất đáng tiền." },
 ];
 
 async function main() {
@@ -170,15 +151,6 @@ async function main() {
     categoryIds[name] = created!.categoryId;
   }
   console.log(`Done — ${extraCategoryNames.length} extra categories ensured.`);
-
-  console.log("Fixing placeholder images on original demo vouchers ...");
-  for (const [title, seed] of Object.entries(existingVoucherImageSeeds)) {
-    const existing = await db.query.voucherProduct.findFirst({ where: eq(voucherProduct.title, title) });
-    if (existing && (!existing.imageUrl || existing.imageUrl.includes("example.com"))) {
-      await db.update(voucherProduct).set({ imageUrl: picsum(seed) }).where(eq(voucherProduct.voucherProductId, existing.voucherProductId));
-    }
-  }
-  console.log("Done — placeholder images replaced with real images.");
 
   const partner = await db.query.partnerProfile.findFirst({ where: eq(partnerProfile.partnerProfileCode, "PARTNER-DEMO-01") });
   const branch = await db.query.branchProfile.findFirst({ where: eq(branchProfile.branchProfileCode, "BRANCH-DEMO-01") });
@@ -208,7 +180,6 @@ async function main() {
           validDurationDays: v.validDurationDays,
           minLimit: 1,
           maxLimit: v.totalQuantity,
-          imageUrl: picsum(v.imageSeed),
           status: "active",
         })
         .returning();

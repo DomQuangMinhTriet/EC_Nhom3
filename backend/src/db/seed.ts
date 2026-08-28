@@ -87,7 +87,7 @@ async function main() {
   console.log(`Done — ${roles.length} roles ensured.`);
 
   console.log("Seeding categories ...");
-  const categoryNames = ["Am thuc", "Lam dep", "Giai tri", "Du lich"];
+  const categoryNames = ["Ẩm thực", "Làm đẹp", "Giải trí", "Du lịch"];
   const categoryIds: Record<string, string> = {};
   for (const name of categoryNames) {
     const existingCategory = await db.query.category.findFirst({
@@ -184,9 +184,9 @@ async function main() {
   const endDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
   const voucherSeeds = [
     {
-      title: "Combo Lau Nuong 2 Nguoi",
-      description: "Giam 20% cho combo lau nuong danh cho 2 nguoi",
-      categoryName: "Am thuc",
+      title: "Combo Lẩu Nướng 2 Người",
+      description: "Giảm 20% cho combo lẩu nướng dành cho 2 người",
+      categoryName: "Ẩm thực",
       originalPrice: "350000",
       discountType: "percentage" as const,
       discountValue: "20",
@@ -194,9 +194,9 @@ async function main() {
       totalQuantity: 50,
     },
     {
-      title: "Goi Cham Soc Da Co Ban",
-      description: "Uu dai goi cham soc da mat co ban tai spa doi tac",
-      categoryName: "Lam dep",
+      title: "Gói Chăm Sóc Da Cơ Bản",
+      description: "Ưu đãi gói chăm sóc da mặt cơ bản tại spa đối tác",
+      categoryName: "Làm đẹp",
       originalPrice: "500000",
       discountType: "percentage" as const,
       discountValue: "15",
@@ -204,9 +204,9 @@ async function main() {
       totalQuantity: 30,
     },
     {
-      title: "Ve Xem Phim 2D",
-      description: "Ve xem phim 2D suat chieu bat ky trong tuan",
-      categoryName: "Giai tri",
+      title: "Vé Xem Phim 2D",
+      description: "Vé xem phim 2D suất chiếu bất kỳ trong tuần",
+      categoryName: "Giải trí",
       originalPrice: "90000",
       discountType: "direct" as const,
       discountValue: "20000",
@@ -235,7 +235,6 @@ async function main() {
           validDurationDays: v.validDurationDays,
           minLimit: 1,
           maxLimit: v.totalQuantity,
-          imageUrl: "https://example.com/voucher.png",
           status: "active",
         })
         .returning();
