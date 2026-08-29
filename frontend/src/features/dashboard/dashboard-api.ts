@@ -31,3 +31,28 @@ export async function getAdminDashboardSummary(params: GetDashboardSummaryParams
   });
   return res.data;
 }
+
+export type PartnerDashboardSummary = {
+  revenue: {
+    currentMonth: string;
+    growthPercent: number | null;
+    monthly: { month: string; revenue: string }[];
+    currency: string;
+  };
+  orders: { completedTotal: number };
+  vouchers: {
+    byStatus: Record<string, number>;
+    activeCount: number;
+    soldTotal: number;
+    usedTotal: number;
+    usageRatePercent: number;
+  };
+  topVouchers: { voucherProductId: string; title: string; status: string; sold: number }[];
+};
+
+export async function getPartnerDashboardSummary() {
+  const res = await apiClient<{ data: PartnerDashboardSummary }>("/dashboard/partner-summary", {
+    headers: authHeaders(),
+  });
+  return res.data;
+}

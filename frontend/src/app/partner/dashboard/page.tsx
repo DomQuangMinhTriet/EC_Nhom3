@@ -1,5 +1,124 @@
+"use client";
 import { PartnerShell } from "@/components/partner/partner-shell";
 import { PageHeader } from "@/components/common/page-header";
-import { partnerVoucherMocks } from "@/lib/mocks/partner";
-export default function PartnerDashboardPage() { return <PartnerShell active="/partner/dashboard"><PageHeader title="Dashboard" subtitle="Tổng quan hoạt động voucher của doanh nghiệp."/><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Kpi label="Doanh thu tháng này" value="128,4Mđ" change="+12,5%"/><Kpi label="Voucher đã bán" value="3.420" change="+18,2%"/><Kpi label="Đang bán" value="12" change="+2"/><Kpi label="Tỷ lệ sử dụng" value="76,8%" change="+4,1%"/></div><div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]"><section className="rounded-xl border border-slate-200 bg-white p-5 shadow-brand-sm"><h2 className="font-extrabold text-slate-900">Doanh thu 6 tháng</h2><div className="mt-6 flex h-48 items-end gap-3 border-b border-slate-100 pb-2">{[42,58,46,70,64,88].map((height, index) => <div className="flex flex-1 flex-col items-center gap-2" key={index}><span className="w-full rounded-t bg-gradient-to-t from-primary to-indigo-300" style={{ height: `${height}%` }}/><small className="text-[10px] text-slate-400">T{index + 3}</small></div>)}</div></section><section className="rounded-xl border border-slate-200 bg-white p-5 shadow-brand-sm"><h2 className="font-extrabold text-slate-900">Voucher cần chú ý</h2><div className="mt-4 space-y-4">{partnerVoucherMocks.map((voucher) => <div className="flex justify-between gap-4 text-xs" key={voucher.id}><div><b className="block text-slate-800">{voucher.title}</b><span className="mt-1 block text-slate-500">Đã bán {voucher.sold.toLocaleString("vi-VN")}</span></div><span className={`h-fit rounded-full px-2 py-1 text-[10px] font-bold ${voucher.status === "Đang bán" ? "bg-emerald-50 text-success" : voucher.status === "Chờ duyệt" ? "bg-indigo-50 text-primary" : "bg-orange-50 text-warning"}`}>{voucher.status}</span></div>)}</div></section></div></PartnerShell>; }
-function Kpi({ label, value, change }: { label: string; value: string; change: string }) { return <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-brand-sm"><span className="text-xs text-slate-500">{label}</span><b className="mt-2 block text-2xl font-extrabold tracking-[-.5px] text-slate-900">{value}</b><span className="mt-2 inline-block rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-success">{change}</span></div>; }
+import { State } from "@/components/common/state";
+import { usePartnerDashboardSummary } from "@/hooks/queries/use-dashboard";
+
+function formatMoney(value: string) {
+  return `${Number(value).toLocaleString("vi-VN")}đ`;
+}
+
+const voucherStatusLabel: Record<string, string> = {
+  pending: "Chờ duyệt",
+  active: "Đang bán",
+  out_of_stock: "Hết hàng",
+  inactive: "Tạm ngưng",
+  rejected: "Bị từ chối",
+  expired: "Hết hạn",
+};
+
+const voucherStatusStyle: Record<string, string> = {
+  active: "bg-emerald-50 text-success",
+  pending: "bg-indigo-50 text-primary",
+};
+
+function Kpi({ label, value, change }: { label: string; value: string; change?: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-brand-sm">
+      <span className="text-xs text-slate-500">{label}</span>
+      <b className="mt-2 block text-2xl font-extrabold tracking-[-.5px] text-slate-900">{value}</b>
+      {change && (
+        <span
+          className={`mt-2 inline-block rounded-full px-2 py-1 text-[10px] font-bold ${
+            change.startsWith("-") ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-success"
+          }`}
+        >
+          {change}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export default function PartnerDashboardPage() {
+  const summaryQuery = usePartnerDashboardSummary();
+  const summary = summaryQuery.data;
+
+  return (
+    <PartnerShell active="/partner/dashboard">
+      <PageHeader title="Dashboard" subtitle="Tổng quan hoạt động voucher của doanh nghiệp." />
+
+      {summaryQuery.isLoading && (
+        <State icon="⏳" title="Đang tải dashboard" text="Vui lòng chờ trong giây lát." />
+      )}
+
+      {summaryQuery.isError && (
+        <State
+          icon="⚠️"
+          title="Không thể tải dashboard"
+          text={summaryQuery.error instanceof Error ? summaryQuery.error.message : "Đã xảy ra lỗi."}
+        />
+      )}
+
+      {summary && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Kpi
+              label="Doanh thu tháng này"
+              value={formatMoney(summary.revenue.currentMonth)}
+              change={summary.revenue.growthPercent === null ? undefined : `${summary.revenue.growthPercent > 0 ? "+" : ""}${summary.revenue.growthPercent}%`}
+            />
+            <Kpi label="Voucher đã bán" value={summary.vouchers.soldTotal.toLocaleString("vi-VN")} />
+            <Kpi label="Đang bán" value={summary.vouchers.activeCount.toLocaleString("vi-VN")} />
+            <Kpi label="Tỷ lệ sử dụng" value={`${summary.vouchers.usageRatePercent}%`} />
+          </div>
+
+          <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-brand-sm">
+              <h2 className="font-extrabold text-slate-900">Doanh thu 6 tháng</h2>
+              {(() => {
+                const max = Math.max(1, ...summary.revenue.monthly.map((m) => Number(m.revenue)));
+                return (
+                  <div className="mt-6 flex h-48 items-end gap-3 border-b border-slate-100 pb-2">
+                    {summary.revenue.monthly.map((m) => (
+                      <div className="flex flex-1 flex-col items-center gap-2" key={m.month}>
+                        <span
+                          className="w-full rounded-t bg-gradient-to-t from-primary to-indigo-300"
+                          style={{ height: `${Math.max(2, (Number(m.revenue) / max) * 100)}%` }}
+                        />
+                        <small className="text-[10px] text-slate-400">{m.month.slice(5)}</small>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </section>
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-brand-sm">
+              <h2 className="font-extrabold text-slate-900">Voucher cần chú ý</h2>
+              <div className="mt-4 space-y-4">
+                {summary.topVouchers.length === 0 && (
+                  <p className="text-xs text-slate-400">Chưa có voucher nào.</p>
+                )}
+                {summary.topVouchers.map((voucher) => (
+                  <div className="flex justify-between gap-4 text-xs" key={voucher.voucherProductId}>
+                    <div>
+                      <b className="block text-slate-800">{voucher.title}</b>
+                      <span className="mt-1 block text-slate-500">Đã bán {voucher.sold.toLocaleString("vi-VN")}</span>
+                    </div>
+                    <span
+                      className={`h-fit rounded-full px-2 py-1 text-[10px] font-bold ${
+                        voucherStatusStyle[voucher.status] ?? "bg-orange-50 text-warning"
+                      }`}
+                    >
+                      {voucherStatusLabel[voucher.status] ?? voucher.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </>
+      )}
+    </PartnerShell>
+  );
+}

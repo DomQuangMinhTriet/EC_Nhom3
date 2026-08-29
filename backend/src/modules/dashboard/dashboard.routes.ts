@@ -12,3 +12,10 @@ dashboardRouter.get(
   authorizeRoles("Super_Admin", "Operational_Admin"),
   asyncHandler(dashboardController.getSummary),
 );
+
+dashboardRouter.get(
+  "/partner-summary",
+  requireAuth,
+  authorizeRoles("Partner"),
+  asyncHandler(dashboardController.getPartnerSummary),
+);

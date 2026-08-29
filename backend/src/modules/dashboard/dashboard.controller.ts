@@ -11,4 +11,8 @@ export class DashboardController {
 
     res.json({ data: await this.dashboardService.getSummary({ from, to }) });
   };
+
+  getPartnerSummary = async (req: Request, res: Response) => {
+    res.json({ data: await this.dashboardService.getPartnerSummary(req.user!.userId) });
+  };
 }

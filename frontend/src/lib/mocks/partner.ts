@@ -1,2 +1,0 @@
-// TODO(API): replace with /partner/vouchers and report endpoints.
-export const partnerVoucherMocks = [{ id: "lotteria-combo", title: "Giảm 30% tất cả combo bữa", status: "Đang bán", sold: 3420, revenue: 478800000, expiry: "30/09/2026" }, { id: "lotteria-family", title: "Combo gia đình giảm 25%", status: "Chờ duyệt", sold: 0, revenue: 0, expiry: "31/10/2026" }, { id: "lotteria-lunch", title: "Ưu đãi bữa trưa −20%", status: "Tạm dừng", sold: 836, revenue: 83600000, expiry: "15/08/2026" }];
