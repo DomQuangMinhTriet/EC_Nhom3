@@ -438,6 +438,8 @@ test("getVouchers returns paginated system vouchers", async () => {
         minPrice: undefined,
         maxPrice: undefined,
         minDiscountPercent: undefined,
+        stockStatus: undefined,
+        expiryStatus: undefined,
       });
       return { vouchers: [voucher], total: 21 };
     },
@@ -475,6 +477,39 @@ test("getVouchers passes price/discount/partner filters through to the repositor
     maxPrice: 200000,
     minDiscountPercent: 10,
   });
+});
+
+test("getVouchers passes stockStatus and expiryStatus filters through to the repository", async () => {
+  const repository = createRepository({
+    findAll: async (options) => {
+      assert.equal(options.stockStatus, "in_stock");
+      assert.equal(options.expiryStatus, "expiring_soon");
+      return { vouchers: [voucher], total: 1 };
+    },
+  });
+  const service = new VoucherProductService(repository);
+
+  await service.getVouchers({ stockStatus: "in_stock", expiryStatus: "expiring_soon" });
+});
+
+test("getVouchers rejects an invalid stockStatus", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.getVouchers({ stockStatus: "sold_out" }),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 400 && error.message === "Invalid stockStatus",
+  );
+});
+
+test("getVouchers rejects an invalid expiryStatus", async () => {
+  const service = new VoucherProductService(createRepository());
+
+  await assert.rejects(
+    service.getVouchers({ expiryStatus: "forever" }),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 400 && error.message === "Invalid expiryStatus",
+  );
 });
 
 test("getVouchers rejects minPrice greater than maxPrice", async () => {

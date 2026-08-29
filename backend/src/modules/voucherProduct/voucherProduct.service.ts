@@ -1,9 +1,20 @@
 import { AppError } from "../../shared/errors/AppError";
 import {
   VoucherProductRepository,
+  type ExpiryStatusFilter,
+  type StockStatusFilter,
   type UpdateVoucherProductRecord,
   type VoucherProductStatus,
 } from "./voucherProduct.repository";
+
+const stockStatuses = ["in_stock", "out_of_stock"] as const;
+const expiryStatuses = ["expiring_soon", "long_valid"] as const;
+
+const isStockStatus = (value: string): value is StockStatusFilter =>
+  stockStatuses.includes(value as StockStatusFilter);
+
+const isExpiryStatus = (value: string): value is ExpiryStatusFilter =>
+  expiryStatuses.includes(value as ExpiryStatusFilter);
 
 const discountTypes = ["direct", "percentage"] as const;
 type DiscountType = (typeof discountTypes)[number];
@@ -51,6 +62,8 @@ export type ListVoucherProductsInput = {
   minPrice?: number;
   maxPrice?: number;
   minDiscountPercent?: number;
+  stockStatus?: string;
+  expiryStatus?: string;
 };
 
 export type UpdateVoucherStatusInput = {
@@ -355,6 +368,14 @@ export class VoucherProductService {
       throw new AppError("minPrice must be less than or equal to maxPrice", 400);
     }
 
+    if (input.stockStatus !== undefined && !isStockStatus(input.stockStatus)) {
+      throw new AppError("Invalid stockStatus", 400);
+    }
+
+    if (input.expiryStatus !== undefined && !isExpiryStatus(input.expiryStatus)) {
+      throw new AppError("Invalid expiryStatus", 400);
+    }
+
     const { vouchers, total } = await this.voucherProductRepository.findAll({
       page,
       pageSize,
@@ -365,6 +386,8 @@ export class VoucherProductService {
       minPrice: input.minPrice,
       maxPrice: input.maxPrice,
       minDiscountPercent: input.minDiscountPercent,
+      stockStatus: input.stockStatus as StockStatusFilter | undefined,
+      expiryStatus: input.expiryStatus as ExpiryStatusFilter | undefined,
     });
 
     return {

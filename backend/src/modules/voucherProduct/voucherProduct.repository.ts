@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "../../db/client";
-import { category, partnerProfile, voucherProduct } from "../../db/schema";
+import { branchVoucherProduct, category, partnerProfile, voucherProduct } from "../../db/schema";
 
 export type CreateVoucherProductRecord = {
   categoryId: string;
@@ -35,6 +35,9 @@ export type VoucherProductStatus =
   | "rejected"
   | "expired";
 
+export type StockStatusFilter = "in_stock" | "out_of_stock";
+export type ExpiryStatusFilter = "expiring_soon" | "long_valid";
+
 type FindAllOptions = {
   page: number;
   pageSize: number;
@@ -45,6 +48,8 @@ type FindAllOptions = {
   minPrice?: number;
   maxPrice?: number;
   minDiscountPercent?: number;
+  stockStatus?: StockStatusFilter;
+  expiryStatus?: ExpiryStatusFilter;
 };
 
 // The sale price customers actually pay (originalPrice minus the discount),
@@ -55,6 +60,13 @@ const salePriceExpr = sql<number>`(CASE WHEN ${voucherProduct.discountType} = 'd
 // Discount normalized to a percentage regardless of discountType, so
 // "mức giảm tối thiểu X%" is comparable across direct/percentage vouchers.
 const discountPercentExpr = sql<number>`(CASE WHEN ${voucherProduct.discountType} = 'percentage' THEN ${voucherProduct.discountValue} ELSE (${voucherProduct.discountValue} / NULLIF(${voucherProduct.originalPrice}, 0) * 100) END)`;
+
+// "Còn hàng" means at least one branch still has stock left for this
+// voucher — a business-status of "active" doesn't guarantee it's actually
+// purchasable if every branch has sold out.
+const hasStockExpr = sql`EXISTS (SELECT 1 FROM ${branchVoucherProduct} WHERE ${branchVoucherProduct.voucherProductId} = ${voucherProduct.voucherProductId} AND ${branchVoucherProduct.totalQuantity} - ${branchVoucherProduct.soldQuantity} > 0)`;
+
+const EXPIRY_SOON_DAYS = 7;
 
 export class VoucherProductRepository {
   async findPartnerProfileIdByUserId(userId: string) {
@@ -143,6 +155,8 @@ export class VoucherProductRepository {
     minPrice,
     maxPrice,
     minDiscountPercent,
+    stockStatus,
+    expiryStatus,
   }: FindAllOptions) {
     const filters = [];
 
@@ -178,6 +192,21 @@ export class VoucherProductRepository {
 
     if (minDiscountPercent !== undefined) {
       filters.push(sql`${discountPercentExpr} >= ${minDiscountPercent}`);
+    }
+
+    if (stockStatus === "in_stock") {
+      filters.push(hasStockExpr);
+    } else if (stockStatus === "out_of_stock") {
+      filters.push(sql`NOT ${hasStockExpr}`);
+    }
+
+    if (expiryStatus === "expiring_soon" || expiryStatus === "long_valid") {
+      const cutoff = sql`now() + (${EXPIRY_SOON_DAYS} || ' days')::interval`;
+      filters.push(
+        expiryStatus === "expiring_soon"
+          ? sql`${voucherProduct.endDate} >= now() AND ${voucherProduct.endDate} <= ${cutoff}`
+          : sql`${voucherProduct.endDate} > ${cutoff}`,
+      );
     }
 
     const where = filters.length > 0 ? and(...filters) : undefined;

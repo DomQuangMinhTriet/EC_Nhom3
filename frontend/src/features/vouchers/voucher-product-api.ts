@@ -45,6 +45,9 @@ export type CreateVoucherProductInput = {
 
 export type UpdateVoucherProductInput = Partial<CreateVoucherProductInput>;
 
+export type StockStatusFilter = "in_stock" | "out_of_stock";
+export type ExpiryStatusFilter = "expiring_soon" | "long_valid";
+
 export type ListVoucherProductsParams = {
   page?: number;
   pageSize?: number;
@@ -55,6 +58,8 @@ export type ListVoucherProductsParams = {
   minPrice?: number;
   maxPrice?: number;
   minDiscountPercent?: number;
+  stockStatus?: StockStatusFilter;
+  expiryStatus?: ExpiryStatusFilter;
 };
 
 export type ListVoucherProductsResult = {

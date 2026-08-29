@@ -152,6 +152,8 @@ export class VoucherProductController {
           req.query.minDiscountPercent,
           "minDiscountPercent",
         ),
+        stockStatus: parseOptionalStringQuery(req.query.stockStatus, "stockStatus"),
+        expiryStatus: parseOptionalStringQuery(req.query.expiryStatus, "expiryStatus"),
       }),
     );
   };

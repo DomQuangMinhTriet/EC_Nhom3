@@ -19,6 +19,8 @@ function VoucherListingContent() {
   const minPrice = params.get("minPrice") ?? "";
   const maxPrice = params.get("maxPrice") ?? "";
   const minDiscountPercent = params.get("minDiscountPercent") ?? "";
+  const stockStatus = params.get("stockStatus") ?? "";
+  const expiryStatus = params.get("expiryStatus") ?? "";
   const [page, setPage] = useState(1);
 
   // Local draft state for the price/discount number inputs, so typing
@@ -43,6 +45,8 @@ function VoucherListingContent() {
     minPrice: minPrice ? Number(minPrice) : undefined,
     maxPrice: maxPrice ? Number(maxPrice) : undefined,
     minDiscountPercent: minDiscountPercent ? Number(minDiscountPercent) : undefined,
+    stockStatus: stockStatus ? (stockStatus as "in_stock" | "out_of_stock") : undefined,
+    expiryStatus: expiryStatus ? (expiryStatus as "expiring_soon" | "long_valid") : undefined,
   });
 
   const vouchers = listQuery.data?.vouchers ?? [];
@@ -64,7 +68,7 @@ function VoucherListingContent() {
     router.push("/vouchers");
   }
 
-  const hasActiveFilters = Boolean(categoryId || partnerProfileId || minPrice || maxPrice || minDiscountPercent);
+  const hasActiveFilters = Boolean(categoryId || partnerProfileId || minPrice || maxPrice || minDiscountPercent || stockStatus || expiryStatus);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -139,6 +143,32 @@ function VoucherListingContent() {
                 <option value="20">Từ 20%</option>
                 <option value="30">Từ 30%</option>
                 <option value="50">Từ 50%</option>
+              </select>
+            </div>
+
+            <div className="border-t border-slate-100 pt-4">
+              <h2 className="font-extrabold text-slate-900">Tình trạng</h2>
+              <select
+                value={stockStatus}
+                onChange={(event) => updateFilters({ stockStatus: event.target.value })}
+                className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+              >
+                <option value="">Tất cả</option>
+                <option value="in_stock">Còn hàng</option>
+                <option value="out_of_stock">Hết hàng</option>
+              </select>
+            </div>
+
+            <div className="border-t border-slate-100 pt-4">
+              <h2 className="font-extrabold text-slate-900">Hạn sử dụng</h2>
+              <select
+                value={expiryStatus}
+                onChange={(event) => updateFilters({ expiryStatus: event.target.value })}
+                className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+              >
+                <option value="">Tất cả</option>
+                <option value="expiring_soon">Sắp hết hạn (≤7 ngày)</option>
+                <option value="long_valid">Còn hạn dài</option>
               </select>
             </div>
 
