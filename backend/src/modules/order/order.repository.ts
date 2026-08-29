@@ -260,6 +260,31 @@ export class OrderRepository {
     };
   }
 
+  async findLatestSuccessfulPayment(orderId: string) {
+    const result = await db
+      .select()
+      .from(payment)
+      .where(and(eq(payment.orderId, orderId), eq(payment.status, "success")))
+      .orderBy(desc(payment.paidAt))
+      .limit(1);
+
+    return result[0] ?? null;
+  }
+
+  async markPaymentRefunded(paymentId: string, reason?: string | null) {
+    const result = await db
+      .update(payment)
+      .set({
+        refundedAt: new Date(),
+        reason: reason ?? undefined,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(payment.paymentId, paymentId), isNull(payment.refundedAt)))
+      .returning();
+
+    return result[0] ?? null;
+  }
+
   async findOrdersByCustomer(
     customerProfileId: string,
     { page, limit, status }: { page: number; limit: number; status?: OrderStatus },

@@ -76,8 +76,25 @@ const createRepository = (overrides: Partial<OrderRepository> = {}) =>
       orders: [{ ...orderRecord, items: [], payments: [] }],
       total: 1,
     }),
+    findLatestSuccessfulPayment: async () => null,
+    markPaymentRefunded: async () => null,
     ...overrides,
   }) as unknown as OrderRepository;
+
+const mockPayment = {
+  paymentId: "00000000-0000-4000-8000-000000000007",
+  transactionId: "tx-1",
+  orderId,
+  paymentMethod: "card" as const,
+  amount: "200.00",
+  currency: "VND",
+  status: "success" as const,
+  reason: null,
+  paidAt: createdAt,
+  refundedAt: null as Date | null,
+  createdAt,
+  updatedAt: createdAt,
+};
 
 test("createOrder creates a pending order preserving cart item quantity", async () => {
   let captured: CreateOrderRecord | undefined;
@@ -407,6 +424,119 @@ test("getOrderByIdForAdmin throws 404 when order does not exist", async () => {
       error instanceof AppError &&
       error.statusCode === 404 &&
       error.message === "Order not found",
+  );
+});
+
+test("cancelOrderForAdmin cancels a pending order regardless of who owns it", async () => {
+  let capturedStatus: string | undefined;
+  const service = new OrderService(
+    createRepository({
+      findOrderById: async () => ({ ...orderRecord, status: "pending_payment" }),
+      updateOrder: async (input) => {
+        capturedStatus = input.status;
+        return { ...orderRecord, wasNewlyCompleted: false };
+      },
+    }),
+  );
+
+  const result = await service.cancelOrderForAdmin(orderId, "Fraud suspected");
+
+  assert.equal(capturedStatus, "failed");
+  assert.equal(result.orderId, orderId);
+});
+
+test("cancelOrderForAdmin rejects a non-string reason", async () => {
+  const service = new OrderService(createRepository());
+
+  await assert.rejects(
+    service.cancelOrderForAdmin(orderId, 123),
+    (error: unknown) => error instanceof AppError && error.statusCode === 400 && error.message === "reason must be a string",
+  );
+});
+
+test("cancelOrderForAdmin cannot cancel an already completed order", async () => {
+  const service = new OrderService(
+    createRepository({
+      findOrderById: async () => ({ ...orderRecord, status: "completed" }),
+    }),
+  );
+
+  await assert.rejects(
+    service.cancelOrderForAdmin(orderId),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 400 &&
+      error.message === "Completed orders cannot be changed to another status",
+  );
+});
+
+test("markOrderRefunded marks the payment refunded for a completed order", async () => {
+  let refundedPaymentId: string | undefined;
+  const service = new OrderService(
+    createRepository({
+      findOrderById: async () => ({ ...orderRecord, status: "completed" }),
+      findLatestSuccessfulPayment: async () => mockPayment,
+      markPaymentRefunded: async (paymentId) => {
+        refundedPaymentId = paymentId;
+        return { ...mockPayment, refundedAt: new Date() };
+      },
+    }),
+  );
+
+  const result = await service.markOrderRefunded(orderId, "Customer requested refund");
+
+  assert.equal(refundedPaymentId, mockPayment.paymentId);
+  assert.equal(result.orderId, orderId);
+});
+
+test("markOrderRefunded throws 404 if the order does not exist", async () => {
+  const service = new OrderService(createRepository({ findOrderById: async () => null }));
+
+  await assert.rejects(
+    service.markOrderRefunded(orderId),
+    (error: unknown) => error instanceof AppError && error.statusCode === 404 && error.message === "Order not found",
+  );
+});
+
+test("markOrderRefunded rejects orders that are not completed", async () => {
+  const service = new OrderService(
+    createRepository({ findOrderById: async () => ({ ...orderRecord, status: "pending_payment" }) }),
+  );
+
+  await assert.rejects(
+    service.markOrderRefunded(orderId),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 400 && error.message === "Only completed orders can be refunded",
+  );
+});
+
+test("markOrderRefunded rejects an order with no successful payment", async () => {
+  const service = new OrderService(
+    createRepository({
+      findOrderById: async () => ({ ...orderRecord, status: "completed" }),
+      findLatestSuccessfulPayment: async () => null,
+    }),
+  );
+
+  await assert.rejects(
+    service.markOrderRefunded(orderId),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 400 && error.message === "No successful payment found for this order",
+  );
+});
+
+test("markOrderRefunded rejects an order that was already refunded", async () => {
+  const service = new OrderService(
+    createRepository({
+      findOrderById: async () => ({ ...orderRecord, status: "completed" }),
+      findLatestSuccessfulPayment: async () => ({ ...mockPayment, refundedAt: createdAt }),
+    }),
+  );
+
+  await assert.rejects(
+    service.markOrderRefunded(orderId),
+    (error: unknown) =>
+      error instanceof AppError && error.statusCode === 400 && error.message === "Order has already been refunded",
   );
 });
 

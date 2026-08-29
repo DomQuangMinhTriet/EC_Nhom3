@@ -29,6 +29,20 @@ orderRouter.get(
   asyncHandler(orderController.getOrderByIdForAdmin),
 );
 
+orderRouter.patch(
+  "/admin/:id/cancel",
+  requireAuth,
+  authorizeRoles("Super_Admin", "Operational_Admin"),
+  asyncHandler(orderController.cancelOrderForAdmin),
+);
+
+orderRouter.patch(
+  "/admin/:id/refund",
+  requireAuth,
+  authorizeRoles("Super_Admin", "Operational_Admin"),
+  asyncHandler(orderController.markOrderRefunded),
+);
+
 orderRouter.get(
   "/:id",
   requireAuth,

@@ -261,6 +261,58 @@ export class OrderService {
     return orderDetail;
   }
 
+  async cancelOrderForAdmin(orderId: string, reason?: unknown) {
+    if (reason !== undefined && reason !== null && typeof reason !== "string") {
+      throw new AppError("reason must be a string", 400);
+    }
+
+    await this.updateOrderBySystem(orderId, {
+      status: "failed",
+      reason: typeof reason === "string" ? reason : "Cancelled by admin",
+    });
+
+    return await this.getOrderByIdForAdmin(orderId);
+  }
+
+  // "Ghi nhận hoàn tiền mô phỏng": records that a completed order's payment
+  // was refunded (payments.refundedAt) without reversing the order itself,
+  // its issued voucher codes, or the branch stock it consumed — a
+  // bookkeeping marker for the admin UI, not a real payment-gateway refund.
+  async markOrderRefunded(orderId: string, reason?: unknown) {
+    if (reason !== undefined && reason !== null && typeof reason !== "string") {
+      throw new AppError("reason must be a string", 400);
+    }
+
+    const existingOrder = await this.orderRepository.findOrderById(orderId);
+    if (!existingOrder) {
+      throw new AppError("Order not found", 404);
+    }
+
+    if (existingOrder.status !== "completed") {
+      throw new AppError("Only completed orders can be refunded", 400);
+    }
+
+    const successfulPayment = await this.orderRepository.findLatestSuccessfulPayment(orderId);
+    if (!successfulPayment) {
+      throw new AppError("No successful payment found for this order", 400);
+    }
+
+    if (successfulPayment.refundedAt) {
+      throw new AppError("Order has already been refunded", 400);
+    }
+
+    const updatedPayment = await this.orderRepository.markPaymentRefunded(
+      successfulPayment.paymentId,
+      typeof reason === "string" ? reason : successfulPayment.reason,
+    );
+
+    if (!updatedPayment) {
+      throw new AppError("Order has already been refunded", 400);
+    }
+
+    return await this.getOrderByIdForAdmin(orderId);
+  }
+
   private async createOrderWithReservedStock(
     input: Parameters<OrderRepository["createOrderFromCart"]>[0],
   ) {

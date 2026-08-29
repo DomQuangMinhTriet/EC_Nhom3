@@ -120,4 +120,28 @@ export class OrderController {
       ),
     });
   };
+
+  cancelOrderForAdmin = async (req: Request, res: Response) => {
+    const orderId = req.params.id;
+
+    if (!isUuid(orderId)) {
+      throw new AppError("Invalid order ID", 400);
+    }
+
+    const { reason } = req.body as { reason?: unknown };
+
+    res.json({ data: await this.orderService.cancelOrderForAdmin(orderId, reason) });
+  };
+
+  markOrderRefunded = async (req: Request, res: Response) => {
+    const orderId = req.params.id;
+
+    if (!isUuid(orderId)) {
+      throw new AppError("Invalid order ID", 400);
+    }
+
+    const { reason } = req.body as { reason?: unknown };
+
+    res.json({ data: await this.orderService.markOrderRefunded(orderId, reason) });
+  };
 }

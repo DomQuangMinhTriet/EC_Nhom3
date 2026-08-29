@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuthSession } from "@/features/auth/auth-session-provider";
-const links = [["/admin/dashboard", "Dashboard"], ["/admin/users", "Người dùng"], ["/admin/partners", "Partners"], ["/admin/partners/new", "Thêm Partner"], ["/admin/branches", "Chi nhánh"], ["/admin/vouchers/approval", "Duyệt Voucher"], ["/admin/vouchers", "Vouchers"], ["/admin/categories", "Danh mục"], ["/admin/reports", "Báo cáo"], ["/admin/settings", "Cài đặt"], ["/admin/notifications", "Thông báo"], ["/admin/audit-log", "Audit Log"]] as const;
+const links = [["/admin/dashboard", "Dashboard"], ["/admin/orders", "Đơn hàng"], ["/admin/users", "Người dùng"], ["/admin/partners", "Partners"], ["/admin/partners/new", "Thêm Partner"], ["/admin/branches", "Chi nhánh"], ["/admin/vouchers/approval", "Duyệt Voucher"], ["/admin/vouchers", "Vouchers"], ["/admin/categories", "Danh mục"], ["/admin/reports", "Báo cáo"], ["/admin/settings", "Cài đặt"], ["/admin/notifications", "Thông báo"], ["/admin/audit-log", "Audit Log"]] as const;
 export function AdminShell({ children, active }: { children: ReactNode; active: string }) {
   const router = useRouter();
   const { signOut } = useAuthSession();

@@ -38,6 +38,7 @@ export type OrderPayment = {
   amount: string;
   currency: string;
   status: string;
+  refundedAt: string | null;
 };
 
 export type Order = {
@@ -84,6 +85,53 @@ export async function getOrderById(orderId: string) {
 
 export async function cancelOrder(orderId: string, reason = "Customer cancelled order") {
   const res = await apiClient<{ data: Order }>(`/orders/${orderId}/cancel`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ reason }),
+  });
+  return res.data;
+}
+
+export type AdminOrder = Order & { customer: { fullName: string; email: string } };
+
+export async function getOrdersForAdmin(params?: {
+  page?: number;
+  limit?: number;
+  status?: OrderStatus;
+  from?: string;
+  to?: string;
+  customerProfileId?: string;
+}) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.status) query.set("status", params.status);
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.customerProfileId) query.set("customerProfileId", params.customerProfileId);
+  const queryString = query.toString();
+  return await apiClient<{ data: AdminOrder[]; pagination: OrderListResponse["pagination"] }>(
+    `/orders/admin${queryString ? `?${queryString}` : ""}`,
+    { headers: authHeaders() },
+  );
+}
+
+export async function getOrderByIdForAdmin(orderId: string) {
+  const res = await apiClient<{ data: AdminOrder }>(`/orders/admin/${orderId}`, { headers: authHeaders() });
+  return res.data;
+}
+
+export async function cancelOrderForAdmin(orderId: string, reason?: string) {
+  const res = await apiClient<{ data: AdminOrder }>(`/orders/admin/${orderId}/cancel`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ reason }),
+  });
+  return res.data;
+}
+
+export async function markOrderRefunded(orderId: string, reason?: string) {
+  const res = await apiClient<{ data: AdminOrder }>(`/orders/admin/${orderId}/refund`, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify({ reason }),
