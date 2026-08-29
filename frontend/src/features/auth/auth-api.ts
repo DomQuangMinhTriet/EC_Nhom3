@@ -116,6 +116,23 @@ export function registerBranch(values: CredentialsValues) {
   });
 }
 
+export function forgotPassword(email: string) {
+  return apiRequest<{ message: string }>("/api/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export type ChangePasswordValues = { currentPassword: string; newPassword: string };
+
+export function changePassword(values: ChangePasswordValues) {
+  return apiRequest<{ message: string }>("/api/auth/change-password", {
+    method: "POST",
+    body: values,
+    headers: { Authorization: requireBearerToken() },
+  });
+}
+
 export async function refreshAuthSession() {
   const current = readAuthSession();
   if (!current) return null;

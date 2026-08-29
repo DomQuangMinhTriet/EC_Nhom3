@@ -62,3 +62,15 @@ authRouter.post(
   asyncHandler(authController.login),
 );
 authRouter.post("/refresh", asyncHandler(authController.refresh));
+
+authRouter.post(
+  "/forgot-password",
+  credentialRateLimit,
+  asyncHandler(authController.forgotPassword),
+);
+
+authRouter.post(
+  "/change-password",
+  requireAuth,
+  asyncHandler(authController.changePassword),
+);

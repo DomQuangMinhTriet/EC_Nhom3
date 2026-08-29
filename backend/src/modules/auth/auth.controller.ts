@@ -104,4 +104,40 @@ export class AuthController {
 
     res.json(await this.authService.refresh(refreshToken));
   };
+
+  forgotPassword = async (req: Request, res: Response) => {
+    const { email } = req.body as { email?: string };
+
+    if (!email) {
+      throw new AppError("email is required", 400);
+    }
+
+    res.json(await this.authService.forgotPassword(email));
+  };
+
+  changePassword = async (req: Request, res: Response) => {
+    const { currentPassword, newPassword } = req.body as {
+      currentPassword?: string;
+      newPassword?: string;
+    };
+
+    if (!currentPassword || !newPassword) {
+      throw new AppError(
+        "currentPassword and newPassword are required",
+        400,
+      );
+    }
+
+    if (newPassword.length < 8) {
+      throw new AppError("newPassword must be at least 8 characters", 400);
+    }
+
+    res.json(
+      await this.authService.changePassword(
+        req.user!.userId,
+        currentPassword,
+        newPassword,
+      ),
+    );
+  };
 }

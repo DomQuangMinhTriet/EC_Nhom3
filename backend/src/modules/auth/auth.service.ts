@@ -184,4 +184,56 @@ export class AuthService {
 
     return authResponse(localUser);
   }
+
+  async forgotPassword(email: string) {
+    const appBaseUrl = process.env.APP_BASE_URL;
+
+    if (!appBaseUrl) {
+      throw new AppError("APP_BASE_URL is not configured", 500);
+    }
+
+    // Supabase's own response here doesn't leak whether the email exists,
+    // and we deliberately return the same generic message regardless so
+    // this endpoint can't be used to enumerate registered accounts.
+    await supabaseAuth.auth.resetPasswordForEmail(email, {
+      redirectTo: `${appBaseUrl}/update-password`,
+    });
+
+    return {
+      message:
+        "If an account with that email exists, a password reset link has been sent.",
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const localUser = await this.authRepository.findUserById(userId);
+
+    if (!localUser) {
+      throw new AppError("User not found", 404);
+    }
+
+    const { error: verifyError } = await supabaseAuth.auth.signInWithPassword({
+      email: localUser.email,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      throw new AppError("Current password is incorrect", 401);
+    }
+
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: newPassword,
+      });
+
+    if (updateError) {
+      throw new AppError(updateError.message, 400);
+    }
+
+    return { message: "Password updated successfully." };
+  }
 }

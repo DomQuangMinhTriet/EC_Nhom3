@@ -8,6 +8,10 @@ import type { AuthRepository } from "./auth.repository";
 import { AuthService } from "./auth.service";
 
 process.env.JWT_SECRET_KEY ??= "test-secret";
+// Force this rather than `??=` — local dev's .env already sets APP_BASE_URL
+// to localhost, which would otherwise silently win here and break the
+// redirectTo assertion below.
+process.env.APP_BASE_URL = "https://ec-voucher-demo.example";
 
 const credentials = {
   email: "account@example.com",
@@ -341,6 +345,99 @@ test("rejects refresh tokens for missing users", async () => {
     (error: unknown) =>
       error instanceof AppError &&
       error.statusCode === 401 &&
+      error.message === "User not found",
+  );
+});
+
+test("forgotPassword always returns a generic message", async () => {
+  const service = new AuthService(createRepository());
+
+  await withSupabaseAuth(
+    {
+      resetPasswordForEmail: async (email: string, options: unknown) => {
+        assert.equal(email, credentials.email);
+        assert.deepEqual(options, {
+          redirectTo: "https://ec-voucher-demo.example/update-password",
+        });
+        return { data: {}, error: null };
+      },
+    },
+    async () => {
+      const result = await service.forgotPassword(credentials.email);
+      assert.equal(
+        result.message,
+        "If an account with that email exists, a password reset link has been sent.",
+      );
+    },
+  );
+});
+
+test("changePassword succeeds when the current password is correct", async () => {
+  const service = new AuthService(createRepository());
+
+  await withSupabaseAuth(
+    {
+      signInWithPassword: async (input: unknown) => {
+        assert.deepEqual(input, {
+          email: credentials.email,
+          password: "current-password",
+        });
+        return { data: { user: supabaseUser }, error: null };
+      },
+    },
+    () =>
+      withSupabaseAdminAuth(
+        {
+          updateUserById: async (id: string, attrs: unknown) => {
+            assert.equal(id, userId);
+            assert.deepEqual(attrs, { password: "new-password-123" });
+            return { data: { user: supabaseUser }, error: null };
+          },
+        },
+        async () => {
+          const result = await service.changePassword(
+            userId,
+            "current-password",
+            "new-password-123",
+          );
+          assert.equal(result.message, "Password updated successfully.");
+        },
+      ),
+  );
+});
+
+test("changePassword rejects an incorrect current password", async () => {
+  const service = new AuthService(createRepository());
+
+  await withSupabaseAuth(
+    {
+      signInWithPassword: async () => ({
+        data: { user: null },
+        error: { message: "Invalid login credentials" },
+      }),
+    },
+    async () => {
+      await assert.rejects(
+        service.changePassword(userId, "wrong-password", "new-password-123"),
+        (error: unknown) =>
+          error instanceof AppError &&
+          error.statusCode === 401 &&
+          error.message === "Current password is incorrect",
+      );
+    },
+  );
+});
+
+test("changePassword rejects when the user no longer exists", async () => {
+  const service = new AuthService(
+    createRepository({ findUserById: async () => undefined }),
+  );
+
+  await assert.rejects(
+    service.changePassword(userId, "current-password", "new-password-123"),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
       error.message === "User not found",
   );
 });
