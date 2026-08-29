@@ -12,7 +12,19 @@ import {
   useOrderByIdForAdmin,
   useOrdersForAdmin,
 } from "@/hooks/queries/use-order";
-import type { OrderStatus } from "@/features/order/order-api";
+import type { OrderPayment, OrderStatus } from "@/features/order/order-api";
+
+// payment.amount is denominated in payment.currency, not always VND — PayPal
+// (and Stripe) record the USD amount actually charged at the gateway, since
+// PayPal doesn't settle in VND. Formatting it as if it were VND would show a
+// USD cents-scale number with a "đ" suffix, which reads as a data error.
+function formatPaymentAmount(payment: OrderPayment) {
+  const amount = Number(payment.amount);
+  if (payment.currency === "USD") {
+    return `$${amount.toFixed(2)}`;
+  }
+  return `${amount.toLocaleString("vi-VN")}đ`;
+}
 
 const statusLabel: Record<OrderStatus, string> = {
   pending_payment: "Chờ thanh toán",
@@ -184,7 +196,7 @@ function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () =
                 {order.payments.length === 0 && <p className="text-slate-400">Chưa ghi nhận giao dịch nào.</p>}
                 {order.payments.map((payment) => (
                   <div key={payment.paymentId} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
-                    <span>{payment.paymentMethod} · {Number(payment.amount).toLocaleString("vi-VN")}đ</span>
+                    <span>{payment.paymentMethod} · {formatPaymentAmount(payment)}</span>
                     <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${payment.status === "success" ? "bg-emerald-50 text-success" : "bg-red-50 text-danger"}`}>
                       {payment.status === "success" ? "Thành công" : "Thất bại"}
                     </span>
