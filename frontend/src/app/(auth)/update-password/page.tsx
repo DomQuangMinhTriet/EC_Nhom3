@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { State } from "@/components/common/state";
@@ -25,15 +26,29 @@ export default function UpdatePasswordPage() {
   const router = useRouter();
   const toast = useToast();
   const [status, setStatus] = useState<"checking" | "ready" | "invalid" | "done">("checking");
+  const clientRef = useRef<SupabaseClient | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
   });
 
   useEffect(() => {
-    // Supabase's password-reset email links to this page with the recovery
-    // session encoded in the URL hash; the browser client picks it up
-    // automatically on load and fires PASSWORD_RECOVERY once ready.
-    let client: ReturnType<typeof createSupabaseBrowserClient>;
+    // Supabase's reset-password email links here with the recovery session
+    // encoded as URL hash params (#access_token=...&refresh_token=...&type=
+    // recovery) rather than a query string — parse it ourselves and call
+    // setSession explicitly instead of relying on auto-detection, which
+    // didn't pick this format up reliably.
+    const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    const type = params.get("type");
+
+    if (!accessToken || !refreshToken || type !== "recovery") {
+      setStatus("invalid");
+      return;
+    }
+
+    let client: SupabaseClient;
     try {
       client = createSupabaseBrowserClient();
     } catch {
@@ -41,30 +56,20 @@ export default function UpdatePasswordPage() {
       return;
     }
 
-    const { data: subscription } = client.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) {
-        setStatus("ready");
+    clientRef.current = client;
+    client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
+      setStatus(error ? "invalid" : "ready");
+      if (!error) {
+        // Drop the tokens from the visible URL now that the session is set.
+        window.history.replaceState(null, "", window.location.pathname);
       }
     });
-
-    client.auth.getSession().then(({ data }) => {
-      if (data.session) setStatus("ready");
-    });
-
-    const timeout = setTimeout(() => {
-      setStatus((current) => (current === "checking" ? "invalid" : current));
-    }, 3000);
-
-    return () => {
-      subscription.subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
   }, []);
 
   async function submit(values: Values) {
+    if (!clientRef.current) return;
     try {
-      const client = createSupabaseBrowserClient();
-      const { error } = await client.auth.updateUser({ password: values.password });
+      const { error } = await clientRef.current.auth.updateUser({ password: values.password });
       if (error) throw error;
       setStatus("done");
       toast("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.");
