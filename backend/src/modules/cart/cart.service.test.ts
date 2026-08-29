@@ -102,6 +102,34 @@ test("addItem successfully inserts a new cart item", async () => {
     assert.equal(result!.quantity, 3);
 });
 
+test("addItem stores the discounted sale price, not the original price", async () => {
+    // mockVoucherProduct: originalPrice 1000, 10% off -> sale price 900.
+    const service = new CartService(createRepository({
+        findCartItemByVoucherId: async () => null,
+        insertCartItem: async (cId, vId, q, unitPrice) => {
+            assert.equal(unitPrice, "900.00");
+            return { ...mockCartItem, quantity: q, unitPrice };
+        }
+    }));
+
+    const result = await service.addItem(mockUserId, mockVoucherProductId, 1);
+    assert.equal(result!.unitPrice, "900.00");
+});
+
+test("addItem applies a direct discount when computing the sale price", async () => {
+    const service = new CartService(createRepository({
+        getVoucherProduct: async () => ({ ...mockVoucherProduct, discountType: "direct", discountValue: "150" }),
+        findCartItemByVoucherId: async () => null,
+        insertCartItem: async (cId, vId, q, unitPrice) => {
+            assert.equal(unitPrice, "850.00");
+            return { ...mockCartItem, quantity: q, unitPrice };
+        }
+    }));
+
+    const result = await service.addItem(mockUserId, mockVoucherProductId, 1);
+    assert.equal(result!.unitPrice, "850.00");
+});
+
 test("addItem successfully updates quantity if item is already in cart", async () => {
     const service = new CartService(createRepository({
         findCartItemByVoucherId: async () => mockCartItem, // already has 2

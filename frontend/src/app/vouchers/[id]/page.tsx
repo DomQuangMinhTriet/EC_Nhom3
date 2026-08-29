@@ -8,6 +8,7 @@ import { useCategoryNameMap, useVoucherProduct } from "@/hooks/queries/use-vouch
 import { usePublicBranchStock } from "@/hooks/queries/use-branch-quota";
 import { State } from "@/components/common/state";
 import { getCategoryIcon } from "@/lib/category-icon";
+import { computeDiscountPercent, computeSalePrice } from "@/lib/voucher-price";
 
 export default function VoucherDetailPage() {
   const params = useParams<{ id: string }>();
@@ -23,7 +24,9 @@ export default function VoucherDetailPage() {
     return <main className="min-h-screen bg-slate-50"><TopNav/><div className="mx-auto max-w-xl p-8"><State icon="!" title="Voucher không tồn tại" text="Ưu đãi này có thể đã hết hạn hoặc không còn được bán."/></div></main>;
   }
 
-  const price = Number(voucher.originalPrice);
+  const originalPrice = Number(voucher.originalPrice);
+  const salePrice = computeSalePrice(voucher.originalPrice, voucher.discountType, voucher.discountValue);
+  const discountPercent = Math.round(computeDiscountPercent(voucher.originalPrice, voucher.discountType, voucher.discountValue));
   const categoryName = categoryNames.get(voucher.categoryId);
   const branchStock = branchStockQuery.data ?? [];
 
@@ -73,7 +76,13 @@ export default function VoucherDetailPage() {
           <aside className="h-fit rounded-xl border border-slate-200 bg-white p-6 shadow-brand-md">
             {categoryName && <p className="text-xs font-semibold text-slate-500">{categoryName}</p>}
             <div className="my-5 border-y border-slate-100 py-5">
-              <b className="text-3xl text-primary">{price.toLocaleString("vi-VN")}đ</b>
+              {discountPercent > 0 && (
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-sm text-slate-400 line-through">{originalPrice.toLocaleString("vi-VN")}đ</span>
+                  <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">-{discountPercent}%</span>
+                </div>
+              )}
+              <b className="text-3xl text-primary">{salePrice.toLocaleString("vi-VN")}đ</b>
             </div>
             <AddToCartButton voucher={voucher}/>
             <p className="mt-4 text-center text-[11px] text-slate-500">🎟 Nhận mã voucher ngay sau thanh toán</p>

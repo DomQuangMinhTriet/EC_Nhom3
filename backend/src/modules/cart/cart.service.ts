@@ -1,6 +1,20 @@
 import { AppError } from "../../shared/errors/AppError";
 import { CartRepository } from "./cart.repository";
 
+// Mirrors validateDiscountedPrice in voucherProduct.service.ts: the price a
+// customer actually pays is originalPrice minus the discount, never the
+// pre-discount face value.
+const computeSalePrice = (
+    originalPrice: string,
+    discountType: "direct" | "percentage",
+    discountValue: string,
+) => {
+    const original = Number(originalPrice);
+    const discount = Number(discountValue);
+    const salePrice = discountType === "direct" ? original - discount : original * (1 - discount / 100);
+    return salePrice.toFixed(2);
+};
+
 export class CartService {
     constructor(private readonly cartRepository = new CartRepository()) {}
 
@@ -53,7 +67,8 @@ export class CartService {
         if (existingItem) {
             return await this.cartRepository.updateCartItemQuantity(cart.cartId, existingItem.cartItemId, totalRequestedQuantity);
         } else {
-            return await this.cartRepository.insertCartItem(cart.cartId, voucherProductId, quantity, voucher.originalPrice);
+            const salePrice = computeSalePrice(voucher.originalPrice, voucher.discountType, voucher.discountValue);
+            return await this.cartRepository.insertCartItem(cart.cartId, voucherProductId, quantity, salePrice);
         }
     }
 
