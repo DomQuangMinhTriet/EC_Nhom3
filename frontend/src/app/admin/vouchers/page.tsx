@@ -13,6 +13,12 @@ import { useUpdateVoucherProductStatus, useVoucherProductList } from "@/hooks/qu
 import type { AdminVoucherStatus, VoucherProductStatus } from "@/features/vouchers/voucher-product-api";
 
 const allStatuses: readonly VoucherProductStatus[] = ["pending", "active", "inactive", "out_of_stock", "rejected", "expired"];
+// Backend's PATCH /:id/status only accepts these three — offering the other
+// enum values in the action dropdown produced a live 400 "Invalid voucher
+// status" when picked, since pending/out_of_stock/expired aren't valid
+// admin-set targets (out_of_stock and expired currently have no writer at
+// all; pending is entered automatically, never chosen).
+const settableStatuses: readonly VoucherProductStatus[] = ["active", "inactive", "rejected"];
 
 export default function AdminVouchersPage() {
   const toast = useToast();
@@ -66,7 +72,7 @@ export default function AdminVouchersPage() {
               <VoucherStatusBadge key="s" status={voucher.status}/>,
               <StatusAction
                 key="a"
-                statuses={allStatuses}
+                statuses={settableStatuses}
                 currentStatus={voucher.status}
                 pending={updateStatus.isPending}
                 onSubmit={(next) => changeStatus(voucher.voucherProductId, next)}

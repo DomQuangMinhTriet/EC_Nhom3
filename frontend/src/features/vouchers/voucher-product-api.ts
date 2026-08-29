@@ -51,6 +51,10 @@ export type ListVoucherProductsParams = {
   categoryId?: string;
   status?: VoucherProductStatus;
   search?: string;
+  partnerProfileId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minDiscountPercent?: number;
 };
 
 export type ListVoucherProductsResult = {
@@ -91,6 +95,17 @@ export async function listVoucherProducts(params: ListVoucherProductsParams = {}
   return apiClient<ListVoucherProductsResult>(`/vouchers${toQuery(params)}`);
 }
 
+export type PartnerSettableStatus = "active" | "inactive";
+
+export async function updatePartnerVoucherStatus(voucherProductId: string, status: PartnerSettableStatus) {
+  const res = await apiClient<{ voucher: VoucherProduct }>(`/vouchers/${voucherProductId}/self-status`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ status }),
+  });
+  return res.voucher;
+}
+
 export async function listVoucherProductsForAdmin(params: ListVoucherProductsParams = {}) {
   return apiClient<ListVoucherProductsResult>(`/vouchers/admin${toQuery(params)}`, {
     headers: authHeaders(),
@@ -109,6 +124,13 @@ export async function updateVoucherProductStatus(voucherProductId: string, statu
     body: JSON.stringify({ status, rejectionReason }),
   });
   return res.voucher;
+}
+
+export type ActivePartner = { partnerProfileId: string; partnerName: string };
+
+export async function getActivePartners() {
+  const res = await apiClient<{ data: ActivePartner[] }>("/vouchers/partners");
+  return res.data;
 }
 
 export async function getCategories() {

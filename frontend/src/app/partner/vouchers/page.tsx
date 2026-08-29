@@ -7,15 +7,28 @@ import { RecordsTable } from "@/components/admin/records-table";
 import { Button } from "@/components/ui/button";
 import { State } from "@/components/common/state";
 import { VoucherStatusBadge } from "@/components/voucher/voucher-status-badge";
-import { usePartnerVouchers } from "@/hooks/queries/use-voucher-products";
+import { useToast } from "@/components/common/toast";
+import { usePartnerVouchers, useUpdatePartnerVoucherStatus } from "@/hooks/queries/use-voucher-products";
 
 function formatPrice(voucher: { originalPrice: string }) {
   return `${Number(voucher.originalPrice).toLocaleString("vi-VN")}đ`;
 }
 
 export default function PartnerVouchersPage() {
+  const toast = useToast();
   const vouchersQuery = usePartnerVouchers();
+  const toggleStatus = useUpdatePartnerVoucherStatus();
   const [search, setSearch] = useState("");
+
+  function toggleVoucherStatus(voucherProductId: string, nextStatus: "active" | "inactive") {
+    toggleStatus.mutate(
+      { id: voucherProductId, status: nextStatus },
+      {
+        onSuccess: () => toast(nextStatus === "inactive" ? "Đã tạm ngưng voucher." : "Đã kích hoạt lại voucher."),
+        onError: (error) => toast(error instanceof Error ? error.message : "Không thể cập nhật trạng thái.", "error"),
+      },
+    );
+  }
 
   const vouchers = useMemo(() => {
     const list = vouchersQuery.data ?? [];
@@ -54,10 +67,30 @@ export default function PartnerVouchersPage() {
             <VoucherStatusBadge key="s" status={voucher.status}/>,
             formatPrice(voucher),
             new Date(voucher.endDate).toLocaleDateString("vi-VN"),
-            <div key="a" className="flex gap-3">
+            <div key="a" className="flex flex-wrap gap-3">
               <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/edit`}>Sửa</Link>
               <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/branches`}>Phân bổ chi nhánh</Link>
               <Link className="font-semibold text-primary" href={`/partner/vouchers/${voucher.voucherProductId}/reviews`}>Đánh giá</Link>
+              {voucher.status === "active" && (
+                <button
+                  type="button"
+                  disabled={toggleStatus.isPending}
+                  onClick={() => toggleVoucherStatus(voucher.voucherProductId, "inactive")}
+                  className="font-semibold text-amber-600 disabled:opacity-50"
+                >
+                  Tạm ngưng
+                </button>
+              )}
+              {voucher.status === "inactive" && (
+                <button
+                  type="button"
+                  disabled={toggleStatus.isPending}
+                  onClick={() => toggleVoucherStatus(voucher.voucherProductId, "active")}
+                  className="font-semibold text-success disabled:opacity-50"
+                >
+                  Kích hoạt lại
+                </button>
+              )}
             </div>,
           ])}
         />

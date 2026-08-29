@@ -47,6 +47,10 @@ export type ListVoucherProductsInput = {
   categoryId?: string;
   status?: VoucherProductStatus;
   search?: string;
+  partnerProfileId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minDiscountPercent?: number;
 };
 
 export type UpdateVoucherStatusInput = {
@@ -272,6 +276,64 @@ export class VoucherProductService {
     return { voucher };
   }
 
+  /**
+   * Lets a Partner suspend ("tạm ngưng") or reactivate their own already-
+   * approved voucher without going through Admin re-approval. Deliberately
+   * narrower than the Admin's updateVoucherStatus: only active<->inactive is
+   * allowed, and only from an already active/inactive voucher, so a partner
+   * can't use this to self-approve out of pending or undo a rejection.
+   */
+  async updatePartnerVoucherStatus(
+    userId: string,
+    voucherProductId: string,
+    status: string,
+  ) {
+    if (status !== "active" && status !== "inactive") {
+      throw new AppError(
+        "Partners can only set status to active or inactive",
+        400,
+      );
+    }
+
+    const partnerProfileId =
+      await this.voucherProductRepository.findPartnerProfileIdByUserId(userId);
+
+    if (!partnerProfileId) {
+      throw new AppError("Partner profile not found", 404);
+    }
+
+    const existing =
+      await this.voucherProductRepository.findByIdAndPartnerProfileId(
+        voucherProductId,
+        partnerProfileId,
+      );
+
+    if (!existing) {
+      throw new AppError("Voucher not found", 404);
+    }
+
+    if (existing.status !== "active" && existing.status !== "inactive") {
+      throw new AppError(
+        `Cannot change status while voucher is ${existing.status}`,
+        400,
+      );
+    }
+
+    const voucher = await this.voucherProductRepository.updateStatus(
+      voucherProductId,
+      status,
+      null,
+    );
+
+    return { voucher };
+  }
+
+  // Powers the "lọc theo đối tác" filter on the public voucher listing —
+  // only partners with at least one active voucher are worth offering.
+  async getActivePartners() {
+    return await this.voucherProductRepository.findActivePartners();
+  }
+
   async getVouchers(input: ListVoucherProductsInput = {}) {
     const page = Math.max(1, input.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 20));
@@ -285,12 +347,24 @@ export class VoucherProductService {
       throw new AppError("Public voucher listing only supports active status", 400);
     }
 
+    if (
+      input.minPrice !== undefined &&
+      input.maxPrice !== undefined &&
+      input.minPrice > input.maxPrice
+    ) {
+      throw new AppError("minPrice must be less than or equal to maxPrice", 400);
+    }
+
     const { vouchers, total } = await this.voucherProductRepository.findAll({
       page,
       pageSize,
       categoryId: input.categoryId,
       status: "active",
       search,
+      partnerProfileId: input.partnerProfileId,
+      minPrice: input.minPrice,
+      maxPrice: input.maxPrice,
+      minDiscountPercent: input.minDiscountPercent,
     });
 
     return {

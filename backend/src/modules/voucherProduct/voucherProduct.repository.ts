@@ -41,7 +41,20 @@ type FindAllOptions = {
   categoryId?: string;
   status?: VoucherProductStatus;
   search?: string;
+  partnerProfileId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minDiscountPercent?: number;
 };
+
+// The sale price customers actually pay (originalPrice minus the discount),
+// computed on the fly since it isn't a stored column — used to filter by
+// "giá" against what a shopper pays, not the pre-discount face value.
+const salePriceExpr = sql<number>`(CASE WHEN ${voucherProduct.discountType} = 'direct' THEN ${voucherProduct.originalPrice} - ${voucherProduct.discountValue} ELSE ${voucherProduct.originalPrice} * (1 - ${voucherProduct.discountValue} / 100) END)`;
+
+// Discount normalized to a percentage regardless of discountType, so
+// "mức giảm tối thiểu X%" is comparable across direct/percentage vouchers.
+const discountPercentExpr = sql<number>`(CASE WHEN ${voucherProduct.discountType} = 'percentage' THEN ${voucherProduct.discountValue} ELSE (${voucherProduct.discountValue} / NULLIF(${voucherProduct.originalPrice}, 0) * 100) END)`;
 
 export class VoucherProductRepository {
   async findPartnerProfileIdByUserId(userId: string) {
@@ -105,7 +118,32 @@ export class VoucherProductRepository {
     return result[0] ?? null;
   }
 
-  async findAll({ page, pageSize, categoryId, status, search }: FindAllOptions) {
+  async findActivePartners() {
+    return await db
+      .selectDistinct({
+        partnerProfileId: partnerProfile.partnerProfileId,
+        partnerName: partnerProfile.partnerName,
+      })
+      .from(voucherProduct)
+      .innerJoin(
+        partnerProfile,
+        eq(voucherProduct.partnerProfileId, partnerProfile.partnerProfileId),
+      )
+      .where(eq(voucherProduct.status, "active"))
+      .orderBy(partnerProfile.partnerName);
+  }
+
+  async findAll({
+    page,
+    pageSize,
+    categoryId,
+    status,
+    search,
+    partnerProfileId,
+    minPrice,
+    maxPrice,
+    minDiscountPercent,
+  }: FindAllOptions) {
     const filters = [];
 
     if (categoryId) {
@@ -124,6 +162,22 @@ export class VoucherProductRepository {
           ilike(voucherProduct.description, pattern),
         ),
       );
+    }
+
+    if (partnerProfileId) {
+      filters.push(eq(voucherProduct.partnerProfileId, partnerProfileId));
+    }
+
+    if (minPrice !== undefined) {
+      filters.push(sql`${salePriceExpr} >= ${minPrice}`);
+    }
+
+    if (maxPrice !== undefined) {
+      filters.push(sql`${salePriceExpr} <= ${maxPrice}`);
+    }
+
+    if (minDiscountPercent !== undefined) {
+      filters.push(sql`${discountPercentExpr} >= ${minDiscountPercent}`);
     }
 
     const where = filters.length > 0 ? and(...filters) : undefined;

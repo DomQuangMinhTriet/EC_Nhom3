@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { AppError } from "../../shared/errors/AppError";
 import {
+  parseNonNegativeNumberQuery,
   parseOptionalStringQuery,
   parsePositiveIntegerQuery,
 } from "../../shared/http/requestParsers";
@@ -104,6 +105,30 @@ export class VoucherProductController {
     );
   };
 
+  updatePartnerVoucherStatus = async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const { status } = req.body as { status?: string };
+
+    if (typeof status !== "string") {
+      throw new AppError("status is required", 400);
+    }
+
+    res.json(
+      await this.voucherProductService.updatePartnerVoucherStatus(
+        req.user.userId,
+        parseVoucherId(req.params.id),
+        status,
+      ),
+    );
+  };
+
+  getActivePartners = async (_req: Request, res: Response) => {
+    res.json({ data: await this.voucherProductService.getActivePartners() });
+  };
+
   getVouchers = async (req: Request, res: Response) => {
     const status = parseOptionalStringQuery(req.query.status, "status");
 
@@ -117,6 +142,16 @@ export class VoucherProductController {
         ),
         status: status as VoucherProductStatus | undefined,
         search: parseOptionalStringQuery(req.query.search, "search"),
+        partnerProfileId: parseOptionalStringQuery(
+          req.query.partnerProfileId,
+          "partnerProfileId",
+        ),
+        minPrice: parseNonNegativeNumberQuery(req.query.minPrice, "minPrice"),
+        maxPrice: parseNonNegativeNumberQuery(req.query.maxPrice, "maxPrice"),
+        minDiscountPercent: parseNonNegativeNumberQuery(
+          req.query.minDiscountPercent,
+          "minDiscountPercent",
+        ),
       }),
     );
   };

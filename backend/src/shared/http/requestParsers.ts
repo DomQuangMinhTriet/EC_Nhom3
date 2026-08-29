@@ -70,6 +70,26 @@ export const parsePositiveIntegerQuery = (
   return parsed;
 };
 
+export const parseNonNegativeNumberQuery = (
+  value: unknown,
+  field: string,
+): number | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    throw new AppError(`${field} must be a number`, 400);
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new AppError(`${field} must be a non-negative number`, 400);
+  }
+
+  return parsed;
+};
+
 export const parsePositiveIntegerWithDefault = (
   value: unknown,
   fallback: number,

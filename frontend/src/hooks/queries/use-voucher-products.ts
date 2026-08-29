@@ -3,16 +3,19 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createPartnerVoucher,
+  getActivePartners,
   getCategories,
   getPartnerVouchers,
   getVoucherProductById,
   listVoucherProducts,
   listVoucherProductsForAdmin,
   updatePartnerVoucher,
+  updatePartnerVoucherStatus,
   updateVoucherProductStatus,
   type AdminVoucherStatus,
   type CreateVoucherProductInput,
   type ListVoucherProductsParams,
+  type PartnerSettableStatus,
   type UpdateVoucherProductInput,
 } from "@/features/vouchers/voucher-product-api";
 
@@ -47,6 +50,10 @@ export function useVoucherProductListForAdmin(params: ListVoucherProductsParams 
   return useQuery({ queryKey: voucherProductKeys.adminList(params), queryFn: () => listVoucherProductsForAdmin(params) });
 }
 
+export function useActivePartners() {
+  return useQuery({ queryKey: ["voucherProducts", "activePartners"], queryFn: getActivePartners, staleTime: 5 * 60_000 });
+}
+
 export function useCategories() {
   return useQuery({ queryKey: voucherProductKeys.categories, queryFn: getCategories, staleTime: 5 * 60_000 });
 }
@@ -68,6 +75,14 @@ export function useUpdatePartnerVoucher() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateVoucherProductInput }) => updatePartnerVoucher(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: voucherProductKeys.mine }),
+  });
+}
+
+export function useUpdatePartnerVoucherStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: PartnerSettableStatus }) => updatePartnerVoucherStatus(id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: voucherProductKeys.mine }),
   });
 }

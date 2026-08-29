@@ -28,6 +28,13 @@ voucherProductRouter.patch(
   asyncHandler(voucherProductController.updatePartnerVoucher),
 );
 
+voucherProductRouter.patch(
+  "/:id/self-status",
+  requireAuth,
+  authorizeRoles("Partner"),
+  asyncHandler(voucherProductController.updatePartnerVoucherStatus),
+);
+
 voucherProductRouter.get(
   "/",
   asyncHandler(voucherProductController.getVouchers),
@@ -38,6 +45,11 @@ voucherProductRouter.get(
   requireAuth,
   authorizeRoles("Super_Admin", "Operational_Admin"),
   asyncHandler(voucherProductController.getVouchersForAdmin),
+);
+
+voucherProductRouter.get(
+  "/partners",
+  asyncHandler(voucherProductController.getActivePartners),
 );
 
 voucherProductRouter.get(
