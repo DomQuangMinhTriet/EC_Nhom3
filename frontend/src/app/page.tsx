@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TopNav } from "@/components/navigation/top-nav";
+import { Footer } from "@/components/navigation/footer";
 import { Button } from "@/components/ui/button";
 import { VoucherCard } from "@/components/voucher/voucher-card";
 import { useCategories, useCategoryNameMap, useVoucherProductList } from "@/hooks/queries/use-voucher-products";
@@ -129,6 +130,7 @@ export default function HomePage() {
           <div>◉ Hỗ trợ 24/7 mọi lúc</div>
         </div>
       </section>
+      <Footer />
     </main>
   );
 }

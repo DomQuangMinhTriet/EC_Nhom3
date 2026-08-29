@@ -8,6 +8,17 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 export class BranchQuotaController {
     constructor(private readonly branchQuotaService = new BranchQuotaService()) {}
 
+    getPublicAllocations = async (req: Request, res: Response) => {
+        const voucherProductId = req.params.id as string;
+
+        if (!uuidRegex.test(voucherProductId)) {
+            throw new AppError("Invalid voucher ID", 400);
+        }
+
+        const data = await this.branchQuotaService.getPublicAllocations(voucherProductId);
+        res.json({ data });
+    };
+
     allocateVouchers = async (req: Request, res: Response) => {
         const userId = req.user!.userId;
         const voucherProductId = req.params.id as string;

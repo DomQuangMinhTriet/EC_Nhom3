@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/navigation/top-nav";
+import { Footer } from "@/components/navigation/footer";
 import { VoucherCard } from "@/components/voucher/voucher-card";
 import { useActivePartners, useCategories, useCategoryNameMap, useVoucherProductList } from "@/hooks/queries/use-voucher-products";
 import { State } from "@/components/common/state";
@@ -175,6 +176,7 @@ function VoucherListingContent() {
           </section>
         </div>
       </div>
+      <Footer />
     </main>
   );
 }

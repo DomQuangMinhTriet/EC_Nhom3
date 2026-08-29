@@ -4,13 +4,23 @@ import {
   allocateBranches,
   deleteAllocation,
   getAllocations,
+  getPublicBranchStock,
   updateAllocation,
   type AllocateBranchesInput,
 } from "@/features/branchQuota/branch-quota-api";
 
 export const branchQuotaKeys = {
   allocations: (voucherProductId: string) => ["branchQuota", "allocations", voucherProductId] as const,
+  publicStock: (voucherProductId: string) => ["branchQuota", "publicStock", voucherProductId] as const,
 };
+
+export function usePublicBranchStock(voucherProductId?: string) {
+  return useQuery({
+    queryKey: branchQuotaKeys.publicStock(voucherProductId ?? ""),
+    queryFn: () => getPublicBranchStock(voucherProductId as string),
+    enabled: Boolean(voucherProductId),
+  });
+}
 
 export function useAllocations(voucherProductId: string) {
   return useQuery({

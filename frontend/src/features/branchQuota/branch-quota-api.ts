@@ -19,6 +19,18 @@ export type GetAllocationsResult = {
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 };
 
+export type PublicBranchStock = {
+  branchProfileId: string;
+  branchName: string;
+  address: string;
+  remainingQuantity: number;
+};
+
+export async function getPublicBranchStock(voucherProductId: string) {
+  const res = await apiClient<{ data: PublicBranchStock[] }>(`/quotas/vouchers/${voucherProductId}/branches/public`);
+  return res.data;
+}
+
 export async function allocateBranches(voucherProductId: string, input: AllocateBranchesInput) {
   return apiClient<{ data: BranchAllocation[]; message: string }>(`/quotas/vouchers/${voucherProductId}/branches`, {
     method: "POST",

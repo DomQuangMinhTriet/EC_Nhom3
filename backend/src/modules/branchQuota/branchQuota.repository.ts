@@ -46,6 +46,32 @@ export class BranchQuotaRepository {
         return result.map(r => r.branchProfileId);
     }
 
+    async isVoucherActive(voucherProductId: string) {
+        const result = await db
+            .select({ status: voucherProduct.status })
+            .from(voucherProduct)
+            .where(eq(voucherProduct.voucherProductId, voucherProductId))
+            .limit(1);
+        return result[0]?.status === "active";
+    }
+
+    // Public counterpart of findAllocations: no pagination (customers want
+    // the full branch list to know where stock is available), and only the
+    // fields relevant to a shopper deciding where to redeem.
+    async findAllocationsPublic(voucherProductId: string) {
+        return await db
+            .select({
+                branchProfileId: branchVoucherProduct.branchProfileId,
+                totalQuantity: branchVoucherProduct.totalQuantity,
+                soldQuantity: branchVoucherProduct.soldQuantity,
+                branchName: branchProfile.branchName,
+                address: branchProfile.address,
+            })
+            .from(branchVoucherProduct)
+            .innerJoin(branchProfile, eq(branchVoucherProduct.branchProfileId, branchProfile.branchProfileId))
+            .where(eq(branchVoucherProduct.voucherProductId, voucherProductId));
+    }
+
     async findAllocations(voucherProductId: string, page: number, pageSize: number) {
         // "Trả về danh sách các branch đang sở hữu voucher này." -> Must JOIN branchProfile to return branch info
         const offset = (page - 1) * pageSize;

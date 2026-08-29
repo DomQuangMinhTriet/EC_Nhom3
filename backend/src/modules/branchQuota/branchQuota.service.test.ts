@@ -67,6 +67,11 @@ const createRepository = (overrides: Partial<BranchQuotaRepository> = {}) =>
             }
             return null;
         },
+        isVoucherActive: async (voucherId: string) => voucherId === mockVoucherProductId,
+        findAllocationsPublic: async (voucherId: string) => {
+            if (voucherId === mockVoucherProductId) return [defaultAllocation];
+            return [];
+        },
         ...overrides,
     }) as unknown as BranchQuotaRepository;
 
@@ -243,9 +248,45 @@ test("deleteAllocation hard deletes if soldQuantity === 0", async () => {
 
 test("deleteAllocation throws 404 if allocation not found", async () => {
     const service = new BranchQuotaService(createRepository());
-    
+
     await assert.rejects(
         service.deleteAllocation(mockUserId, mockVoucherProductId, "non-existent-branch"),
         (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Allocation not found"
     );
+});
+
+test("getPublicAllocations returns remaining stock per branch for an active voucher", async () => {
+    const service = new BranchQuotaService(createRepository());
+
+    const result = await service.getPublicAllocations(mockVoucherProductId);
+
+    assert.deepEqual(result, [
+        {
+            branchProfileId: validBranchId1,
+            branchName: "Test Branch 1",
+            address: "123 Test St",
+            remainingQuantity: 90,
+        },
+    ]);
+});
+
+test("getPublicAllocations throws 404 for a voucher that isn't active", async () => {
+    const service = new BranchQuotaService(createRepository({ isVoucherActive: async () => false }));
+
+    await assert.rejects(
+        service.getPublicAllocations("inactive-voucher"),
+        (err: unknown) => err instanceof AppError && err.statusCode === 404 && err.message === "Voucher not found",
+    );
+});
+
+test("getPublicAllocations never returns a negative remainingQuantity", async () => {
+    const service = new BranchQuotaService(
+        createRepository({
+            findAllocationsPublic: async () => [{ ...defaultAllocation, totalQuantity: 5, soldQuantity: 8 }],
+        }),
+    );
+
+    const result = await service.getPublicAllocations(mockVoucherProductId);
+
+    assert.equal(result[0]?.remainingQuantity, 0);
 });

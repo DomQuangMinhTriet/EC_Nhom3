@@ -27,6 +27,22 @@ export class BranchQuotaService {
         return { partnerProfileId, voucherStatus: voucher.status };
     }
 
+    async getPublicAllocations(voucherProductId: string) {
+        const isActive = await this.branchQuotaRepository.isVoucherActive(voucherProductId);
+        if (!isActive) {
+            throw new AppError("Voucher not found", 404);
+        }
+
+        const allocations = await this.branchQuotaRepository.findAllocationsPublic(voucherProductId);
+
+        return allocations.map((allocation) => ({
+            branchProfileId: allocation.branchProfileId,
+            branchName: allocation.branchName,
+            address: allocation.address,
+            remainingQuantity: Math.max(0, allocation.totalQuantity - allocation.soldQuantity),
+        }));
+    }
+
     async allocateVouchers(userId: string, voucherProductId: string, allocations: BranchAllocationInput[]) {
         const { partnerProfileId, voucherStatus } = await this.verifyOwnership(userId, voucherProductId);
 
