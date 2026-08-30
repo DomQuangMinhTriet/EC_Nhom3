@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AppError } from "../../shared/errors/AppError";
+import cloudinary from "../../lib/cloudinary";
 import type { VoucherProductRepository } from "./voucherProduct.repository";
 import { VoucherProductService } from "./voucherProduct.service";
 
@@ -423,6 +424,16 @@ test("updatePartnerVoucherStatus throws 404 for voucher outside partner ownershi
       error.statusCode === 404 &&
       error.message === "Voucher not found",
   );
+});
+
+test("uploadVoucherImage uploads to Cloudinary and returns the resulting URL", async (t) => {
+  t.mock.method(cloudinary.uploader, "upload", async () => ({ secure_url: "http://mock.url/voucher.png" }));
+
+  const service = new VoucherProductService(createRepository());
+
+  const result = await service.uploadVoucherImage("base64-string");
+
+  assert.deepEqual(result, { imageUrl: "http://mock.url/voucher.png" });
 });
 
 test("getVouchers returns paginated system vouchers", async () => {

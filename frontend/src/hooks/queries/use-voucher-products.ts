@@ -12,6 +12,7 @@ import {
   updatePartnerVoucher,
   updatePartnerVoucherStatus,
   updateVoucherProductStatus,
+  uploadVoucherImage,
   type AdminVoucherStatus,
   type CreateVoucherProductInput,
   type ListVoucherProductsParams,
@@ -44,6 +45,10 @@ export function useVoucherProduct(id: string) {
 
 export function useVoucherProductList(params: ListVoucherProductsParams = {}) {
   return useQuery({ queryKey: voucherProductKeys.list(params), queryFn: () => listVoucherProducts(params) });
+}
+
+export function useUploadVoucherImage() {
+  return useMutation({ mutationFn: uploadVoucherImage });
 }
 
 export function useVoucherProductListForAdmin(params: ListVoucherProductsParams = {}) {

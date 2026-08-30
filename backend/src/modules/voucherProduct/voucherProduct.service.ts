@@ -1,4 +1,5 @@
 import { AppError } from "../../shared/errors/AppError";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 import {
   VoucherProductRepository,
   type ExpiryStatusFilter,
@@ -345,6 +346,15 @@ export class VoucherProductService {
   // only partners with at least one active voucher are worth offering.
   async getActivePartners() {
     return await this.voucherProductRepository.findActivePartners();
+  }
+
+  // Uploads happen before the voucher exists (create form) or independently
+  // of the rest of an edit (edit form), so this just returns a Cloudinary
+  // URL for the caller to include in the create/update payload — it doesn't
+  // touch any voucherProduct row itself.
+  async uploadVoucherImage(base64Image: string) {
+    const imageUrl = await uploadToCloudinary(base64Image, "vouchers");
+    return { imageUrl };
   }
 
   async getVouchers(input: ListVoucherProductsInput = {}) {

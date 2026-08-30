@@ -129,6 +129,16 @@ export class VoucherProductController {
     res.json({ data: await this.voucherProductService.getActivePartners() });
   };
 
+  uploadImage = async (req: Request, res: Response) => {
+    const { imageBase64 } = req.body as { imageBase64?: unknown };
+
+    if (typeof imageBase64 !== "string" || !imageBase64) {
+      throw new AppError("imageBase64 is required in request body", 400);
+    }
+
+    res.json(await this.voucherProductService.uploadVoucherImage(imageBase64));
+  };
+
   getVouchers = async (req: Request, res: Response) => {
     const status = parseOptionalStringQuery(req.query.status, "status");
 

@@ -21,6 +21,13 @@ voucherProductRouter.get(
   asyncHandler(voucherProductController.getPartnerVouchers),
 );
 
+voucherProductRouter.post(
+  "/upload-image",
+  requireAuth,
+  authorizeRoles("Partner"),
+  asyncHandler(voucherProductController.uploadImage),
+);
+
 voucherProductRouter.patch(
   "/:id",
   requireAuth,

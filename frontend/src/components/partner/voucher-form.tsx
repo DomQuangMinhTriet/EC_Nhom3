@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,16 @@ import { State } from "@/components/common/state";
 import { VoucherStatusBadge } from "@/components/voucher/voucher-status-badge";
 import { useToast } from "@/components/common/toast";
 import { partnerVoucherSchema, type PartnerVoucherValues } from "@/lib/schemas/workflows";
-import { useCategories, useCreatePartnerVoucher, usePartnerVoucherById, useUpdatePartnerVoucher } from "@/hooks/queries/use-voucher-products";
+import { useCategories, useCreatePartnerVoucher, usePartnerVoucherById, useUpdatePartnerVoucher, useUploadVoucherImage } from "@/hooks/queries/use-voucher-products";
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 export function VoucherForm({ voucherId }: { voucherId?: string }) {
   const editing = Boolean(voucherId);
@@ -19,11 +28,31 @@ export function VoucherForm({ voucherId }: { voucherId?: string }) {
   const voucherQuery = usePartnerVoucherById(voucherId);
   const createVoucher = useCreatePartnerVoucher();
   const updateVoucher = useUpdatePartnerVoucher();
+  const uploadImage = useUploadVoucherImage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PartnerVoucherValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<PartnerVoucherValues>({
     resolver: zodResolver(partnerVoucherSchema),
     defaultValues: { minLimit: 1 },
   });
+
+  const imageUrl = watch("imageUrl");
+
+  async function onImageSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      const uploadedUrl = await uploadImage.mutateAsync(base64);
+      setValue("imageUrl", uploadedUrl, { shouldValidate: true, shouldDirty: true });
+      toast("Đã tải ảnh lên.");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Không thể tải ảnh lên.", "error");
+    } finally {
+      event.target.value = "";
+    }
+  }
 
   useEffect(() => {
     const voucher = voucherQuery.data;
@@ -129,7 +158,21 @@ export function VoucherForm({ voucherId }: { voucherId?: string }) {
         <Input label="Số ngày hiệu lực (sau khi mua)" type="number" required error={errors.validDurationDays?.message} {...register("validDurationDays")}/>
         <Input label="Số lượng tối thiểu" type="number" error={errors.minLimit?.message} {...register("minLimit")}/>
         <Input label="Số lượng tối đa" type="number" error={errors.maxLimit?.message} {...register("maxLimit")}/>
-        <Input label="URL ảnh voucher" className="md:col-span-2" error={errors.imageUrl?.message} {...register("imageUrl")}/>
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <span className="text-xs font-semibold text-slate-700">Ảnh voucher</span>
+          <div className="flex items-center gap-4">
+            <div className="grid h-20 w-32 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-[11px] text-slate-400">
+              {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover"/> : "Chưa có ảnh"}
+            </div>
+            <div>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onImageSelected}/>
+              <Button type="button" variant="outlined" size="sm" disabled={uploadImage.isPending} onClick={() => fileInputRef.current?.click()}>
+                {uploadImage.isPending ? "Đang tải lên..." : "Chọn ảnh từ máy"}
+              </Button>
+              {errors.imageUrl && <p className="mt-1 text-xs text-danger">{errors.imageUrl.message}</p>}
+            </div>
+          </div>
+        </div>
       </div>
 
       <label className="mt-5 flex flex-col gap-1.5 text-xs font-semibold text-slate-700">

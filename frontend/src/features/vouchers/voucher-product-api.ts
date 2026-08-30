@@ -138,6 +138,15 @@ export async function getActivePartners() {
   return res.data;
 }
 
+export async function uploadVoucherImage(imageBase64: string) {
+  const res = await apiClient<{ imageUrl: string }>("/vouchers/upload-image", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ imageBase64 }),
+  });
+  return res.imageUrl;
+}
+
 export async function getCategories() {
   const res = await apiClient<{ data: Category[] }>("/categories");
   return res.data;
