@@ -59,6 +59,7 @@ const createRepository = (
     findAll: async () => ({ vouchers: [voucher], total: 1 }),
     updateByPartnerProfileId: async () => voucher,
     updateStatus: async () => voucher,
+    getPartnerStatus: async () => "active",
     ...overrides,
   }) as unknown as VoucherProductRepository;
 
@@ -451,6 +452,7 @@ test("getVouchers returns paginated system vouchers", async () => {
         minDiscountPercent: undefined,
         stockStatus: undefined,
         expiryStatus: undefined,
+        requirePartnerActive: true,
       });
       return { vouchers: [voucher], total: 21 };
     },
@@ -501,6 +503,30 @@ test("getVouchers passes stockStatus and expiryStatus filters through to the rep
   const service = new VoucherProductService(repository);
 
   await service.getVouchers({ stockStatus: "in_stock", expiryStatus: "expiring_soon" });
+});
+
+test("getVouchers always requires the owning partner to be active (public listing)", async () => {
+  const repository = createRepository({
+    findAll: async (options) => {
+      assert.equal(options.requirePartnerActive, true);
+      return { vouchers: [voucher], total: 1 };
+    },
+  });
+  const service = new VoucherProductService(repository);
+
+  await service.getVouchers({});
+});
+
+test("getVouchersForAdmin does not filter by partner status", async () => {
+  const repository = createRepository({
+    findAll: async (options) => {
+      assert.equal(options.requirePartnerActive, undefined);
+      return { vouchers: [voucher], total: 1 };
+    },
+  });
+  const service = new VoucherProductService(repository);
+
+  await service.getVouchersForAdmin({});
 });
 
 test("getVouchers rejects an invalid stockStatus", async () => {
@@ -587,6 +613,35 @@ test("getVoucherById hides non-active vouchers from public callers", async () =>
       error.statusCode === 404 &&
       error.message === "Voucher not found",
   );
+});
+
+test("getVoucherById hides an active voucher whose partner is suspended", async () => {
+  const service = new VoucherProductService(
+    createRepository({
+      findById: async () => ({ ...voucher, status: "active" }),
+      getPartnerStatus: async () => "suspended",
+    }),
+  );
+
+  await assert.rejects(
+    service.getVoucherById(voucherProductId),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
+      error.message === "Voucher not found",
+  );
+});
+
+test("getVoucherById returns an active voucher whose partner is active", async () => {
+  const service = new VoucherProductService(
+    createRepository({
+      findById: async () => ({ ...voucher, status: "active" }),
+      getPartnerStatus: async () => "active",
+    }),
+  );
+
+  const result = await service.getVoucherById(voucherProductId);
+  assert.equal(result.voucher.voucherProductId, voucherProductId);
 });
 
 test("admin updates voucher status to active", async () => {

@@ -398,6 +398,7 @@ export class VoucherProductService {
       minDiscountPercent: input.minDiscountPercent,
       stockStatus: input.stockStatus as StockStatusFilter | undefined,
       expiryStatus: input.expiryStatus as ExpiryStatusFilter | undefined,
+      requirePartnerActive: true,
     });
 
     return {
@@ -448,6 +449,14 @@ export class VoucherProductService {
     }
 
     if (voucher.status !== "active") {
+      throw new AppError("Voucher not found", 404);
+    }
+
+    // Suspending/terminating a Partner doesn't touch voucherProduct.status,
+    // so this is checked separately — otherwise a suspended Partner's
+    // vouchers stay reachable by direct link even once hidden from listing.
+    const partnerStatus = await this.voucherProductRepository.getPartnerStatus(voucher.partnerProfileId);
+    if (partnerStatus !== "active") {
       throw new AppError("Voucher not found", 404);
     }
 

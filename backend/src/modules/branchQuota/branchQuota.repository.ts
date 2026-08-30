@@ -69,7 +69,14 @@ export class BranchQuotaRepository {
             })
             .from(branchVoucherProduct)
             .innerJoin(branchProfile, eq(branchVoucherProduct.branchProfileId, branchProfile.branchProfileId))
-            .where(eq(branchVoucherProduct.voucherProductId, voucherProductId));
+            .where(
+                and(
+                    eq(branchVoucherProduct.voucherProductId, voucherProductId),
+                    // A suspended/closed branch shouldn't keep advertising stock to
+                    // customers even though its allocation row is still present.
+                    eq(branchProfile.status, "active"),
+                ),
+            );
     }
 
     async findAllocations(voucherProductId: string, page: number, pageSize: number) {

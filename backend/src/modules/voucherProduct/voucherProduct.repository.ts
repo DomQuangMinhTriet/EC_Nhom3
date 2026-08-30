@@ -50,6 +50,10 @@ type FindAllOptions = {
   minDiscountPercent?: number;
   stockStatus?: StockStatusFilter;
   expiryStatus?: ExpiryStatusFilter;
+  // Set only for the public/customer listing — suspending or terminating a
+  // Partner doesn't touch voucherProduct.status, so without this a
+  // suspended Partner's still-"active" vouchers would keep selling normally.
+  requirePartnerActive?: boolean;
 };
 
 // The sale price customers actually pay (originalPrice minus the discount),
@@ -67,6 +71,8 @@ const discountPercentExpr = sql<number>`(CASE WHEN ${voucherProduct.discountType
 const hasStockExpr = sql`EXISTS (SELECT 1 FROM ${branchVoucherProduct} WHERE ${branchVoucherProduct.voucherProductId} = ${voucherProduct.voucherProductId} AND ${branchVoucherProduct.totalQuantity} - ${branchVoucherProduct.soldQuantity} > 0)`;
 
 const EXPIRY_SOON_DAYS = 7;
+
+const partnerIsActiveExpr = sql`EXISTS (SELECT 1 FROM ${partnerProfile} WHERE ${partnerProfile.partnerProfileId} = ${voucherProduct.partnerProfileId} AND ${partnerProfile.status} = 'active')`;
 
 export class VoucherProductRepository {
   async findPartnerProfileIdByUserId(userId: string) {
@@ -130,6 +136,16 @@ export class VoucherProductRepository {
     return result[0] ?? null;
   }
 
+  async getPartnerStatus(partnerProfileId: string) {
+    const result = await db
+      .select({ status: partnerProfile.status })
+      .from(partnerProfile)
+      .where(eq(partnerProfile.partnerProfileId, partnerProfileId))
+      .limit(1);
+
+    return result[0]?.status ?? null;
+  }
+
   async findActivePartners() {
     return await db
       .selectDistinct({
@@ -157,6 +173,7 @@ export class VoucherProductRepository {
     minDiscountPercent,
     stockStatus,
     expiryStatus,
+    requirePartnerActive,
   }: FindAllOptions) {
     const filters = [];
 
@@ -207,6 +224,10 @@ export class VoucherProductRepository {
           ? sql`${voucherProduct.endDate} >= now() AND ${voucherProduct.endDate} <= ${cutoff}`
           : sql`${voucherProduct.endDate} > ${cutoff}`,
       );
+    }
+
+    if (requirePartnerActive) {
+      filters.push(partnerIsActiveExpr);
     }
 
     const where = filters.length > 0 ? and(...filters) : undefined;
