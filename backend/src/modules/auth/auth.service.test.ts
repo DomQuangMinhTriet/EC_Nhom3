@@ -39,6 +39,8 @@ const createRepository = (overrides: Partial<AuthRepository> = {}) =>
     findUserById: async () => localUser,
     findUserByEmail: async () => localUser,
     upsertUser: async () => localUser,
+    findPartnerStatusByUserId: async () => null,
+    findBranchStatusByUserId: async () => null,
     ...overrides,
   }) as AuthRepository;
 
@@ -311,6 +313,73 @@ test("rejects login for inactive local users", async () => {
   );
 });
 
+test("logs in a Partner who hasn't created a profile yet (no profile row means allowed)", async () => {
+  const service = new AuthService(
+    createRepository({
+      findUserById: async () => ({ ...localUser, roleCode: "Partner" }),
+      findPartnerStatusByUserId: async () => null,
+    }),
+  );
+
+  await withSupabaseAuth(
+    {
+      signInWithPassword: async () => ({ data: { user: supabaseUser }, error: null }),
+    },
+    async () => {
+      const result = await service.login(credentials);
+      assert.equal(result.user.userId, userId);
+    },
+  );
+});
+
+test("rejects login for a suspended Partner even though users.status is active", async () => {
+  const service = new AuthService(
+    createRepository({
+      findUserById: async () => ({ ...localUser, roleCode: "Partner" }),
+      findPartnerStatusByUserId: async () => "suspended",
+    }),
+  );
+
+  await withSupabaseAuth(
+    {
+      signInWithPassword: async () => ({ data: { user: supabaseUser }, error: null }),
+    },
+    async () => {
+      await assert.rejects(
+        service.login(credentials),
+        (error: unknown) =>
+          error instanceof AppError &&
+          error.statusCode === 403 &&
+          error.message === "Partner account is not active",
+      );
+    },
+  );
+});
+
+test("rejects login for a terminated Branch even though users.status is active", async () => {
+  const service = new AuthService(
+    createRepository({
+      findUserById: async () => ({ ...localUser, roleCode: "Branch" }),
+      findBranchStatusByUserId: async () => "closed",
+    }),
+  );
+
+  await withSupabaseAuth(
+    {
+      signInWithPassword: async () => ({ data: { user: supabaseUser }, error: null }),
+    },
+    async () => {
+      await assert.rejects(
+        service.login(credentials),
+        (error: unknown) =>
+          error instanceof AppError &&
+          error.statusCode === 403 &&
+          error.message === "Branch account is not active",
+      );
+    },
+  );
+});
+
 test("refreshes tokens for an existing user", async () => {
   const service = new AuthService(createRepository());
   const refreshToken = createRefreshToken({
@@ -346,6 +415,51 @@ test("rejects refresh tokens for missing users", async () => {
       error instanceof AppError &&
       error.statusCode === 401 &&
       error.message === "User not found",
+  );
+});
+
+test("rejects refresh for a user banned after the refresh token was issued", async () => {
+  const service = new AuthService(
+    createRepository({
+      findUserById: async () => ({ ...localUser, status: "banned" }),
+    }),
+  );
+  const refreshToken = createRefreshToken({
+    sub: localUser.userId,
+    email: localUser.email,
+    roleCode: localUser.roleCode,
+    status: localUser.status,
+  });
+
+  await assert.rejects(
+    service.refresh(refreshToken),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 403 &&
+      error.message === "Account is not active",
+  );
+});
+
+test("rejects refresh for a Partner suspended after the refresh token was issued", async () => {
+  const service = new AuthService(
+    createRepository({
+      findUserById: async () => ({ ...localUser, roleCode: "Partner" }),
+      findPartnerStatusByUserId: async () => "terminated",
+    }),
+  );
+  const refreshToken = createRefreshToken({
+    sub: localUser.userId,
+    email: localUser.email,
+    roleCode: "Partner",
+    status: localUser.status,
+  });
+
+  await assert.rejects(
+    service.refresh(refreshToken),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 403 &&
+      error.message === "Partner account is not active",
   );
 });
 

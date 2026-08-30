@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
-import { user } from "../../db/schema";
+import { branchProfile, partnerProfile, user } from "../../db/schema";
 import type { AppRole, UserStatus } from "../../shared/auth/jwt";
 
 type UpsertUserInput = {
@@ -24,6 +24,24 @@ export class AuthRepository {
     const [record] = await db.select().from(user).where(eq(user.email, email));
 
     return record;
+  }
+
+  async findPartnerStatusByUserId(userId: string) {
+    const [record] = await db
+      .select({ status: partnerProfile.status })
+      .from(partnerProfile)
+      .where(eq(partnerProfile.userId, userId));
+
+    return record?.status ?? null;
+  }
+
+  async findBranchStatusByUserId(userId: string) {
+    const [record] = await db
+      .select({ status: branchProfile.status })
+      .from(branchProfile)
+      .where(eq(branchProfile.userId, userId));
+
+    return record?.status ?? null;
   }
 
   async upsertUser({

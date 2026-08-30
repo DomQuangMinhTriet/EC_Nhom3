@@ -30,6 +30,36 @@ const authResponse = (user: {
 export class AuthService {
   constructor(private readonly authRepository = new AuthRepository()) {}
 
+  // Two independent status fields exist by design: users.status gates login,
+  // partner_profiles.status/branch_profiles.status gates business standing
+  // (suspended/terminated/closed). A brand-new Partner/Branch has no profile
+  // row yet at all (they create it via POST /api/profile on first login), so
+  // "no profile" must stay allowed — only an existing, non-active profile
+  // blocks the account.
+  private async assertAccountIsUsable(localUser: {
+    userId: string;
+    roleCode: AppRole;
+    status: UserStatus;
+  }) {
+    if (localUser.status !== "active") {
+      throw new AppError("Account is not active", 403);
+    }
+
+    if (localUser.roleCode === "Partner") {
+      const partnerStatus = await this.authRepository.findPartnerStatusByUserId(localUser.userId);
+      if (partnerStatus !== null && partnerStatus !== "active") {
+        throw new AppError("Partner account is not active", 403);
+      }
+    }
+
+    if (localUser.roleCode === "Branch") {
+      const branchStatus = await this.authRepository.findBranchStatusByUserId(localUser.userId);
+      if (branchStatus !== null && branchStatus !== "active") {
+        throw new AppError("Branch account is not active", 403);
+      }
+    }
+  }
+
   async registerCustomer({ email, password }: CredentialsInput) {
     const { data, error } = await supabaseAuth.auth.signUp({
       email,
@@ -167,9 +197,7 @@ export class AuthService {
       throw new AppError("Could not load local user", 500);
     }
 
-    if (localUser.status !== "active") {
-      throw new AppError("Account is not active", 403);
-    }
+    await this.assertAccountIsUsable(localUser);
 
     return authResponse(localUser);
   }
@@ -181,6 +209,8 @@ export class AuthService {
     if (!localUser) {
       throw new AppError("User not found", 401);
     }
+
+    await this.assertAccountIsUsable(localUser);
 
     return authResponse(localUser);
   }
