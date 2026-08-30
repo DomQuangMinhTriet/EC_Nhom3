@@ -40,7 +40,8 @@ const createRepository = (
     ],
     getPartnerOrderCount: async () => 25,
     getPartnerVoucherSoldTotal: async () => 100,
-    getPartnerRevenueByMonth: async () => [],
+    getPartnerRevenueByDay: async () => [],
+    getPartnerRevenueTotalInRange: async () => 0,
     getPartnerTopVouchers: async () => [
       { voucherProductId: "v-1", title: "Voucher A", status: "active", sold: "80" },
       { voucherProductId: "v-2", title: "Voucher B", status: "pending", sold: "20" },
@@ -157,29 +158,26 @@ test("getPartnerSummary aggregates vouchers, orders, and usage rate for the part
   assert.equal(summary.vouchers.usageRatePercent, 40);
   assert.equal(summary.vouchers.activeCount, 3);
   assert.deepEqual(summary.vouchers.byStatus, { active: 3, pending: 1 });
-  assert.equal(summary.revenue.monthly.length, 6);
+  assert.equal(summary.revenue.daily.length, 30);
   assert.equal(summary.topVouchers.length, 2);
   assert.equal(summary.topVouchers[0]!.sold, 80);
 });
 
-test("getPartnerSummary computes month-over-month revenue growth from the monthly series", async () => {
-  const now = new Date();
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const previousKey = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}`;
+test("getPartnerSummary computes revenue growth for the last 30 days vs the previous 30 days", async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const service = new DashboardService(
     createRepository({
-      getPartnerRevenueByMonth: async () => [
-        { month: previousKey, revenue: "1000000" },
-        { month: currentKey, revenue: "1500000" },
-      ],
+      getPartnerRevenueByDay: async () => [{ day: todayKey, revenue: "1500000" }],
+      getPartnerRevenueTotalInRange: async () => 1000000,
     }),
   );
 
   const summary = await service.getPartnerSummary("partner-user-1");
 
-  assert.equal(summary.revenue.currentMonth, "1500000.00");
+  assert.equal(summary.revenue.last30Days, "1500000.00");
   assert.equal(summary.revenue.growthPercent, 50);
 });
 
@@ -190,7 +188,8 @@ test("getPartnerSummary reports zero usage rate and null growth when there is no
       getPartnerVoucherCodeCountsByStatus: async () => [],
       getPartnerOrderCount: async () => 0,
       getPartnerVoucherSoldTotal: async () => 0,
-      getPartnerRevenueByMonth: async () => [],
+      getPartnerRevenueByDay: async () => [],
+      getPartnerRevenueTotalInRange: async () => 0,
       getPartnerTopVouchers: async () => [],
     }),
   );

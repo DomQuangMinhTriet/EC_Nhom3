@@ -1,4 +1,4 @@
-import { and, count, eq, gte, lte, sql } from "drizzle-orm";
+import { and, count, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { db } from "../../db/client";
 import {
   order,
@@ -111,10 +111,10 @@ export class DashboardRepository {
     return Number(result[0]?.total ?? 0);
   }
 
-  async getPartnerRevenueByMonth(partnerProfileId: string, since: Date) {
+  async getPartnerRevenueByDay(partnerProfileId: string, since: Date) {
     return db
       .select({
-        month: sql<string>`to_char(date_trunc('month', ${order.createdAt}), 'YYYY-MM')`,
+        day: sql<string>`to_char(date_trunc('day', ${order.createdAt}), 'YYYY-MM-DD')`,
         revenue: sql<string>`coalesce(sum(${orderItem.unitPrice} * ${orderItem.quantity}), 0)`,
       })
       .from(orderItem)
@@ -127,8 +127,25 @@ export class DashboardRepository {
           gte(order.createdAt, since),
         ),
       )
-      .groupBy(sql`date_trunc('month', ${order.createdAt})`)
-      .orderBy(sql`date_trunc('month', ${order.createdAt})`);
+      .groupBy(sql`date_trunc('day', ${order.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${order.createdAt})`);
+  }
+
+  async getPartnerRevenueTotalInRange(partnerProfileId: string, from: Date, to: Date) {
+    const result = await db
+      .select({ total: sql<string>`coalesce(sum(${orderItem.unitPrice} * ${orderItem.quantity}), 0)` })
+      .from(orderItem)
+      .innerJoin(order, eq(orderItem.orderId, order.orderId))
+      .innerJoin(voucherProduct, eq(orderItem.voucherProductId, voucherProduct.voucherProductId))
+      .where(
+        and(
+          eq(voucherProduct.partnerProfileId, partnerProfileId),
+          eq(order.status, "completed"),
+          gte(order.createdAt, from),
+          lt(order.createdAt, to),
+        ),
+      );
+    return Number(result[0]?.total ?? 0);
   }
 
   async getPartnerTopVouchers(partnerProfileId: string, limit: number) {

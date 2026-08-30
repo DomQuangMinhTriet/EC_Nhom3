@@ -34,9 +34,9 @@ export async function getAdminDashboardSummary(params: GetDashboardSummaryParams
 
 export type PartnerDashboardSummary = {
   revenue: {
-    currentMonth: string;
+    last30Days: string;
     growthPercent: number | null;
-    monthly: { month: string; revenue: string }[];
+    daily: { date: string; revenue: string }[];
     currency: string;
   };
   orders: { completedTotal: number };

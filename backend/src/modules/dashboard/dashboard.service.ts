@@ -81,36 +81,38 @@ export class DashboardService {
       throw new AppError("Partner profile not found", 404);
     }
 
-    const monthsBack = 6;
-    const since = new Date();
-    since.setDate(1);
-    since.setHours(0, 0, 0, 0);
-    since.setMonth(since.getMonth() - (monthsBack - 1));
+    const daysBack = 30;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const since = new Date(startOfToday);
+    since.setDate(since.getDate() - (daysBack - 1));
+    const previousPeriodStart = new Date(since);
+    previousPeriodStart.setDate(previousPeriodStart.getDate() - daysBack);
 
-    const [vouchersByStatus, voucherCodesByStatus, orderCount, vouchersSoldTotal, revenueRows, topVouchers] =
+    const [vouchersByStatus, voucherCodesByStatus, orderCount, vouchersSoldTotal, revenueRows, previousPeriodRevenue, topVouchers] =
       await Promise.all([
         this.dashboardRepository.getPartnerVoucherCountsByStatus(partnerProfileId),
         this.dashboardRepository.getPartnerVoucherCodeCountsByStatus(partnerProfileId),
         this.dashboardRepository.getPartnerOrderCount(partnerProfileId),
         this.dashboardRepository.getPartnerVoucherSoldTotal(partnerProfileId),
-        this.dashboardRepository.getPartnerRevenueByMonth(partnerProfileId, since),
+        this.dashboardRepository.getPartnerRevenueByDay(partnerProfileId, since),
+        this.dashboardRepository.getPartnerRevenueTotalInRange(partnerProfileId, previousPeriodStart, since),
         this.dashboardRepository.getPartnerTopVouchers(partnerProfileId, 5),
       ]);
 
-    const revenueByMonth = new Map(revenueRows.map((row) => [row.month, row.revenue]));
-    const monthly: { month: string; revenue: string }[] = [];
-    for (let i = monthsBack - 1; i >= 0; i -= 1) {
+    const revenueByDay = new Map(revenueRows.map((row) => [row.day, row.revenue]));
+    const daily: { date: string; revenue: string }[] = [];
+    for (let i = 0; i < daysBack; i += 1) {
       const d = new Date(since);
-      d.setMonth(d.getMonth() + (monthsBack - 1 - i));
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      monthly.push({ month: key, revenue: revenueByMonth.get(key) ?? "0" });
+      d.setDate(d.getDate() + i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      daily.push({ date: key, revenue: revenueByDay.get(key) ?? "0" });
     }
 
-    const currentMonthRevenue = Number(monthly[monthly.length - 1]?.revenue ?? 0);
-    const previousMonthRevenue = Number(monthly[monthly.length - 2]?.revenue ?? 0);
+    const last30DaysRevenue = daily.reduce((sum, day) => sum + Number(day.revenue), 0);
     const revenueGrowthPercent =
-      previousMonthRevenue > 0
-        ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
+      previousPeriodRevenue > 0
+        ? ((last30DaysRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100
         : null;
 
     const voucherCodeCounts = byKey(voucherCodesByStatus);
@@ -119,9 +121,9 @@ export class DashboardService {
 
     return {
       revenue: {
-        currentMonth: currentMonthRevenue.toFixed(2),
+        last30Days: last30DaysRevenue.toFixed(2),
         growthPercent: revenueGrowthPercent === null ? null : Number(revenueGrowthPercent.toFixed(1)),
-        monthly,
+        daily,
         currency: "VND",
       },
       orders: { completedTotal: orderCount },

@@ -40,7 +40,7 @@ export default function PartnerReportsPage() {
       {summary && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Card label="Doanh thu tháng này" value={formatMoney(summary.revenue.currentMonth)} />
+            <Card label="Doanh thu 30 ngày qua" value={formatMoney(summary.revenue.last30Days)} />
             <Card label="Đơn hàng hoàn tất" value={summary.orders.completedTotal.toLocaleString("vi-VN")} />
             <Card label="Voucher đã bán" value={summary.vouchers.soldTotal.toLocaleString("vi-VN")} />
             <Card label="Voucher đã dùng" value={summary.vouchers.usedTotal.toLocaleString("vi-VN")} />
@@ -49,19 +49,19 @@ export default function PartnerReportsPage() {
           <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-brand-sm">
             <div className="flex justify-between">
               <h2 className="font-extrabold">Xu hướng doanh thu</h2>
-              <span className="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-500">6 tháng gần đây</span>
+              <span className="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-500">30 ngày gần đây</span>
             </div>
             {(() => {
-              const max = Math.max(1, ...summary.revenue.monthly.map((m) => Number(m.revenue)));
+              const max = Math.max(1, ...summary.revenue.daily.map((d) => Number(d.revenue)));
               return (
-                <div className="mt-8 flex h-56 items-end gap-4">
-                  {summary.revenue.monthly.map((m) => (
-                    <div className="flex flex-1 flex-col items-center gap-2" key={m.month}>
+                <div className="mt-8 flex h-56 items-end gap-1">
+                  {summary.revenue.daily.map((d, index) => (
+                    <div className="flex flex-1 flex-col items-center gap-2" key={d.date}>
                       <div
                         className="w-full rounded-t bg-primary"
-                        style={{ height: `${Math.max(2, (Number(m.revenue) / max) * 100)}%` }}
+                        style={{ height: `${Math.max(2, (Number(d.revenue) / max) * 100)}%` }}
                       />
-                      <span className="text-[10px] text-slate-400">{m.month.slice(5)}</span>
+                      <span className="text-[9px] text-slate-400">{index % 5 === 0 ? d.date.slice(8) : ""}</span>
                     </div>
                   ))}
                 </div>

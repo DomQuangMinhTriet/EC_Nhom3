@@ -64,8 +64,8 @@ export default function PartnerDashboardPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Kpi
-              label="Doanh thu tháng này"
-              value={formatMoney(summary.revenue.currentMonth)}
+              label="Doanh thu 30 ngày qua"
+              value={formatMoney(summary.revenue.last30Days)}
               change={summary.revenue.growthPercent === null ? undefined : `${summary.revenue.growthPercent > 0 ? "+" : ""}${summary.revenue.growthPercent}%`}
             />
             <Kpi label="Voucher đã bán" value={summary.vouchers.soldTotal.toLocaleString("vi-VN")} />
@@ -75,18 +75,20 @@ export default function PartnerDashboardPage() {
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-brand-sm">
-              <h2 className="font-extrabold text-slate-900">Doanh thu 6 tháng</h2>
+              <h2 className="font-extrabold text-slate-900">Doanh thu 30 ngày qua</h2>
               {(() => {
-                const max = Math.max(1, ...summary.revenue.monthly.map((m) => Number(m.revenue)));
+                const max = Math.max(1, ...summary.revenue.daily.map((d) => Number(d.revenue)));
                 return (
-                  <div className="mt-6 flex h-48 items-end gap-3 border-b border-slate-100 pb-2">
-                    {summary.revenue.monthly.map((m) => (
-                      <div className="flex flex-1 flex-col items-center gap-2" key={m.month}>
+                  <div className="mt-6 flex h-48 items-end gap-1 border-b border-slate-100 pb-2">
+                    {summary.revenue.daily.map((d, index) => (
+                      <div className="flex flex-1 flex-col items-center gap-2" key={d.date}>
                         <span
                           className="w-full rounded-t bg-gradient-to-t from-primary to-indigo-300"
-                          style={{ height: `${Math.max(2, (Number(m.revenue) / max) * 100)}%` }}
+                          style={{ height: `${Math.max(2, (Number(d.revenue) / max) * 100)}%` }}
                         />
-                        <small className="text-[10px] text-slate-400">{m.month.slice(5)}</small>
+                        <small className="text-[9px] text-slate-400">
+                          {index % 5 === 0 ? d.date.slice(8) : ""}
+                        </small>
                       </div>
                     ))}
                   </div>
